@@ -1,0 +1,72 @@
+/* Import Mapbox GL CSS */
+@import 'mapbox-gl/dist/mapbox-gl.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-400 rounded-full hover:bg-gray-600;
+}
+
+/* Map container */
+.mapbox-container {
+  @apply rounded-lg overflow-hidden border border-gray-200;
+}
+
+.mapbox-popup {
+  @apply shadow-lg;
+}
+
+/* Vehicle marker */
+.vehicle-marker {
+  @apply w-8 h-8 flex items-center justify-center rounded-full cursor-pointer;
+}
+
+.vehicle-marker.active {
+  @apply ring-2 ring-blue-500;
+}
+
+/* Alert animations */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.alert-slide {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Dashboard grid */
+.dashboard-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-lg shadow border border-gray-200 p-4;
+}
+
+.card-header {
+  @apply text-lg font-semibold text-gray-900 mb-4;
+}
