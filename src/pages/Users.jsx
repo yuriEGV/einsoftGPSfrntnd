@@ -149,13 +149,15 @@ export default function Users() {
                   <td className="px-4 py-2 text-right">
                     <button
                       onClick={() => {
-                        if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
+                        if (window.confirm(`¿Estás seguro de eliminar a ${u.name}?`)) {
                           deleteMutation.mutate(u._id)
                         }
                       }}
-                      className="text-red-600 hover:text-red-900 text-xs font-medium"
+                      disabled={deleteMutation.isLoading}
+                      className={`${deleteMutation.isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-900'
+                        } text-red-600 text-xs font-medium`}
                     >
-                      Eliminar
+                      {deleteMutation.isLoading ? 'Eliminando...' : 'Eliminar'}
                     </button>
                   </td>
                 </tr>
