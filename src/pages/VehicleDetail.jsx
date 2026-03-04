@@ -92,9 +92,19 @@ export default function VehicleDetail() {
                 {vehicle.deviceIMEI || 'No vinculado'}
               </span>
             </p>
-            <p className="text-gray-500 text-xs">
+            {vehicle.simCardNumber && (
+              <p className="text-gray-700 mb-2 text-xs">
+                SIM / Chip: <span className="font-semibold">{vehicle.simCardNumber}</span>
+              </p>
+            )}
+            {vehicle.deviceModel && (
+              <p className="text-gray-700 mb-2 text-xs">
+                Modelo: <span className="font-semibold">{vehicle.deviceModel}</span>
+              </p>
+            )}
+            <p className="text-gray-500 text-xs mt-4">
               Vincula el IMEI del GPS / dispositivo telemático al vehículo. A partir de ese momento,
-              los datos que envíe el dispositivo a la API se asociarán a este vehículo y se verán en el mapa y panel.
+              los datos que envíe el dispositivo a la API se asociarán a este vehículo.
             </p>
             <form
               onSubmit={(e) => {

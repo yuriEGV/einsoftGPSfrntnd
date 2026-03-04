@@ -24,6 +24,11 @@ export default function Settings() {
     },
   })
 
+  const { data: vehicles } = useQuery('vehicles', async () => {
+    const response = await apiClient.get('/vehicles')
+    return response.data
+  })
+
   const updateProfileMutation = useMutation(
     (payload) => apiClient.put('/users/profile', payload),
     {
@@ -142,75 +147,109 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Quick vehicle create */}
+      {/* GPS Hardware Management */}
       <div className="card">
-        <h2 className="card-header">Add vehicle to fleet</h2>
-        <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <label className="block text-gray-700 mb-1">License plate</label>
-            <input
-              type="text"
-              value={vehicleForm.licensePlate}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value.toUpperCase() })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              required
-            />
+        <h2 className="card-header">Gestión de Hardware GPS (Chips)</h2>
+        <div className="p-6">
+          <p className="text-gray-600 text-sm mb-4">
+            Desde aquí puedes vincular rápidamente los dispositivos GPS a tus vehículos.
+            Introduce el IMEI del equipo, el número de la SIM instalada y el modelo del hardware.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-700 uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-2">Vehículo</th>
+                  <th className="px-4 py-2">IMEI</th>
+                  <th className="px-4 py-2">SIM / Chip</th>
+                  <th className="px-4 py-2">Modelo</th>
+                  <th className="px-4 py-2">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {vehicles?.map(v => (
+                  <DeviceRow key={v._id} vehicle={v} />
+                ))}
+                {(!vehicles || vehicles.length === 0) && (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                      No hay vehículos registrados para configurar.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Make</label>
-            <input
-              type="text"
-              value={vehicleForm.make}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Model</label>
-            <input
-              type="text"
-              value={vehicleForm.model}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Year</label>
-            <input
-              type="number"
-              value={vehicleForm.year}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Color</label>
-            <input
-              type="text"
-              value={vehicleForm.color}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1">Assigned driver</label>
-            <input
-              type="text"
-              value={vehicleForm.assignedDriver}
-              onChange={(e) => setVehicleForm({ ...vehicleForm, assignedDriver: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
-            >
-              Add vehicle
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
+  )
+}
+
+function DeviceRow({ vehicle }) {
+  const queryClient = useQueryClient()
+  const [formData, setFormData] = useState({
+    deviceIMEI: vehicle.deviceIMEI || '',
+    simCardNumber: vehicle.simCardNumber || '',
+    deviceModel: vehicle.deviceModel || ''
+  })
+
+  const linkMutation = useMutation(
+    (payload) => apiClient.post(`/vehicles/${vehicle._id}/link-device`, payload),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('vehicles')
+      }
+    }
+  )
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    linkMutation.mutate(formData)
+  }
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-4 py-3 font-medium text-gray-900">
+        {vehicle.licensePlate}
+        <div className="text-xs text-gray-500">{vehicle.make} {vehicle.model}</div>
+      </td>
+      <td className="px-4 py-3">
+        <input
+          type="text"
+          value={formData.deviceIMEI}
+          onChange={(e) => setFormData({ ...formData, deviceIMEI: e.target.value })}
+          className="w-full border border-gray-300 rounded px-2 py-1 text-xs font-mono"
+          placeholder="IMEI"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <input
+          type="text"
+          value={formData.simCardNumber}
+          onChange={(e) => setFormData({ ...formData, simCardNumber: e.target.value })}
+          className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+          placeholder="SIM #"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <input
+          type="text"
+          value={formData.deviceModel}
+          onChange={(e) => setFormData({ ...formData, deviceModel: e.target.value })}
+          className="w-full border border-gray-300 rounded px-2 py-1 text-xs"
+          placeholder="GT06 / Coban / etc"
+        />
+      </td>
+      <td className="px-4 py-3">
+        <button
+          onClick={handleSubmit}
+          disabled={linkMutation.isLoading}
+          className="w-full bg-blue-600 text-white rounded px-3 py-1 text-xs font-medium hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {linkMutation.isLoading ? '...' : 'Vincular'}
+        </button>
+      </td>
+    </tr>
   )
 }
