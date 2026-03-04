@@ -7,18 +7,17 @@ let socket = null
 export const setupSocketConnection = () => {
   if (socket) return socket
 
-  // Detect if we are on Vercel/Production to be more conservative
+  // Force polling on production/Vercel to avoid WebSocket 404s/Failures
   const isProd = window.location.hostname.includes('vercel.app');
 
   socket = io(SOCKET_URL, {
     auth: {
       token: localStorage.getItem('token'),
     },
-    transports: ['websocket', 'polling'],
-    reconnectionDelay: isProd ? 10000 : 1000,
-    reconnectionDelayMax: isProd ? 30000 : 5000,
-    reconnectionAttempts: isProd ? 3 : Infinity,
-    timeout: 20000,
+    transports: isProd ? ['polling'] : ['websocket', 'polling'],
+    reconnectionDelay: isProd ? 5000 : 1000,
+    reconnectionDelayMax: isProd ? 10000 : 5000,
+    reconnectionAttempts: isProd ? 5 : Infinity,
   })
 
   socket.on('connect', () => {

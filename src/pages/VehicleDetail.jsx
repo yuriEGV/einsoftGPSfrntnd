@@ -6,14 +6,22 @@ import { apiClient } from '../services/api'
 export default function VehicleDetail() {
   const { id } = useParams()
   const queryClient = useQueryClient()
-  const [imei, setImei] = useState('')
+  const [form, setForm] = useState({
+    deviceIMEI: '',
+    simCardNumber: '',
+    deviceModel: ''
+  })
 
   const { data, isLoading, error } = useQuery(['vehicle', id], async () => {
     const response = await apiClient.get(`/vehicles/${id}`)
     return response.data
   }, {
     onSuccess: (v) => {
-      setImei(v.deviceIMEI || '')
+      setForm({
+        deviceIMEI: v.deviceIMEI || '',
+        simCardNumber: v.simCardNumber || '',
+        deviceModel: v.deviceModel || ''
+      })
     },
   })
 
@@ -109,24 +117,41 @@ export default function VehicleDetail() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                if (!imei) return
-                linkDeviceMutation.mutate({ deviceIMEI: imei })
+                if (!form.deviceIMEI) return
+                linkDeviceMutation.mutate(form)
               }}
-              className="mt-4 flex flex-col md:flex-row gap-3"
+              className="mt-4 space-y-3"
             >
-              <input
-                type="text"
-                value={imei}
-                onChange={(e) => setImei(e.target.value)}
-                placeholder="IMEI del dispositivo"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
-              >
-                Vincular dispositivo
-              </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={form.deviceIMEI}
+                  onChange={(e) => setForm({ ...form, deviceIMEI: e.target.value })}
+                  placeholder="IMEI del dispositivo"
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                />
+                <input
+                  type="text"
+                  value={form.simCardNumber}
+                  onChange={(e) => setForm({ ...form, simCardNumber: e.target.value })}
+                  placeholder="Número de SIM"
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                />
+                <input
+                  type="text"
+                  value={form.deviceModel}
+                  onChange={(e) => setForm({ ...form, deviceModel: e.target.value })}
+                  placeholder="Modelo (GT06, etc)"
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                />
+                <button
+                  type="submit"
+                  disabled={linkDeviceMutation.isLoading}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300"
+                >
+                  {linkDeviceMutation.isLoading ? 'Vinculando...' : 'Vincular dispositivo'}
+                </button>
+              </div>
             </form>
           </div>
           <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-xs text-gray-600 space-y-2">
