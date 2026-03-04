@@ -83,10 +83,6 @@ export default function Login({ onLogin }) {
               {loading ? 'Iniciando sesión...' : 'Ingresar'}
             </button>
           </form>
-
-          <p className="text-center text-gray-600 text-sm mt-6">
-            Credenciales demo: admin@einsoftgps.com / AdminPassword123!
-          </p>
         </div>
       </div>
     </div>
