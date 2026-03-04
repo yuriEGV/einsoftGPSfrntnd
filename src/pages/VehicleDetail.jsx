@@ -90,6 +90,69 @@ export default function VehicleDetail() {
         </div>
       </div>
 
+      {/* Real-time Data & Controls */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="text-xl font-bold mb-4">Control Remoto</h2>
+          <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-800">Motor / Cortacorriente</p>
+                <p className="text-xs text-gray-500">Bloqueo preventivo del motor</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (window.confirm(vehicle.motorCutStatus ? '¿RESTABLECER MOTOR?' : '¿BLOQUEAR MOTOR INMEDIATAMENTE?')) {
+                    apiClient.post(`/vehicles/${id}/motor-cut`, { activate: !vehicle.motorCutStatus })
+                      .then(() => refetch())
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg font-bold text-sm ${vehicle.motorCutStatus
+                    ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
+                    : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'
+                  }`}
+              >
+                {vehicle.motorCutStatus ? '🔓 Restablecer' : '🔒 Bloquear Motor'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4">
+              <div>
+                <p className="font-semibold text-gray-800">Micrófono Espía</p>
+                <p className="text-xs text-gray-500">Escucha activa en cabina</p>
+              </div>
+              <button
+                onClick={() => {
+                  apiClient.post(`/vehicles/${id}/microphone`, { activate: true })
+                    .then(() => alert('Comando de escucha enviado al dispositivo'))
+                }}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-bold text-sm border border-blue-200 hover:bg-blue-200"
+              >
+                🎙️ Activar Escucha
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h2 className="text-xl font-bold mb-4">Información del Dispositivo</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">IMEI</span>
+              <span className="font-mono font-bold text-gray-800">{vehicle.deviceIMEI || 'No vinculado'}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">SIM Card</span>
+              <span className="font-bold text-gray-800">{vehicle.simCardNumber || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-gray-500">Modelo</span>
+              <span className="font-bold text-gray-800">{vehicle.deviceModel || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <h2 className="card-header">Dispositivo / sensor</h2>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
