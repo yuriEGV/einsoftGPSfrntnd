@@ -25,7 +25,12 @@ export default function Login({ onLogin }) {
       localStorage.setItem('user', JSON.stringify(response.data.user))
 
       onLogin()
-      navigate('/')
+      const role = response.data.user.role
+      if (role === 'driver') {
+        navigate('/driver')
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed')
     } finally {

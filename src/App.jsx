@@ -11,6 +11,7 @@ import Alerts from './pages/Alerts'
 import Geofences from './pages/Geofences'
 import Companies from './pages/Companies'
 import Users from './pages/Users'
+import DriverDashboard from './pages/DriverDashboard'
 import MainLayout from './layouts/MainLayout'
 import PrivateRoute from './components/PrivateRoute'
 import './index.css'
@@ -39,7 +40,16 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-          
+
+          <Route
+            path="/driver"
+            element={
+              <PrivateRoute isAuthenticated={isAuthenticated}>
+                <DriverDashboard />
+              </PrivateRoute>
+            }
+          />
+
           <Route
             path="/*"
             element={
