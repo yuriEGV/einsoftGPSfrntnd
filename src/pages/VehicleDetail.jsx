@@ -122,7 +122,7 @@ export default function VehicleDetail() {
           <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-xs text-gray-600 space-y-2">
             <p className="font-semibold text-gray-800">Ejemplo de payload para enviar datos a la API</p>
             <pre className="whitespace-pre-wrap break-all">
-{`POST http://localhost:5000/api/sensors/upload
+              {`POST ${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/sensors/upload
 Content-Type: application/json
 
 {
