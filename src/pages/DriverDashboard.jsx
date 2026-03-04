@@ -7,12 +7,15 @@ export default function DriverDashboard() {
     const [status, setStatus] = useState('offline')
     const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-    // Fetch own vehicle data
+    // Fetch assigned vehicle data
     const { data: vehicle, refetch } = useQuery('driver-vehicle', async () => {
-        // Assuming driver is linked to a vehicle or we find the one assigned
+        const userJson = localStorage.getItem('user')
+        if (!userJson) return null
+        const currentUser = JSON.parse(userJson)
+
+        // Fetch all vehicles but find the one assigned to this driver
         const response = await apiClient.get('/vehicles')
-        // For demo simplicity, take the first one where this user is driver or just the first available
-        return response.data[0]
+        return response.data.find(v => v.driver === currentUser._id || v.driver?._id === currentUser._id)
     })
 
     // Panic Button Mutation
