@@ -20,14 +20,10 @@ export default function Geofences() {
       name: form.name,
       description: form.description,
       geometry: {
-        type: 'Circle',
-        coordinates: [-74.0, 40.72],
+        type: 'Point',
+        coordinates: [-74.0, 40.72], // In a real app, this would be selected on map
       },
       radius: Number(form.radius),
-      center: {
-        type: 'Point',
-        coordinates: [-74.0, 40.72],
-      },
     }),
     {
       onSuccess: () => {
