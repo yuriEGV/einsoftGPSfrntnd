@@ -12,10 +12,12 @@ export default function Dashboard() {
   const [socket, setSocket] = useState(null)
   const [realTimeData, setRealTimeData] = useState({})
 
-  // Fetch vehicles
+  // Fetch vehicles with polling fallback for Vercel
   const { data: vehicles = [], isLoading } = useQuery('vehicles', async () => {
     const response = await apiClient.get('/vehicles')
     return response.data
+  }, {
+    refetchInterval: 5000, // Sync every 5 seconds as fallback for Socket.io
   })
 
   // Fetch alerts
@@ -70,7 +72,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Map */}
         <div className="lg:col-span-2">
-          <MapComponent 
+          <MapComponent
             vehicles={vehicles}
             selectedVehicle={selectedVehicle}
             onVehicleSelect={setSelectedVehicle}
@@ -81,7 +83,7 @@ export default function Dashboard() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Vehicle List */}
-          <VehicleList 
+          <VehicleList
             vehicles={vehicles}
             selectedVehicle={selectedVehicle}
             onSelectVehicle={setSelectedVehicle}
