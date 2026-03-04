@@ -138,7 +138,12 @@ export default function Companies() {
             <tbody>
               {companies.map((c) => (
                 <tr key={c._id} className="border-t border-gray-100">
-                  <td className="px-4 py-2 font-medium">{c.name}</td>
+                  <td className="px-4 py-2 font-medium">
+                    {c.name}
+                    <div className="text-xs text-blue-600 font-normal">
+                      {c.vehicleCount || 0} vehículos vinculados
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-gray-600">
                     {c.email}<br />
                     <span className="text-xs">{c.phone}</span>
