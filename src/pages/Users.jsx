@@ -44,6 +44,10 @@ export default function Users() {
       onSuccess: () => {
         queryClient.invalidateQueries('users')
       },
+      onError: (err) => {
+        const msg = err.response?.data?.error || 'Error al eliminar usuario'
+        alert(`❌ No se pudo eliminar: ${msg}`)
+      }
     },
   )
 

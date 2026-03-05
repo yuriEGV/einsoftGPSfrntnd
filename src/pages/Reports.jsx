@@ -22,6 +22,12 @@ export default function Reports() {
     { enabled: false },
   )
 
+  const handleGenerate = (e) => {
+    e.preventDefault()
+    if (!selectedVehicleId) return
+    refetch()
+  }
+
   const handlePrint = () => {
     window.print()
   }

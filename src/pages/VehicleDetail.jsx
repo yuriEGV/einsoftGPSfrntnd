@@ -9,10 +9,11 @@ export default function VehicleDetail() {
   const [form, setForm] = useState({
     deviceIMEI: '',
     simCardNumber: '',
-    deviceModel: ''
+    deviceModel: '',
+    driverId: ''
   })
 
-  const { data, isLoading, error } = useQuery(['vehicle', id], async () => {
+  const { data, isLoading, error, refetch } = useQuery(['vehicle', id], async () => {
     const response = await apiClient.get(`/vehicles/${id}`)
     return response.data
   }, {
@@ -20,9 +21,15 @@ export default function VehicleDetail() {
       setForm({
         deviceIMEI: v.deviceIMEI || '',
         simCardNumber: v.simCardNumber || '',
-        deviceModel: v.deviceModel || ''
+        deviceModel: v.deviceModel || '',
+        driverId: v.driver?._id || ''
       })
     },
+  })
+
+  const { data: drivers = [] } = useQuery('drivers', async () => {
+    const response = await apiClient.get('/users')
+    return response.data.filter(u => u.role === 'driver')
   })
 
   const linkDeviceMutation = useMutation(
@@ -108,8 +115,8 @@ export default function VehicleDetail() {
                   }
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-sm ${vehicle.motorCutStatus
-                    ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
-                    : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'
+                  ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
+                  : 'bg-red-600 text-white hover:bg-red-700 shadow-lg'
                   }`}
               >
                 {vehicle.motorCutStatus ? '🔓 Restablecer' : '🔒 Bloquear Motor'}
@@ -207,10 +214,20 @@ export default function VehicleDetail() {
                   placeholder="Modelo (GT06, etc)"
                   className="border border-gray-300 rounded-lg px-3 py-2"
                 />
+                <select
+                  value={form.driverId}
+                  onChange={(e) => setForm({ ...form, driverId: e.target.value })}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="">Asignar conductor (opcional)</option>
+                  {drivers.map(d => (
+                    <option key={d._id} value={d._id}>{d.name} ({d.email})</option>
+                  ))}
+                </select>
                 <button
                   type="submit"
                   disabled={linkDeviceMutation.isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300 md:col-span-2"
                 >
                   {linkDeviceMutation.isLoading ? 'Vinculando...' : 'Vincular dispositivo'}
                 </button>
