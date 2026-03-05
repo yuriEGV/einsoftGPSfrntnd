@@ -26,7 +26,11 @@ const queryClient = new QueryClient({
 })
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'))
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    return !!(token && user);
+  })
 
   const handleLogout = () => {
     localStorage.removeItem('token')
