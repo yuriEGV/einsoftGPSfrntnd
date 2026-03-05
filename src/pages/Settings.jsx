@@ -81,7 +81,62 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h1 className="card-header">Settings</h1>
+        <h2 className="card-header">Agregar nuevo vehículo</h2>
+        <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 text-sm">
+          <div>
+            <label className="block text-gray-700 mb-1 font-semibold">Patente</label>
+            <input
+              type="text"
+              value={vehicleForm.licensePlate}
+              onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 uppercase"
+              placeholder="ABCD-12"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-1 font-semibold">Marca</label>
+            <input
+              type="text"
+              value={vehicleForm.make}
+              onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              placeholder="Chevrolet"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-1 font-semibold">Modelo</label>
+            <input
+              type="text"
+              value={vehicleForm.model}
+              onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              placeholder="Sail"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-1 font-semibold">Año</label>
+            <input
+              type="number"
+              value={vehicleForm.year}
+              onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+            />
+          </div>
+          <div className="flex items-end md:col-span-2">
+            <button
+              type="submit"
+              disabled={createVehicleMutation.isLoading}
+              className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-lg shadow-emerald-900/10 disabled:bg-emerald-300"
+            >
+              {createVehicleMutation.isLoading ? 'Guardando...' : '🚀 Registrar Vehículo'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card">
+        <h1 className="card-header">Configuración de Cuenta</h1>
         <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Profile */}
           <div>
