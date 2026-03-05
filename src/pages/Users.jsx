@@ -23,6 +23,14 @@ export default function Users() {
     return response.data
   })
 
+  const { data: companies = [] } = useQuery('companies', async () => {
+    const response = await apiClient.get('/companies')
+    return response.data
+  })
+
+  const creator = JSON.parse(localStorage.getItem('user') || '{}')
+  const isAdmin = creator.role === 'admin'
+
   const createMutation = useMutation(
     () => apiClient.post('/users', form),
     {
@@ -32,9 +40,15 @@ export default function Users() {
           email: '',
           password: '',
           role: 'fleet_manager',
+          companyId: '',
         })
         queryClient.invalidateQueries('users')
+        alert('✅ Usuario creado correctamente')
       },
+      onError: (err) => {
+        const msg = err.response?.data?.error || 'Falló la creación del usuario'
+        alert(`❌ Error: ${msg}`)
+      }
     },
   )
 
@@ -54,57 +68,79 @@ export default function Users() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.password) return
+    if (isAdmin && !form.companyId) {
+      return alert('Debe seleccionar una empresa para el nuevo usuario')
+    }
     createMutation.mutate()
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Usuarios</h1>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h1>
         <p className="text-sm text-gray-500">
-          Total: {users.length} usuarios
+          Total: <span className="font-bold">{users.length}</span> usuarios
         </p>
       </div>
 
       <div className="card">
-        <h2 className="card-header">Crear usuario en esta empresa</h2>
-        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+        <h2 className="card-header">{isAdmin ? 'Registrar nuevo usuario en el sistema' : 'Crear usuario en esta empresa'}</h2>
+        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 text-sm">
+          {isAdmin && (
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold">Empresa / Cliente</label>
+              <select
+                value={form.companyId}
+                onChange={(e) => setForm({ ...form, companyId: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm"
+                required
+              >
+                <option value="">Seleccionar Empresa...</option>
+                {companies.map(c => (
+                  <option key={c._id} value={c._id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
-            <label className="block text-gray-700 mb-1">Nombre</label>
+            <label className="block text-gray-700 mb-1 font-semibold">Nombre Completo</label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Ej: Daniel Arp"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-700 mb-1">Correo</label>
+            <label className="block text-gray-700 mb-1 font-semibold">Correo Electrónico</label>
             <input
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="correo@ejemplo.com"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-700 mb-1">Contraseña</label>
+            <label className="block text-gray-700 mb-1 font-semibold">Contraseña</label>
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="8+ caracteres"
               required
             />
           </div>
           <div>
-            <label className="block text-gray-700 mb-1">Rol</label>
+            <label className="block text-gray-700 mb-1 font-semibold">Rol Asignado</label>
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -114,9 +150,10 @@ export default function Users() {
           <div className="flex items-end">
             <button
               type="submit"
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+              disabled={createMutation.isLoading}
+              className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-lg shadow-emerald-500/10 transition-all disabled:opacity-50"
             >
-              Crear usuario
+              {createMutation.isLoading ? '...' : '🚀 Crear Usuario'}
             </button>
           </div>
         </form>

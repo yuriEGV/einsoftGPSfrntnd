@@ -21,11 +21,19 @@ export default function Vehicles() {
     return response.data
   })
 
+  const { data: companies = [] } = useQuery('companies', async () => {
+    const response = await apiClient.get('/companies')
+    return response.data
+  })
+
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isAdmin = user.role === 'admin'
+
   const createVehicleMutation = useMutation(
     (payload) => apiClient.post('/vehicles', payload),
     {
       onSuccess: () => {
-        setVehicleForm({ licensePlate: '', make: '', model: '', year: '', color: '' })
+        setVehicleForm({ licensePlate: '', make: '', model: '', year: '', color: '', companyId: '' })
         setShowAddForm(false)
         queryClient.invalidateQueries('vehicles')
       },
@@ -38,6 +46,9 @@ export default function Vehicles() {
 
   const handleVehicleSubmit = (e) => {
     e.preventDefault()
+    if (isAdmin && !vehicleForm.companyId) {
+      return alert('Debe seleccionar una empresa para el vehículo')
+    }
     createVehicleMutation.mutate({
       ...vehicleForm,
       year: vehicleForm.year ? Number(vehicleForm.year) : undefined,
@@ -56,8 +67,8 @@ export default function Vehicles() {
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg ${showAddForm
-              ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
+            ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
             }`}
         >
           {showAddForm ? '✕ Cancelar' : '➕ Registrar Nuevo Vehículo'}
@@ -69,7 +80,23 @@ export default function Vehicles() {
           <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100">
             <h2 className="text-emerald-800 font-bold text-sm uppercase tracking-wider">Ingresar Datos del Nuevo Vehículo</h2>
           </div>
-          <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {isAdmin && (
+              <div className="md:col-span-2 lg:col-span-1">
+                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Empresa / Cliente</label>
+                <select
+                  value={vehicleForm.companyId}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, companyId: e.target.value })}
+                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                  required
+                >
+                  <option value="">Seleccionar Empresa...</option>
+                  {companies.map(c => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Patente</label>
               <input
