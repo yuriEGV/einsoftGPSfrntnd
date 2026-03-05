@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from 'react-query'
+import { safeStorage } from './services/api'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import VehicleDetail from './pages/VehicleDetail'
@@ -27,19 +28,19 @@ const queryClient = new QueryClient({
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('user');
+    const token = safeStorage.get('token');
+    const user = safeStorage.get('user');
     return !!(token && user);
   })
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
+    safeStorage.remove('token')
+    safeStorage.remove('refreshToken')
+    safeStorage.remove('user')
     setIsAuthenticated(false)
   }
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const user = JSON.parse(safeStorage.get('user') || '{}')
   const isSuperAdmin = user.role === 'admin' && !user.company
 
   return (

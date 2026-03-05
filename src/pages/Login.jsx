@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiClient } from '../services/api'
+import { apiClient, safeStorage } from '../services/api'
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('')
@@ -20,9 +20,9 @@ export default function Login({ onLogin }) {
         password,
       })
 
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('refreshToken', response.data.refreshToken)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
+      safeStorage.set('token', response.data.token)
+      safeStorage.set('refreshToken', response.data.refreshToken)
+      safeStorage.set('user', JSON.stringify(response.data.user))
 
       onLogin()
       const role = response.data.user.role
