@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation } from 'react-query'
 import { apiClient } from '../services/api'
 
-export default function DriverDashboard() {
+export default function DriverDashboard({ onLogout }) {
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     const [currentTime, setCurrentTime] = useState(new Date())
 
@@ -59,12 +59,21 @@ export default function DriverDashboard() {
                         <p className="text-[10px] text-slate-400 font-mono tracking-wider">MODO CONDUCTOR • {vehicle?.licensePlate || 'IDENTIFICANDO...'}</p>
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="text-xs font-mono text-slate-300">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                        <span className="text-[10px] text-slate-500 font-medium">GPS</span>
-                        <div className={`w-1.5 h-1.5 rounded-full ${vehicle ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]' : 'bg-red-500'}`} />
+                <div className="flex items-center gap-6">
+                    <div className="text-right hidden sm:block">
+                        <p className="text-xs font-mono text-slate-300">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                            <span className="text-[10px] text-slate-500 font-medium tracking-widest">GPS</span>
+                            <div className={`w-1.5 h-1.5 rounded-full ${vehicle ? 'bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]' : 'bg-red-500'}`} />
+                        </div>
                     </div>
+                    <button
+                        onClick={onLogout}
+                        className="px-6 py-2.5 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl text-[10px] font-black text-red-500 uppercase tracking-[0.2em] transition-all flex items-center gap-2 shadow-lg shadow-red-900/10"
+                    >
+                        <span>CERRAR SESIÓN</span>
+                        <span className="text-sm">🚪</span>
+                    </button>
                 </div>
             </header>
 
