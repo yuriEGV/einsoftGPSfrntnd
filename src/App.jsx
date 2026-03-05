@@ -44,8 +44,11 @@ function App() {
           <Route
             path="/driver"
             element={
-              <PrivateRoute isAuthenticated={isAuthenticated}>
-                <DriverDashboard />
+              <PrivateRoute
+                isAuthenticated={isAuthenticated}
+                allowedRoles={['driver']}
+              >
+                <DriverDashboard onLogout={handleLogout} />
               </PrivateRoute>
             }
           />
@@ -53,7 +56,10 @@ function App() {
           <Route
             path="/*"
             element={
-              <PrivateRoute isAuthenticated={isAuthenticated}>
+              <PrivateRoute
+                isAuthenticated={isAuthenticated}
+                allowedRoles={['admin', 'fleet_manager']}
+              >
                 <MainLayout onLogout={handleLogout}>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
