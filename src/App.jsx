@@ -39,6 +39,9 @@ function App() {
     setIsAuthenticated(false)
   }
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isSuperAdmin = user.role === 'admin' && !user.company
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
@@ -67,7 +70,10 @@ function App() {
                 <MainLayout onLogout={handleLogout}>
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
-                    <Route path="/companies" element={<Companies />} />
+
+                    {/* Solo Súper Admins pueden ver empresas */}
+                    {isSuperAdmin && <Route path="/companies" element={<Companies />} />}
+
                     <Route path="/vehicles" element={<Vehicles />} />
                     <Route path="/vehicles/:id" element={<VehicleDetail />} />
                     <Route path="/reports" element={<Reports />} />

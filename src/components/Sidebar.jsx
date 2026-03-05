@@ -16,6 +16,15 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isSuperAdmin = user.role === 'admin' && !user.company
+
+  const filteredMenuItems = menuItems.filter(item => {
+    // Solo Súper Administradores pueden ver/gestionar Empresas (Clientes)
+    if (item.path === '/companies') return isSuperAdmin
+    return true
+  })
+
   const handleLogoutClick = () => {
     if (typeof onLogout === 'function') {
       onLogout()
@@ -40,26 +49,28 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
       `}>
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Einsoft GPS</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent italic tracking-tighter">Einsoft GPS</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">Gestión de Flotas</span>
-              <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded font-black tracking-widest">v2.0.2</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-800 px-1.5 py-0.5 rounded">CELO DE DATOS</span>
+              <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded font-black tracking-widest">v2.1.0</span>
             </div>
           </div>
-          <button onClick={() => setIsOpen(false)} className="md:hidden text-white">✕</button>
+          <button onClick={() => setIsOpen(false)} className="md:hidden text-white hover:text-blue-400 transition-colors">✕</button>
         </div>
 
-        <nav className="space-y-2 flex-1">
-          {menuItems.map((item) => (
+        <nav className="space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+          {filteredMenuItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
               onClick={() => setIsOpen(false)}
-              className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === item.path ? 'bg-blue-600' : 'hover:bg-slate-800'
+              className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${location.pathname === item.path
+                ? 'bg-blue-600 shadow-lg shadow-blue-500/20'
+                : 'hover:bg-slate-800 text-slate-400 hover:text-white'
                 }`}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className={`text-xl transition-transform duration-200 ${location.pathname === item.path ? 'scale-110' : 'group-hover:scale-110'}`}>{item.icon}</span>
+              <span className="text-sm font-bold tracking-tight">{item.label}</span>
             </Link>
           ))}
         </nav>
