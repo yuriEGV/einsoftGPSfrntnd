@@ -40,8 +40,11 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
       `}>
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Einsoft GPS</h1>
-            <p className="text-xs text-slate-400">Gestión de Flotas</p>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">Einsoft GPS</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">Gestión de Flotas</span>
+              <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded font-black tracking-widest">v2.0.2</span>
+            </div>
           </div>
           <button onClick={() => setIsOpen(false)} className="md:hidden text-white">✕</button>
         </div>
