@@ -95,17 +95,30 @@ export default function Users() {
             <div>
               <label className="block text-gray-700 mb-1 font-semibold">Empresa / Cliente</label>
               <select
-                value={form.role === 'independent' ? '' : form.companyId}
-                onChange={(e) => setForm({ ...form, companyId: e.target.value })}
-                disabled={form.role === 'independent'}
-                className={`w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm ${
-                  form.role === 'independent' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
-                }`}
-                required={form.role !== 'independent' && form.role !== 'admin'}
+                value={form.companyId}
+                onChange={(e) => {
+                  const companyId = e.target.value
+                  if (companyId) {
+                    // Selecting a company means assigning a corporate role
+                    setForm(prev => ({
+                      ...prev,
+                      companyId,
+                      role: prev.role === 'independent' ? 'fleet_manager' : prev.role,
+                    }))
+                  } else {
+                    // Selecting no company means independent user
+                    setForm(prev => ({
+                      ...prev,
+                      companyId: '',
+                      role: 'independent',
+                    }))
+                  }
+                }}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
               >
-                <option value="">{form.role === 'independent' ? 'Sin Empresa (Particular / Plan Familiar)' : 'Seleccionar Empresa...'}</option>
+                <option value="">🏠 Sin Empresa (Particular / Plan Familiar)</option>
                 {companies.map(c => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
+                  <option key={c._id} value={c._id}>🏢 {c.name}</option>
                 ))}
               </select>
             </div>
@@ -147,8 +160,15 @@ export default function Users() {
             <label className="block text-gray-700 mb-1 font-semibold">Rol Asignado</label>
             <select
               value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm"
+              onChange={(e) => {
+                const role = e.target.value
+                if (role === 'independent') {
+                  setForm(prev => ({ ...prev, role, companyId: '' }))
+                } else {
+                  setForm(prev => ({ ...prev, role }))
+                }
+              }}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
