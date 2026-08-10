@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
+import MapComponent from '../components/MapComponent'
 
 export default function VehicleDetail() {
   const { id } = useParams()
@@ -313,6 +314,30 @@ export default function VehicleDetail() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ===== MAPA DE UBICACIÓN EN VIVO ===== */}
+      <div className="card p-4 overflow-hidden">
+        <div className="flex items-center justify-between mb-3 px-2">
+          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            📍 Mapa de Ubicación en Tiempo Real
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+              vehicle.status === 'active' ? 'bg-emerald-100 text-emerald-700 font-mono' : 'bg-gray-100 text-gray-600 font-mono'
+            }`}>
+              {vehicle.status === 'active' ? '● En Vivo' : '● ' + vehicle.status}
+            </span>
+          </h2>
+          <span className="text-xs text-gray-500 font-mono">
+            {vehicle.location?.address || 'Ubicación registrada'}
+          </span>
+        </div>
+        <div className="h-[420px] rounded-xl overflow-hidden border border-gray-200">
+          <MapComponent
+            vehicles={[vehicle]}
+            selectedVehicle={vehicle}
+            onVehicleSelect={() => {}}
+          />
+        </div>
       </div>
 
       {/* ===== CONTROL REMOTO ===== */}

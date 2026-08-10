@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
 
 const ROLES = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'fleet_manager', label: 'Gestor de flota' },
+  { value: 'admin', label: 'Administrador (Global)' },
+  { value: 'fleet_manager', label: 'Gestor de flota (Empresa)' },
+  { value: 'independent', label: 'Particular / Plan Familiar (Sin Empresa)' },
   { value: 'driver', label: 'Conductor' },
   { value: 'viewer', label: 'Solo lectura' },
 ]
@@ -15,7 +16,8 @@ export default function Users() {
     name: '',
     email: '',
     password: '',
-    role: 'fleet_manager',
+    role: 'independent',
+    companyId: '',
   })
 
   const { data: users = [], isLoading } = useQuery('users', async () => {
@@ -32,14 +34,17 @@ export default function Users() {
   const isAdmin = creator.role === 'admin'
 
   const createMutation = useMutation(
-    () => apiClient.post('/users', form),
+    () => apiClient.post('/users', {
+      ...form,
+      companyId: form.role === 'independent' ? undefined : form.companyId,
+    }),
     {
       onSuccess: () => {
         setForm({
           name: '',
           email: '',
           password: '',
-          role: 'fleet_manager',
+          role: 'independent',
           companyId: '',
         })
         queryClient.invalidateQueries('users')
@@ -68,8 +73,8 @@ export default function Users() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.password) return
-    if (isAdmin && !form.companyId) {
-      return alert('Debe seleccionar una empresa para el nuevo usuario')
+    if (isAdmin && form.role !== 'independent' && form.role !== 'admin' && !form.companyId) {
+      return alert('Debe seleccionar una empresa para roles de gestión corporativa')
     }
     createMutation.mutate()
   }
@@ -90,12 +95,15 @@ export default function Users() {
             <div>
               <label className="block text-gray-700 mb-1 font-semibold">Empresa / Cliente</label>
               <select
-                value={form.companyId}
+                value={form.role === 'independent' ? '' : form.companyId}
                 onChange={(e) => setForm({ ...form, companyId: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm"
-                required
+                disabled={form.role === 'independent'}
+                className={`w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all shadow-sm ${
+                  form.role === 'independent' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white'
+                }`}
+                required={form.role !== 'independent' && form.role !== 'admin'}
               >
-                <option value="">Seleccionar Empresa...</option>
+                <option value="">{form.role === 'independent' ? 'Sin Empresa (Particular / Plan Familiar)' : 'Seleccionar Empresa...'}</option>
                 {companies.map(c => (
                   <option key={c._id} value={c._id}>{c.name}</option>
                 ))}
@@ -181,7 +189,19 @@ export default function Users() {
                 <tr key={u._id} className="border-t border-gray-100">
                   <td className="px-4 py-2">{u.name}</td>
                   <td className="px-4 py-2 text-gray-600">{u.email}</td>
-                  <td className="px-4 py-2 capitalize">{u.role}</td>
+                  <td className="px-4 py-2">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                      u.role === 'admin' ? 'bg-purple-100 text-purple-700' :
+                      u.role === 'independent' ? 'bg-indigo-100 text-indigo-700' :
+                      u.role === 'fleet_manager' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {u.role === 'admin' ? 'Administrador' :
+                       u.role === 'fleet_manager' ? 'Gestor de Flota' :
+                       u.role === 'independent' ? 'Particular / Plan Familiar' :
+                       u.role === 'driver' ? 'Conductor' : u.role}
+                    </span>
+                  </td>
                   <td className="px-4 py-2">
                     <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700">
                       {u.status}
