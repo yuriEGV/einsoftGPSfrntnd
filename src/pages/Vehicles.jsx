@@ -55,11 +55,9 @@ export default function Vehicles() {
 
   const handleVehicleSubmit = (e) => {
     e.preventDefault()
-    if (isAdmin && !vehicleForm.companyId) {
-      return alert('Debe seleccionar una empresa para el vehículo')
-    }
     createVehicleMutation.mutate({
       ...vehicleForm,
+      companyId: vehicleForm.companyId || undefined,
       year: vehicleForm.year ? Number(vehicleForm.year) : undefined,
     })
   }

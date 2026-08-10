@@ -66,7 +66,7 @@ function App() {
             element={
               <PrivateRoute
                 isAuthenticated={isAuthenticated}
-                allowedRoles={['admin', 'fleet_manager']}
+                allowedRoles={['admin', 'fleet_manager', 'independent', 'driver']}
               >
                 <MainLayout onLogout={handleLogout}>
                   <Routes>
