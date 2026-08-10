@@ -75,83 +75,102 @@ export default function Vehicles() {
         </button>
       </div>
 
-      {showAddForm && (
-        <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100">
-            <h2 className="text-emerald-800 font-bold text-sm uppercase tracking-wider">Ingresar Datos del Nuevo Vehículo</h2>
-          </div>
-          <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            {isAdmin && (
-              <div className="md:col-span-2 lg:col-span-1">
-                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Empresa / Cliente</label>
-                <select
-                  value={vehicleForm.companyId}
-                  onChange={(e) => setVehicleForm({ ...vehicleForm, companyId: e.target.value })}
-                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
-                  required
-                >
-                  <option value="">Seleccionar Empresa...</option>
-                  {companies.map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Patente</label>
-              <input
-                type="text"
-                value={vehicleForm.licensePlate}
-                onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value })}
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 uppercase focus:border-emerald-500 outline-none transition-all"
-                placeholder="ABCD-12"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Marca</label>
-              <input
-                type="text"
-                value={vehicleForm.make}
-                onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
-                placeholder="Ej: Chevrolet"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Modelo</label>
-              <input
-                type="text"
-                value={vehicleForm.model}
-                onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
-                placeholder="Ej: Sail"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Año</label>
-              <input
-                type="number"
-                value={vehicleForm.year}
-                onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
-                placeholder="2024"
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                disabled={createVehicleMutation.isLoading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-50"
-              >
-                {createVehicleMutation.isLoading ? 'Guardando...' : 'Confirmar Registro'}
-              </button>
-            </div>
-          </form>
+      {/* Help Card */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex gap-4 items-start shadow-sm transition-all hover:shadow-md">
+        <div className="bg-blue-500 text-white rounded-full p-2 text-xl">💡</div>
+        <div className="space-y-2">
+          <h3 className="text-blue-900 font-bold">Guía de Gestión de Flota</h3>
+          <p className="text-blue-800 text-sm leading-relaxed">
+            Bienvenido a tu panel de control. Para comenzar a monitorear:
+            <br />
+            1. **Registra el auto**: Usa el botón "Registrar Nuevo Vehículo" arriba.
+            <br />
+            2. **Vincula el chip**: Haz clic en el vehículo creado para asociar su IMEI y asignar un conductor.
+            <br />
+            3. **Gestiona**: Desde aquí puedes ver el historial y enviar comandos remotos de seguridad.
+          </p>
         </div>
-      )}
+      </div>
+
+      {
+        showAddForm && (
+          <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100">
+              <h2 className="text-emerald-800 font-bold text-sm uppercase tracking-wider">Ingresar Datos del Nuevo Vehículo</h2>
+            </div>
+            <form onSubmit={handleVehicleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+              {isAdmin && (
+                <div className="md:col-span-2 lg:col-span-1">
+                  <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Empresa / Cliente</label>
+                  <select
+                    value={vehicleForm.companyId}
+                    onChange={(e) => setVehicleForm({ ...vehicleForm, companyId: e.target.value })}
+                    className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                    required
+                  >
+                    <option value="">Seleccionar Empresa...</option>
+                    {companies.map(c => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Patente</label>
+                <input
+                  type="text"
+                  value={vehicleForm.licensePlate}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, licensePlate: e.target.value })}
+                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 uppercase focus:border-emerald-500 outline-none transition-all"
+                  placeholder="ABCD-12"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Marca</label>
+                <input
+                  type="text"
+                  value={vehicleForm.make}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, make: e.target.value })}
+                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                  placeholder="Ej: Chevrolet"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Modelo</label>
+                <input
+                  type="text"
+                  value={vehicleForm.model}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })}
+                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                  placeholder="Ej: Sail"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Año</label>
+                <input
+                  type="number"
+                  value={vehicleForm.year}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })}
+                  className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                  placeholder="2024"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  disabled={createVehicleMutation.isLoading}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-50"
+                >
+                  {createVehicleMutation.isLoading ? 'Guardando...' : 'Confirmar Registro'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )
+      }
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2">
         <VehicleList
@@ -161,7 +180,7 @@ export default function Vehicles() {
           isLoading={isLoading}
         />
       </div>
-    </div>
+    </div >
   )
 }
 

@@ -51,7 +51,7 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent italic tracking-tighter">Einsoft GPS</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-800 px-1.5 py-0.5 rounded">CELO DE DATOS</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest bg-slate-800 px-1.5 py-0.5 rounded">Gestor de GPS</span>
               <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded font-black tracking-widest">v2.1.0</span>
             </div>
           </div>
