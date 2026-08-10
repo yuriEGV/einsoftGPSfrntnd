@@ -266,8 +266,8 @@ export default function VehicleDetail() {
           <h2 className="text-xl font-bold mb-4">Información del Dispositivo</h2>
           <div className="space-y-3 text-sm">
             {[
-              { label: 'IMEI', value: vehicle.deviceIMEI || 'No vinculado', mono: true },
-              { label: 'SIM Card', value: vehicle.simCardNumber || 'N/A' },
+              { label: 'IMEI / Tag ID', value: vehicle.deviceIMEI || 'No vinculado', mono: true },
+              { label: 'SIM Card', value: vehicle.simCardNumber || 'No requiere (Smart Tag BLE)' },
               { label: 'Modelo GPS', value: vehicle.deviceModel || 'N/A' },
               { label: 'Cortacorriente', value: vehicle.motorCutStatus ? '🔒 ACTIVO' : '🟢 Normal' },
             ].map(({ label, value, mono }) => (
@@ -279,6 +279,100 @@ export default function VehicleDetail() {
           </div>
         </div>
       </div>
+
+      {/* ===== SMART TAG & GATEWAY BLE ===== */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white rounded-2xl p-6 shadow-xl border border-indigo-500/20 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-800/50 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600/30 p-3 rounded-xl border border-indigo-400/30 text-2xl animate-pulse">
+              🏷️
+            </div>
+            <div>
+              <h2 className="text-lg font-black tracking-wide text-indigo-100 flex items-center gap-2">
+                Smart Tag & Gateway Móvil BLE
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
+                  Xtag11 / TomVista TagX
+                </span>
+              </h2>
+              <p className="text-xs text-indigo-200/80 mt-0.5">
+                Transmite coordenadas de tu Smart Tag Bluetooth o usa la ubicación de tu celular como Gateway para este vehículo.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                if (!navigator.geolocation) {
+                  alert('Tu navegador no soporta Geolocalización.')
+                  return
+                }
+                const targetIMEI = vehicle.deviceIMEI || 'XTAG11-DEMO'
+                navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                    apiClient.post('/sensors/upload', {
+                      deviceIMEI: targetIMEI,
+                      gps: {
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        speed: pos.coords.speed || 0,
+                        heading: pos.coords.heading || 0,
+                      }
+                    }).then(() => {
+                      alert('✅ Ubicación transmitida con éxito a Einsoft GPS. El vehículo ahora está ONLINE.')
+                      refetch()
+                    }).catch(err => {
+                      alert('Error al enviar ubicación: ' + (err.response?.data?.error || err.message))
+                    })
+                  },
+                  (err) => alert('Error al obtener GPS de tu dispositivo: ' + err.message),
+                  { enableHighAccuracy: true }
+                )
+              }}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-1.5"
+            >
+              📍 Transmitir GPS Celular Ahora
+            </button>
+
+            <button
+              onClick={() => {
+                const targetIMEI = vehicle.deviceIMEI || 'XTAG11-DEMO'
+                apiClient.post('/sensors/upload', {
+                  deviceIMEI: targetIMEI,
+                  gps: {
+                    latitude: -33.4489 + (Math.random() - 0.5) * 0.01,
+                    longitude: -70.6693 + (Math.random() - 0.5) * 0.01,
+                    speed: Math.floor(Math.random() * 50) + 10,
+                  },
+                  fuel: { level: 85 }
+                }).then(() => {
+                  alert('✨ Prueba enviada: Vehículo actualizado a ONLINE')
+                  refetch()
+                })
+              }}
+              className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all border border-indigo-400/30 flex items-center gap-1.5"
+            >
+              🧪 Simulación de Prueba
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-indigo-100/90 pt-1">
+          <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40">
+            <span className="font-bold text-emerald-400 block mb-1">1. Sin necesidad de SIM Card</span>
+            El Xtag11 transmite por Bluetooth LE ahorrando batería y costos telefónicos.
+          </div>
+          <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40">
+            <span className="font-bold text-indigo-300 block mb-1">2. Red Find My / TomVista</span>
+            Compatible con la red de búsqueda comunitaria y la app de TomVista.
+          </div>
+          <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40">
+            <span className="font-bold text-blue-300 block mb-1">3. Integrado con Einsoft GPS</span>
+            Actualiza la posición en tiempo real directamente en el mapa central.
+          </div>
+        </div>
+      </div>
+
 
       {/* ===== VINCULAR DISPOSITIVO ===== */}
       <div className="card">
