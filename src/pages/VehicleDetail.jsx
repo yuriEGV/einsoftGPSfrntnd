@@ -162,6 +162,17 @@ export default function VehicleDetail() {
     },
   )
 
+  // Delete vehicle
+  const deleteVehicleMutation = useMutation(
+    () => apiClient.delete(`/vehicles/${id}`),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('vehicles')
+        navigate('/vehicles')
+      },
+    },
+  )
+
   if (isLoading) {
     return (
       <div className="card animate-pulse">
@@ -198,7 +209,7 @@ export default function VehicleDetail() {
 
       {/* ===== INFO PRINCIPAL ===== */}
       <div className="card overflow-hidden">
-        <div className="card-header flex items-center justify-between">
+        <div className="card-header flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🚗</span>
             <div>
@@ -206,15 +217,28 @@ export default function VehicleDetail() {
               <p className="text-sm text-gray-500 font-normal">{vehicle.make} {vehicle.model} {vehicle.year && `• ${vehicle.year}`}</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isEditing
-              ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20'
-              }`}
-          >
-            {isEditing ? '✕ Cancelar' : '✏️ Editar Vehículo'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isEditing
+                ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20'
+                }`}
+            >
+              {isEditing ? '✕ Cancelar' : '✏️ Editar Vehículo'}
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm(`¿Estás seguro de eliminar permanentemente el vehículo "${vehicle.licensePlate}"? Esta acción borrará todo su historial y no se puede deshacer.`)) {
+                  deleteVehicleMutation.mutate()
+                }
+              }}
+              disabled={deleteVehicleMutation.isLoading}
+              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+            >
+              {deleteVehicleMutation.isLoading ? 'Eliminando...' : '🗑️ Eliminar'}
+            </button>
+          </div>
         </div>
 
         {isEditing ? (

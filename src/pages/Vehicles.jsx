@@ -40,6 +40,15 @@ export default function Vehicles() {
     },
   )
 
+  const deleteVehicleMutation = useMutation(
+    (vehicleId) => apiClient.delete(`/vehicles/${vehicleId}`),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('vehicles')
+      },
+    },
+  )
+
   const handleSelectVehicle = (vehicle) => {
     navigate(`/vehicles/${vehicle._id}`)
   }
@@ -177,6 +186,7 @@ export default function Vehicles() {
           vehicles={vehicles}
           selectedVehicle={null}
           onSelectVehicle={handleSelectVehicle}
+          onDeleteVehicle={(id) => deleteVehicleMutation.mutate(id)}
           isLoading={isLoading}
         />
       </div>
