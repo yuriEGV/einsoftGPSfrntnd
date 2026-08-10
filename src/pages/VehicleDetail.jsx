@@ -340,19 +340,19 @@ export default function VehicleDetail() {
                 apiClient.post('/sensors/upload', {
                   deviceIMEI: targetIMEI,
                   gps: {
-                    latitude: -33.4489 + (Math.random() - 0.5) * 0.01,
-                    longitude: -70.6693 + (Math.random() - 0.5) * 0.01,
-                    speed: Math.floor(Math.random() * 50) + 10,
+                    latitude: -33.0472 + (Math.random() - 0.5) * 0.005,
+                    longitude: -71.6127 + (Math.random() - 0.5) * 0.005,
+                    speed: Math.floor(Math.random() * 40) + 15,
                   },
                   fuel: { level: 85 }
                 }).then(() => {
-                  alert('✨ Prueba enviada: Vehículo actualizado a ONLINE')
+                  alert('✨ Posición simulada en Valparaíso enviada con éxito. El vehículo ahora está ONLINE.')
                   refetch()
                 })
               }}
               className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all border border-indigo-400/30 flex items-center gap-1.5"
             >
-              🧪 Simulación de Prueba
+              🧪 Simular en Valparaíso
             </button>
           </div>
         </div>
