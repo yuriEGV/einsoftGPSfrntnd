@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
@@ -23,24 +23,40 @@ export default function VehicleDetail() {
     driverId: ''
   })
 
+  // Track whether forms have been initialized from server data (only do it once)
+  const editFormInitialized = useRef(false)
+  const deviceFormInitialized = useRef(false)
+
   const { data, isLoading, error, refetch } = useQuery(['vehicle', id], async () => {
     const response = await apiClient.get(`/vehicles/${id}`)
     return response.data
   }, {
+    // Do NOT auto-refetch — it would reset form fields the user is currently filling in.
+    // The form is only initialized ONCE via the refs above.
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
     onSuccess: (v) => {
-      setEditForm({
-        licensePlate: v.licensePlate || '',
-        make: v.make || '',
-        model: v.model || '',
-        year: v.year || '',
-        color: v.color || '',
-      })
-      setDeviceForm({
-        deviceIMEI: v.deviceIMEI || '',
-        simCardNumber: v.simCardNumber || '',
-        deviceModel: v.deviceModel || '',
-        driverId: v.driver?._id || ''
-      })
+      // Always sync the edit form (user opens edit modal after refetch)
+      if (!editFormInitialized.current || !isEditing) {
+        setEditForm({
+          licensePlate: v.licensePlate || '',
+          make: v.make || '',
+          model: v.model || '',
+          year: v.year || '',
+          color: v.color || '',
+        })
+        editFormInitialized.current = true
+      }
+      // Only initialize deviceForm ONCE — never overwrite while user is typing
+      if (!deviceFormInitialized.current) {
+        setDeviceForm({
+          deviceIMEI: v.deviceIMEI || '',
+          simCardNumber: v.simCardNumber || '',
+          deviceModel: v.deviceModel || '',
+          driverId: v.driver?._id || ''
+        })
+        deviceFormInitialized.current = true
+      }
     },
   })
 

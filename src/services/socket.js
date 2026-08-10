@@ -4,20 +4,35 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
 
 let socket = null
 
-export const setupSocketConnection = () => {
-  if (socket) return socket
+// Vercel serverless does NOT support WebSockets/Socket.io.
+// In production, we rely on HTTP polling (refetchInterval) instead.
+const IS_VERCEL_PROD = window.location.hostname.includes('vercel.app')
 
-  // Force polling on production/Vercel to avoid WebSocket 404s/Failures
-  const isProd = window.location.hostname.includes('vercel.app');
+// A no-op socket stub so existing .on()/.emit() calls don't crash in production
+const noopSocket = {
+  on: () => noopSocket,
+  off: () => noopSocket,
+  emit: () => noopSocket,
+  disconnect: () => {},
+  connected: false,
+}
+
+export const setupSocketConnection = () => {
+  if (IS_VERCEL_PROD) {
+    console.info('ℹ️ Socket.io disabled in Vercel production — using HTTP polling instead.')
+    return noopSocket
+  }
+
+  if (socket) return socket
 
   socket = io(SOCKET_URL, {
     auth: {
       token: localStorage.getItem('token'),
     },
-    transports: isProd ? ['polling'] : ['websocket', 'polling'],
-    reconnectionDelay: isProd ? 5000 : 1000,
-    reconnectionDelayMax: isProd ? 10000 : 5000,
-    reconnectionAttempts: isProd ? 5 : Infinity,
+    transports: ['websocket', 'polling'],
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: Infinity,
   })
 
   socket.on('connect', () => {
