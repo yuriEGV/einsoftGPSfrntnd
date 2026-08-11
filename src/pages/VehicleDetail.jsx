@@ -628,83 +628,64 @@ export default function VehicleDetail() {
       {/* ===== VINCULAR DISPOSITIVO ===== */}
       <div className="card">
         <h2 className="card-header">Vincular Dispositivo GPS / Sensor</h2>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-          <div>
-            <p className="text-gray-500 text-xs mb-4">
-              Ingresa el IMEI del dispositivo telemático para vincularlo a este vehículo.
-              A partir de ese momento, cada dato enviado se asociará automáticamente.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!deviceForm.deviceIMEI) return
-                linkDeviceMutation.mutate(deviceForm)
-              }}
-              className="space-y-3"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  value={deviceForm.deviceIMEI}
-                  onChange={(e) => setDeviceForm({ ...deviceForm, deviceIMEI: e.target.value })}
-                  placeholder="IMEI del dispositivo *"
-                  required
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="text"
-                  value={deviceForm.simCardNumber}
-                  onChange={(e) => setDeviceForm({ ...deviceForm, simCardNumber: e.target.value })}
-                  placeholder="Número de SIM"
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <input
-                  type="text"
-                  value={deviceForm.deviceModel}
-                  onChange={(e) => setDeviceForm({ ...deviceForm, deviceModel: e.target.value })}
-                  placeholder="Modelo (GT06, TK103, etc)"
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <select
-                  value={deviceForm.driverId}
-                  onChange={(e) => setDeviceForm({ ...deviceForm, driverId: e.target.value })}
-                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">Asignar conductor (opcional)</option>
-                  {drivers.map(d => (
-                    <option key={d._id} value={d._id}>{d.name} ({d.email})</option>
-                  ))}
-                </select>
-                <button
-                  type="submit"
-                  disabled={linkDeviceMutation.isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300 md:col-span-2 transition-all"
-                >
-                  {linkDeviceMutation.isLoading ? 'Vinculando...' : '🔗 Vincular Dispositivo'}
-                </button>
-                {linkDeviceMutation.isSuccess && (
-                  <p className="col-span-2 text-emerald-600 text-xs font-bold">✓ Dispositivo vinculado correctamente</p>
-                )}
-              </div>
-            </form>
-          </div>
-          <div className="bg-gray-50 border border-dashed border-gray-300 rounded-lg p-4 text-xs text-gray-600 space-y-2">
-            <p className="font-semibold text-gray-800">Ejemplo de payload para el dispositivo</p>
-            <pre className="whitespace-pre-wrap break-all text-[10px] font-mono bg-slate-100 p-3 rounded-lg">
-              {`POST ${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/sensors/upload
-Content-Type: application/json
-
-{
-  "deviceIMEI": "${imei || '123456789012345'}",
-  "gps": {
-    "latitude": -33.4489,
-    "longitude": -70.6693,
-    "speed": 45
-  },
-  "fuel": { "level": 70 }
-}`}
-            </pre>
-          </div>
+        <div className="p-6 text-sm">
+          <p className="text-gray-500 text-xs mb-4">
+            Ingresa el IMEI del dispositivo telemático para vincularlo a este vehículo.
+            A partir de ese momento, cada dato enviado se asociará automáticamente.
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!deviceForm.deviceIMEI) return
+              linkDeviceMutation.mutate(deviceForm)
+            }}
+            className="space-y-3 max-w-2xl"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="text"
+                value={deviceForm.deviceIMEI}
+                onChange={(e) => setDeviceForm({ ...deviceForm, deviceIMEI: e.target.value })}
+                placeholder="IMEI del dispositivo *"
+                required
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <input
+                type="text"
+                value={deviceForm.simCardNumber}
+                onChange={(e) => setDeviceForm({ ...deviceForm, simCardNumber: e.target.value })}
+                placeholder="Número de SIM"
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <input
+                type="text"
+                value={deviceForm.deviceModel}
+                onChange={(e) => setDeviceForm({ ...deviceForm, deviceModel: e.target.value })}
+                placeholder="Modelo (GT06, TK103, etc)"
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <select
+                value={deviceForm.driverId}
+                onChange={(e) => setDeviceForm({ ...deviceForm, driverId: e.target.value })}
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">Asignar conductor (opcional)</option>
+                {drivers.map(d => (
+                  <option key={d._id} value={d._id}>{d.name} ({d.email})</option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                disabled={linkDeviceMutation.isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300 md:col-span-2 transition-all"
+              >
+                {linkDeviceMutation.isLoading ? 'Vinculando...' : '🔗 Vincular Dispositivo'}
+              </button>
+              {linkDeviceMutation.isSuccess && (
+                <p className="col-span-2 text-emerald-600 text-xs font-bold">✓ Dispositivo vinculado correctamente</p>
+              )}
+            </div>
+          </form>
         </div>
       </div>
     </div>
