@@ -215,6 +215,18 @@ export default function VehicleDetail() {
     },
   )
 
+  // Reset stale/wrong location from DB
+  const resetLocationMutation = useMutation(
+    () => apiClient.post(`/vehicles/${id}/reset-location`),
+    {
+      onSuccess: () => {
+        refetch()
+        queryClient.invalidateQueries(['vehicle', id])
+        queryClient.invalidateQueries('vehicles')
+      },
+    },
+  )
+
   // Delete vehicle
   const deleteVehicleMutation = useMutation(
     () => apiClient.delete(`/vehicles/${id}`),
@@ -251,6 +263,16 @@ export default function VehicleDetail() {
   const vehicle = data
   const imei = vehicle.deviceIMEI
 
+  // ─── Smart Tag detection ──────────────────────────────────────────────────
+  // Smart Tags (BLE beacons like XTAG11, TomVista, etc.) have NO onboard sensors.
+  // They don't measure fuel, RPM, or real motion. GPS speed is always noise drift.
+  const isSmartTag = (() => {
+    const m = (vehicle.deviceModel || '').toLowerCase()
+    return ['xtag', 'smart tag', 'smarttag', 'beacon', 'tomvista', 'tagx',
+      'cx-xtag', 'xtag11', 'find hub', 'tile', 'airtag', 'keyfi',
+    ].some(k => m.includes(k))
+  })()
+
   // Compute live map position — prefer live stats if tracking, otherwise vehicle data
   const mapVehicle = isAutoTracking && liveLocationStats
     ? {
@@ -268,9 +290,13 @@ export default function VehicleDetail() {
   const uptime = vehicle.lastUpdate
     ? Math.round((Date.now() - new Date(vehicle.lastUpdate)) / 60000)
     : null
-  const fuelLevel = vehicle.sensors?.fuel ?? null
+  // Smart Tags never have fuel sensors — show null to trigger 'N/A' display
+  const fuelLevel = isSmartTag ? null : (vehicle.sensors?.fuel ?? null)
   const odometer = vehicle.odometer || 0
-  const speed = vehicle.speed || (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0)
+  // Smart Tags: ignore DB speed (GPS noise). Show live speed only when gateway active.
+  const speed = isSmartTag
+    ? (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0)
+    : (vehicle.speed || (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0))
 
   return (
     <div className="space-y-6">
@@ -369,10 +395,13 @@ export default function VehicleDetail() {
             <div>
               <h2 className="text-sm font-semibold text-gray-700 mb-2">Estado</h2>
               <p className="text-sm"><span className="font-medium capitalize">{vehicle.status}</span></p>
-              <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{speed} km/h</span></p>
+              <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{speed} km/h{isSmartTag && speed === 0 ? ' (detenido)' : ''}</span></p>
               <p className="text-sm text-gray-600 mt-1">Odómetro: <span className="font-medium">{odometer} km</span></p>
-              {fuelLevel != null && (
+              {!isSmartTag && fuelLevel != null && (
                 <p className="text-sm text-gray-600 mt-1">Combustible: <span className={`font-bold ${fuelLevel <= 15 ? 'text-red-600' : 'text-emerald-600'}`}>{fuelLevel}%</span></p>
+              )}
+              {isSmartTag && (
+                <p className="text-xs text-gray-400 mt-1">🏷️ Smart Tag — sin sensores OBD2</p>
               )}
             </div>
             <div>
@@ -402,7 +431,8 @@ export default function VehicleDetail() {
           {
             icon: '⚡',
             label: 'Velocidad Actual',
-            value: `${speed} km/h`,
+            value: isSmartTag && speed === 0 ? '0 km/h' : `${speed} km/h`,
+            sublabel: isSmartTag ? 'Smart Tag — sin acelerómetro' : null,
             color: speed > 100 ? 'text-red-600' : speed > 60 ? 'text-orange-600' : 'text-emerald-600',
             bg: 'from-emerald-50 to-teal-50',
           },
@@ -416,8 +446,9 @@ export default function VehicleDetail() {
           {
             icon: '⛽',
             label: 'Combustible',
-            value: fuelLevel != null ? `${fuelLevel}%` : 'N/A',
-            color: fuelLevel != null && fuelLevel <= 15 ? 'text-red-600' : 'text-purple-700',
+            value: isSmartTag ? 'N/A' : (fuelLevel != null ? `${fuelLevel}%` : 'N/A'),
+            sublabel: isSmartTag ? 'Smart Tag sin sensor' : null,
+            color: (!isSmartTag && fuelLevel != null && fuelLevel <= 15) ? 'text-red-600' : isSmartTag ? 'text-gray-400' : 'text-purple-700',
             bg: 'from-purple-50 to-pink-50',
           },
           {
@@ -427,11 +458,12 @@ export default function VehicleDetail() {
             color: 'text-slate-700',
             bg: 'from-slate-50 to-gray-50',
           },
-        ].map(({ icon, label, value, color, bg }) => (
+        ].map(({ icon, label, value, sublabel, color, bg }) => (
           <div key={label} className={`bg-gradient-to-br ${bg} border border-gray-100 rounded-2xl p-4 shadow-sm`}>
             <p className="text-2xl mb-1">{icon}</p>
             <p className="text-xs text-gray-500 font-medium">{label}</p>
             <p className={`text-lg font-black mt-1 ${color}`}>{value}</p>
+            {sublabel && <p className="text-[9px] text-gray-400 mt-0.5 font-medium">{sublabel}</p>}
           </div>
         ))}
       </div>
@@ -524,6 +556,29 @@ export default function VehicleDetail() {
                 <span className={`font-bold text-gray-800 ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
               </div>
             ))}
+
+            {/* Reset stale location button */}
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  if (window.confirm(
+                    '¿Borrar la ubicación guardada en la base de datos?\n\n' +
+                    'Esto eliminará la coordenada actual del mapa y reseteará la velocidad a 0.\n' +
+                    'La próxima vez que el dispositivo GPS envíe datos, la ubicación se actualizará automáticamente.\n\n' +
+                    'Usa esta opción cuando el mapa muestra una ubicación incorrecta.'
+                  )) {
+                    resetLocationMutation.mutate()
+                  }
+                }}
+                disabled={resetLocationMutation.isLoading}
+                className="w-full text-xs font-bold text-amber-600 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {resetLocationMutation.isLoading ? '⏳ Limpiando...' : '🗑️ Borrar Ubicación Guardada (incorrecta)'}
+              </button>
+              {resetLocationMutation.isSuccess && (
+                <p className="text-xs text-emerald-600 font-bold mt-1.5 text-center">✓ Ubicación borrada. Esperando nuevo dato GPS...</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
