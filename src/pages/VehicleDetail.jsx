@@ -618,13 +618,13 @@ export default function VehicleDetail() {
             </div>
             <div>
               <h2 className="text-lg font-black tracking-wide text-indigo-100 flex items-center gap-2">
-                Smart Tag &amp; Gateway Móvil BLE
+                Simulador de GPS Móvil (Modo Gateway Celular)
                 <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
-                  Xtag11 / TomVista TagX
+                  Transmisor Celular
                 </span>
               </h2>
               <p className="text-xs text-indigo-200/80 mt-0.5">
-                Transmite coordenadas reales desde tu dispositivo en movimiento o conecta tu Smart Tag vía Bluetooth.
+                Usa el GPS de <strong>este dispositivo (tu teléfono/PC)</strong> para enviar coordenadas de prueba a este vehículo.
               </p>
             </div>
           </div>
@@ -638,7 +638,7 @@ export default function VehicleDetail() {
                   : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-900/30'
               }`}
             >
-              {isAutoTracking ? '⏹️ Detener Rastreo en Vivo' : '🔴 Activar Rastreo en Vivo (Modo Gateway)'}
+              {isAutoTracking ? '⏹️ Detener Transmisión Celular' : '📱 Transmitir GPS de ESTE Celular a este Vehículo'}
             </button>
 
             <button
@@ -671,9 +671,8 @@ export default function VehicleDetail() {
               <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl p-3 flex items-center gap-3 text-xs">
                 <span className="text-2xl animate-pulse">📡</span>
                 <div>
-                  <p className="font-bold text-amber-300">Buscando señal GPS precisa...</p>
+                  <p className="font-bold text-amber-300">Buscando señal GPS de tu teléfono...</p>
                   <p className="text-amber-200/80">{gpsAccuracyWarning}</p>
-                  <p className="text-amber-100/60 mt-0.5">Mantén el teléfono con cielo visible. No se envían datos hasta que mejore la precisión.</p>
                 </div>
               </div>
             ) : (
@@ -685,9 +684,9 @@ export default function VehicleDetail() {
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                   </span>
                   <div>
-                    <p className="font-bold text-emerald-300 text-sm">Rastreando GPS Real en Vivo — {vehicle.licensePlate}</p>
+                    <p className="font-bold text-emerald-300 text-sm">Transmitiendo GPS de tu teléfono actual → {vehicle.licensePlate}</p>
                     <p className="text-emerald-100/70 text-[11px]">
-                      Coordenadas enviadas EXCLUSIVAMENTE a este vehículo. Paquetes: <strong>{sentPacketsCount}</strong>
+                      ⚠️ Estás enviando las coordenadas del dispositivo que sostienes en tu mano a la patente {vehicle.licensePlate}. Paquetes: <strong>{sentPacketsCount}</strong>
                     </p>
                   </div>
                 </div>
@@ -709,6 +708,7 @@ export default function VehicleDetail() {
             )}
           </div>
         )}
+
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-indigo-100/90 pt-1">
           <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40 space-y-1">
