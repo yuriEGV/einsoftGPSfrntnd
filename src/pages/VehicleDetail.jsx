@@ -589,26 +589,9 @@ export default function VehicleDetail() {
 
             {/* Location Management Actions */}
             <div className="pt-3 space-y-2 border-t border-gray-100 mt-2">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Gestión de Ubicación</p>
-              
               <button
                 onClick={() => {
-                  setLocationMutation.mutate({
-                    latitude: -33.0355,
-                    longitude: -71.5955,
-                    address: 'Cerro Placeres, Valparaíso',
-                    city: 'Valparaíso (Cerro Placeres)',
-                  })
-                }}
-                disabled={setLocationMutation.isLoading}
-                className="w-full text-xs font-bold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl py-2 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
-              >
-                {setLocationMutation.isLoading ? '⏳ Actualizando...' : '📍 Fijar Ubicación en Cerro Placeres'}
-              </button>
-
-              <button
-                onClick={() => {
-                  if (window.confirm('¿Borrar la ubicación guardada en la base de datos?')) {
+                  if (window.confirm('¿Borrar la ubicación guardada en la base de datos para esperar nuevo dato GPS?')) {
                     resetLocationMutation.mutate()
                   }
                 }}
@@ -618,11 +601,8 @@ export default function VehicleDetail() {
                 {resetLocationMutation.isLoading ? '⏳ Limpiando...' : '🗑️ Borrar Ubicación Guardada'}
               </button>
 
-              {setLocationMutation.isSuccess && (
-                <p className="text-xs text-emerald-600 font-bold mt-1 text-center">✓ Ubicación fijada en Cerro Placeres</p>
-              )}
               {resetLocationMutation.isSuccess && (
-                <p className="text-xs text-emerald-600 font-bold mt-1 text-center">✓ Ubicación borrada</p>
+                <p className="text-xs text-emerald-600 font-bold mt-1 text-center">✓ Ubicación borrada. Esperando nuevo reporte GPS...</p>
               )}
             </div>
           </div>
