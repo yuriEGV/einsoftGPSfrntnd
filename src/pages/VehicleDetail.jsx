@@ -132,7 +132,19 @@ export default function VehicleDetail() {
       stopCurrentTracker()
     }
 
-    const imeiToUse = data?.deviceIMEI || deviceForm.deviceIMEI || 'XTAG11-DEMO'
+    // Validate that this vehicle has a real IMEI to prevent sending GPS to wrong vehicle
+    const imeiToUse = data?.deviceIMEI || deviceForm.deviceIMEI
+    if (!imeiToUse || imeiToUse === 'XTAG11-DEMO') {
+      alert(
+        '⚠️ Este vehículo no tiene un dispositivo GPS vinculado.\n\n' +
+        'Para usar el Modo Gateway (rastreo desde tu teléfono), primero debes:\n' +
+        '1. Ir a la sección "Vincular Dispositivo GPS" al final de esta página.\n' +
+        '2. Ingresar el IMEI del dispositivo GPS instalado en el vehículo.\n' +
+        '3. Hacer clic en "Vincular Dispositivo".\n\n' +
+        'Esto asegura que los datos GPS se envíen al vehículo correcto.'
+      )
+      return
+    }
 
     setIsAutoTracking(true)
     setSentPacketsCount(0)
