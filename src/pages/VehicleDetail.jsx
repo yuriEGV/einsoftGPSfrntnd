@@ -244,6 +244,19 @@ export default function VehicleDetail() {
     },
   )
 
+  // Set manual location (e.g. Cerro Placeres)
+  const setLocationMutation = useMutation(
+    (payload) => apiClient.post(`/vehicles/${id}/set-location`, payload),
+    {
+      onSuccess: () => {
+        setMapKey(k => k + 1)
+        refetch()
+        queryClient.invalidateQueries(['vehicle', id])
+        queryClient.invalidateQueries('vehicles')
+      },
+    },
+  )
+
   // Delete vehicle
   const deleteVehicleMutation = useMutation(
     () => apiClient.delete(`/vehicles/${id}`),
@@ -574,26 +587,42 @@ export default function VehicleDetail() {
               </div>
             ))}
 
-            {/* Reset stale location button */}
-            <div className="pt-2">
+            {/* Location Management Actions */}
+            <div className="pt-3 space-y-2 border-t border-gray-100 mt-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Gestión de Ubicación</p>
+              
               <button
                 onClick={() => {
-                  if (window.confirm(
-                    '¿Borrar la ubicación guardada en la base de datos?\n\n' +
-                    'Esto eliminará la coordenada actual del mapa y reseteará la velocidad a 0.\n' +
-                    'La próxima vez que el dispositivo GPS envíe datos, la ubicación se actualizará automáticamente.\n\n' +
-                    'Usa esta opción cuando el mapa muestra una ubicación incorrecta.'
-                  )) {
+                  setLocationMutation.mutate({
+                    latitude: -33.0355,
+                    longitude: -71.5955,
+                    address: 'Cerro Placeres, Valparaíso',
+                    city: 'Valparaíso (Cerro Placeres)',
+                  })
+                }}
+                disabled={setLocationMutation.isLoading}
+                className="w-full text-xs font-bold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl py-2 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+              >
+                {setLocationMutation.isLoading ? '⏳ Actualizando...' : '📍 Fijar Ubicación en Cerro Placeres'}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (window.confirm('¿Borrar la ubicación guardada en la base de datos?')) {
                     resetLocationMutation.mutate()
                   }
                 }}
                 disabled={resetLocationMutation.isLoading}
-                className="w-full text-xs font-bold text-amber-600 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full text-xs font-medium text-gray-600 border border-gray-200 bg-gray-50 hover:bg-gray-100 rounded-xl py-1.5 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {resetLocationMutation.isLoading ? '⏳ Limpiando...' : '🗑️ Borrar Ubicación Guardada'}
               </button>
+
+              {setLocationMutation.isSuccess && (
+                <p className="text-xs text-emerald-600 font-bold mt-1 text-center">✓ Ubicación fijada en Cerro Placeres</p>
+              )}
               {resetLocationMutation.isSuccess && (
-                <p className="text-xs text-emerald-600 font-bold mt-1.5 text-center">✓ Ubicación borrada. Esperando nuevo dato GPS...</p>
+                <p className="text-xs text-emerald-600 font-bold mt-1 text-center">✓ Ubicación borrada</p>
               )}
             </div>
           </div>
