@@ -2,6 +2,164 @@ import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
 
+// Pricing Plan Configuration
+const PLANS = [
+  {
+    key: 'basic',
+    name: 'Plan Empresa Básico',
+    icon: '🏢',
+    color: 'from-blue-600 to-blue-700',
+    badge: 'Corporativo',
+    basePrice: 19990,
+    currency: 'CLP',
+    period: 'mes/vehículo',
+    features: [
+      '✅ Rastreo GPS en tiempo real',
+      '✅ Historial de rutas (30 días)',
+      '✅ Alertas de velocidad y geofencing',
+      '✅ Panel de gestión de flota',
+      '✅ Reportes básicos',
+      '✅ Soporte por email',
+    ],
+    note: null,
+  },
+  {
+    key: 'pro',
+    name: 'Plan Empresa Pro',
+    icon: '🚀',
+    color: 'from-indigo-600 to-purple-700',
+    badge: 'Más Popular',
+    basePrice: 34990,
+    currency: 'CLP',
+    period: 'mes/vehículo',
+    features: [
+      '✅ Todo lo del Plan Básico',
+      '✅ Historial de rutas (90 días)',
+      '✅ Control remoto del motor',
+      '✅ Escucha espía de cabina',
+      '✅ Sensor de combustible',
+      '✅ Reportes avanzados + exportación Excel',
+      '✅ Soporte prioritario 24/7',
+    ],
+    note: null,
+  },
+  {
+    key: 'independent',
+    name: 'Plan Particular / Familiar',
+    icon: '👨‍👩‍👧',
+    color: 'from-emerald-600 to-teal-700',
+    badge: 'Plan Familiar',
+    basePrice: 9990,
+    currency: 'CLP',
+    period: 'mes (vehículo principal)',
+    features: [
+      '✅ 1 vehículo principal incluido',
+      '✅ Rastreo GPS en tiempo real',
+      '✅ Historial de rutas (14 días)',
+      '✅ Alertas de velocidad',
+      '✅ App móvil para seguimiento',
+    ],
+    note: 'Por cada vehículo familiar adicional, se aplica un recargo del 25% sobre la tarifa base mensual.',
+    familyExtra: 0.25, // 25% surcharge per extra vehicle
+    extraPrice: 12488, // 9990 * 1.25 = ~12,488 CLP/mes
+  },
+]
+
+function PlanCard({ plan, vehicleCount = 1 }) {
+  const extraVehicles = Math.max(0, vehicleCount - 1)
+  const totalPrice = plan.key === 'independent'
+    ? plan.basePrice + extraVehicles * plan.extraPrice
+    : plan.basePrice * vehicleCount
+
+  return (
+    <div className={`relative bg-gradient-to-br ${plan.color} text-white rounded-2xl p-6 shadow-xl overflow-hidden`}>
+      {/* Badge */}
+      <div className="absolute top-4 right-4">
+        <span className="bg-white/20 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-white/30">
+          {plan.badge}
+        </span>
+      </div>
+
+      <div className="text-3xl mb-3">{plan.icon}</div>
+      <h3 className="text-xl font-black text-white mb-1">{plan.name}</h3>
+      <div className="mb-4">
+        <span className="text-3xl font-black">${plan.basePrice.toLocaleString('es-CL')}</span>
+        <span className="text-white/70 text-sm ml-1">CLP/{plan.period}</span>
+      </div>
+
+      {plan.key === 'independent' && (
+        <div className="bg-white/10 border border-white/20 rounded-xl p-3 mb-4 text-xs">
+          <p className="font-bold text-yellow-200 mb-1">📋 Estructura de precios:</p>
+          <p>• Vehículo principal: <strong>${plan.basePrice.toLocaleString('es-CL')}/mes</strong></p>
+          <p>• Vehículo familiar adicional: <strong>${plan.extraPrice.toLocaleString('es-CL')}/mes</strong></p>
+          <p className="text-white/60 text-[10px] mt-1">(Base + 25% de recargo por cada vehículo extra)</p>
+        </div>
+      )}
+
+      <ul className="space-y-1.5 text-sm text-white/90 mb-4">
+        {plan.features.map(f => <li key={f}>{f}</li>)}
+      </ul>
+
+      {plan.note && (
+        <div className="bg-yellow-400/20 border border-yellow-300/30 rounded-lg p-3 text-xs text-yellow-100 mb-2">
+          ⚠️ {plan.note}
+        </div>
+      )}
+
+      {/* Background decorative circle */}
+      <div className="absolute -bottom-6 -right-6 w-32 h-32 rounded-full bg-white/5 blur-xl" />
+    </div>
+  )
+}
+
+function FamilyPricingCalculator() {
+  const [extraVehicles, setExtraVehicles] = useState(0)
+  const BASE = 9990
+  const EXTRA_RATE = 1.25
+  const extraPrice = Math.round(BASE * EXTRA_RATE)
+  const total = BASE + extraVehicles * extraPrice
+
+  return (
+    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6">
+      <h3 className="font-bold text-emerald-800 text-lg mb-1">🧮 Calculadora Plan Familiar</h3>
+      <p className="text-emerald-700 text-sm mb-4">
+        Descubre cuánto pagarás según el número de vehículos familiares adicionales.
+      </p>
+      <div className="space-y-3">
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-semibold text-gray-700 w-48">Vehículos adicionales:</label>
+          <input
+            type="range"
+            min={0}
+            max={9}
+            value={extraVehicles}
+            onChange={e => setExtraVehicles(Number(e.target.value))}
+            className="flex-1 h-2 accent-emerald-600"
+          />
+          <span className="w-8 text-center font-black text-emerald-700 text-lg">{extraVehicles}</span>
+        </div>
+
+        <div className="bg-white rounded-xl border border-emerald-200 p-4 space-y-2 text-sm">
+          <div className="flex justify-between text-gray-600">
+            <span>Vehículo principal (1)</span>
+            <span className="font-bold">${BASE.toLocaleString('es-CL')}/mes</span>
+          </div>
+          {extraVehicles > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>{extraVehicles} vehículo{extraVehicles > 1 ? 's' : ''} adicional{extraVehicles > 1 ? 'es' : ''} (×${extraPrice.toLocaleString('es-CL')})</span>
+              <span className="font-bold text-orange-600">+${(extraVehicles * extraPrice).toLocaleString('es-CL')}/mes</span>
+            </div>
+          )}
+          <div className="flex justify-between text-gray-800 border-t pt-2 font-black text-base">
+            <span>Total mensual ({1 + extraVehicles} vehículo{1 + extraVehicles > 1 ? 's' : ''})</span>
+            <span className="text-emerald-700">${total.toLocaleString('es-CL')}/mes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Settings() {
   const queryClient = useQueryClient()
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
@@ -14,6 +172,7 @@ export default function Settings() {
     color: '',
     assignedDriver: '',
   })
+  const [activeTab, setActiveTab] = useState('account') // 'account' | 'hardware' | 'plans'
 
   const { data: profile } = useQuery('profile', async () => {
     const response = await apiClient.get('/users/profile')
@@ -67,118 +226,171 @@ export default function Settings() {
     changePasswordMutation.mutate(passwordForm)
   }
 
+  const tabs = [
+    { key: 'account', label: '👤 Mi Cuenta', icon: '👤' },
+    { key: 'hardware', label: '🔧 Hardware GPS', icon: '🔧' },
+    { key: 'plans', label: '💳 Planes y Precios', icon: '💳' },
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Configuración</h1>
-        <p className="text-sm text-gray-500">v2.2.0 - Correlación</p>
+        <p className="text-sm text-gray-500">v2.3.0 — Einsoft GPS</p>
       </div>
 
-      <div className="card">
-        <h1 className="card-header">Configuración de Cuenta</h1>
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Profile */}
-          <div>
-            <h2 className="text-sm font-semibold text-gray-800 mb-4 tracking-tight uppercase">Perfil de Usuario</h2>
-            <form onSubmit={handleProfileSubmit} className="space-y-4 text-sm">
-              <div>
-                <label className="block text-gray-700 mb-1 font-semibold">Nombre</label>
-                <input
-                  type="text"
-                  value={profileForm.name}
-                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-semibold">Teléfono</label>
-                <input
-                  type="tel"
-                  value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={updateProfileMutation.isLoading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-900/10 transition-all disabled:opacity-50"
-              >
-                {updateProfileMutation.isLoading ? 'Guardando...' : 'Guardar Perfil'}
-              </button>
-            </form>
-          </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
+              activeTab === tab.key
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-          {/* Change password */}
-          <div>
-            <h2 className="text-sm font-semibold text-gray-800 mb-4 tracking-tight uppercase">Seguridad / Contraseña</h2>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4 text-sm">
-              <div>
-                <label className="block text-gray-700 mb-1 font-semibold">Contraseña Actual</label>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1 font-semibold">Nueva Contraseña</label>
-                <input
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={changePasswordMutation.isLoading}
-                className="px-6 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50"
-              >
-                {changePasswordMutation.isLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
-              </button>
-            </form>
+      {/* ────── TAB: ACCOUNT ────── */}
+      {activeTab === 'account' && (
+        <div className="card">
+          <h2 className="card-header">Configuración de Cuenta</h2>
+          <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Profile */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 mb-4 tracking-tight uppercase">Perfil de Usuario</h3>
+              <form onSubmit={handleProfileSubmit} className="space-y-4 text-sm">
+                <div>
+                  <label className="block text-gray-700 mb-1 font-semibold">Nombre</label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1 font-semibold">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={updateProfileMutation.isLoading}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-lg shadow-blue-900/10 transition-all disabled:opacity-50"
+                >
+                  {updateProfileMutation.isLoading ? 'Guardando...' : 'Guardar Perfil'}
+                </button>
+              </form>
+            </div>
+
+            {/* Change password */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 mb-4 tracking-tight uppercase">Seguridad / Contraseña</h3>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4 text-sm">
+                <div>
+                  <label className="block text-gray-700 mb-1 font-semibold">Contraseña Actual</label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 mb-1 font-semibold">Nueva Contraseña</label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={changePasswordMutation.isLoading}
+                  className="px-6 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-bold shadow-lg shadow-slate-900/10 transition-all disabled:opacity-50"
+                >
+                  {changePasswordMutation.isLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* GPS Hardware Management */}
-      <div className="card overflow-hidden">
-        <h2 className="card-header bg-emerald-600 text-white">Gestión de Hardware GPS y Correlación de Flota</h2>
-        <div className="p-6">
-          <p className="text-gray-600 text-sm mb-6 leading-relaxed">
-            Utilice esta tabla para **vincular definitivamente** sus vehículos a sus dispositivos físicos (IMEI) y asignar inmediatamente al conductor que operará la unidad.
-            Este paso es crucial para habilitar el seguimiento en tiempo real y la gestión de alertas.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
-              <thead className="bg-gray-50 text-gray-600 uppercase text-[10px] font-black tracking-widest border-b text-center">
-                <tr>
-                  <th className="px-4 py-3 text-left">Vehículo</th>
-                  <th className="px-4 py-3">IMEI Dispositivo</th>
-                  <th className="px-4 py-3">Chip / SIM</th>
-                  <th className="px-4 py-3">Conductor</th>
-                  <th className="px-4 py-3">Modelo</th>
-                  <th className="px-4 py-3 text-right">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {vehicles?.map(v => (
-                  <DeviceRow key={v._id} vehicle={v} drivers={drivers} />
-                ))}
-                {(!vehicles || vehicles.length === 0) && (
+      {/* ────── TAB: HARDWARE ────── */}
+      {activeTab === 'hardware' && (
+        <div className="card overflow-hidden">
+          <h2 className="card-header bg-emerald-600 text-white">Gestión de Hardware GPS y Correlación de Flota</h2>
+          <div className="p-6">
+            <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+              Utilice esta tabla para <strong>vincular definitivamente</strong> sus vehículos a sus dispositivos físicos (IMEI) y asignar inmediatamente al conductor que operará la unidad.
+              Este paso es crucial para habilitar el seguimiento en tiempo real y la gestión de alertas.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-gray-50 text-gray-600 uppercase text-[10px] font-black tracking-widest border-b text-center">
                   <tr>
-                    <td colSpan="6" className="px-4 py-12 text-center text-gray-400 italic font-medium">
-                      Actualmente no hay vehículos registrados en su flota para vincular.
-                    </td>
+                    <th className="px-4 py-3 text-left">Vehículo</th>
+                    <th className="px-4 py-3">IMEI Dispositivo</th>
+                    <th className="px-4 py-3">Chip / SIM</th>
+                    <th className="px-4 py-3">Conductor</th>
+                    <th className="px-4 py-3">Modelo</th>
+                    <th className="px-4 py-3 text-right">Acción</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {vehicles?.map(v => (
+                    <DeviceRow key={v._id} vehicle={v} drivers={drivers} />
+                  ))}
+                  {(!vehicles || vehicles.length === 0) && (
+                    <tr>
+                      <td colSpan="6" className="px-4 py-12 text-center text-gray-400 italic font-medium">
+                        Actualmente no hay vehículos registrados en su flota para vincular.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ────── TAB: PLANS ────── */}
+      {activeTab === 'plans' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {PLANS.map(plan => (
+              <PlanCard key={plan.key} plan={plan} vehicleCount={1} />
+            ))}
+          </div>
+
+          <FamilyPricingCalculator />
+
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 text-sm">
+            <h3 className="font-bold text-blue-800 text-base mb-3">📋 Condiciones del Plan Familiar</h3>
+            <ul className="space-y-2 text-blue-700">
+              <li>• El <strong>Plan Particular / Familiar</strong> incluye 1 vehículo principal por <strong>$9.990 CLP/mes</strong>.</li>
+              <li>• Cada vehículo familiar adicional (cónyuge, hijos, etc.) tiene un recargo del <strong>25%</strong> sobre la tarifa base.</li>
+              <li>• Precio por vehículo adicional: <strong>$12.488 CLP/mes</strong> (=$9.990 × 1.25).</li>
+              <li>• Los usuarios del plan familiar solo tienen acceso a <strong>sus propios vehículos</strong>, sin visibilidad de otros clientes.</li>
+              <li>• El plan familiar <strong>no incluye</strong> acceso corporativo, gestión de flotas, ni reportes avanzados.</li>
+              <li>• Para flotas corporativas, consulta los planes <strong>Empresa Básico</strong> o <strong>Empresa Pro</strong>.</li>
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

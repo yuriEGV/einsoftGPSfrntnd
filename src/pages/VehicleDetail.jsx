@@ -1,8 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
 import MapComponent from '../components/MapComponent'
+
+// Global singleton: only ONE vehicle can be live-tracked per browser session at a time.
+// Key = vehicleId, value = watchId from navigator.geolocation.watchPosition
+const ACTIVE_TRACKER_KEY = 'einsoft_active_tracker_vehicle_id'
 
 export default function VehicleDetail() {
   const { id } = useParams()
@@ -30,21 +34,28 @@ export default function VehicleDetail() {
   const [sentPacketsCount, setSentPacketsCount] = useState(0)
   const watchIdRef = useRef(null)
 
-
   // Track whether forms have been initialized from server data (only do it once)
   const editFormInitialized = useRef(false)
   const deviceFormInitialized = useRef(false)
+
+  // ─── On mount: check if THIS vehicle already has an active tracker ──────────
+  useEffect(() => {
+    const activeId = sessionStorage.getItem(ACTIVE_TRACKER_KEY)
+    if (activeId === id) {
+      // This vehicle's tracker is still running from a previous visit
+      setIsAutoTracking(true)
+    }
+    // Cleanup on unmount — do NOT kill the watch here; it continues in background
+    return () => {}
+  }, [id])
 
   const { data, isLoading, error, refetch } = useQuery(['vehicle', id], async () => {
     const response = await apiClient.get(`/vehicles/${id}`)
     return response.data
   }, {
-    // Do NOT auto-refetch — it would reset form fields the user is currently filling in.
-    // The form is only initialized ONCE via the refs above.
-    refetchInterval: false,
+    refetchInterval: isAutoTracking ? 8000 : false, // Auto-refresh every 8s while tracking
     refetchOnWindowFocus: false,
     onSuccess: (v) => {
-      // Always sync the edit form (user opens edit modal after refetch)
       if (!editFormInitialized.current || !isEditing) {
         setEditForm({
           licensePlate: v.licensePlate || '',
@@ -55,7 +66,6 @@ export default function VehicleDetail() {
         })
         editFormInitialized.current = true
       }
-      // Only initialize deviceForm ONCE — never overwrite while user is typing
       if (!deviceFormInitialized.current) {
         setDeviceForm({
           deviceIMEI: v.deviceIMEI || '',
@@ -73,23 +83,34 @@ export default function VehicleDetail() {
     return response.data.filter(u => u.role === 'driver')
   })
 
-  // Cleanup live tracking watch on unmount
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
+  // ─── Stop any existing tracker for a different vehicle ──────────────────────
+  const stopCurrentTracker = useCallback(() => {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
     }
   }, [])
 
-  const toggleLiveAutoTracking = () => {
-    if (isAutoTracking) {
+  // Cleanup on unmount (stop the geolocation watch when leaving the page)
+  useEffect(() => {
+    return () => {
+      // Only fully stop if we navigate away from this vehicle's page
       if (watchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
+        sessionStorage.removeItem(ACTIVE_TRACKER_KEY)
+        setIsAutoTracking(false)
       }
+    }
+  }, [id])
+
+  const toggleLiveAutoTracking = () => {
+    if (isAutoTracking) {
+      stopCurrentTracker()
+      sessionStorage.removeItem(ACTIVE_TRACKER_KEY)
       setIsAutoTracking(false)
       setLiveLocationStats(null)
+      setSentPacketsCount(0)
       return
     }
 
@@ -98,10 +119,26 @@ export default function VehicleDetail() {
       return
     }
 
+    // Check if another vehicle is already being tracked in this session
+    const activeId = sessionStorage.getItem(ACTIVE_TRACKER_KEY)
+    if (activeId && activeId !== id) {
+      const confirmed = window.confirm(
+        `⚠️ Ya hay un rastreo activo para otro vehículo en esta sesión.\n\n` +
+        `¿Deseas detener el rastreo anterior y comenzar a rastrear este vehículo?\n\n` +
+        `(El GPS del dispositivo solo puede vincularse a un vehículo a la vez)`
+      )
+      if (!confirmed) return
+      // Stop the previous tracker
+      stopCurrentTracker()
+    }
+
     const imeiToUse = data?.deviceIMEI || deviceForm.deviceIMEI || 'XTAG11-DEMO'
 
     setIsAutoTracking(true)
-    const id = navigator.geolocation.watchPosition(
+    setSentPacketsCount(0)
+    sessionStorage.setItem(ACTIVE_TRACKER_KEY, id)
+
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const stats = {
           lat: pos.coords.latitude,
@@ -122,22 +159,25 @@ export default function VehicleDetail() {
           }
         }).then(() => {
           setSentPacketsCount(prev => prev + 1)
-          refetch()
+          // Refetch vehicle data to update map position
+          queryClient.invalidateQueries(['vehicle', id])
         }).catch(err => {
           console.error('Error enviando posición live:', err)
         })
       },
       (err) => {
         console.error('Geolocation watch error:', err)
-        alert('Error leyendo GPS del dispositivo: ' + err.message)
-        setIsAutoTracking(false)
+        if (err.code !== 3) { // 3 = timeout, non-fatal
+          alert('Error leyendo GPS del dispositivo: ' + err.message)
+          setIsAutoTracking(false)
+          sessionStorage.removeItem(ACTIVE_TRACKER_KEY)
+        }
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
     )
 
-    watchIdRef.current = id
+    watchIdRef.current = watchId
   }
-
 
   // Edit basic vehicle info
   const editVehicleMutation = useMutation(
@@ -168,6 +208,8 @@ export default function VehicleDetail() {
     () => apiClient.delete(`/vehicles/${id}`),
     {
       onSuccess: () => {
+        stopCurrentTracker()
+        sessionStorage.removeItem(ACTIVE_TRACKER_KEY)
         queryClient.invalidateQueries('vehicles')
         navigate('/vehicles')
       },
@@ -189,13 +231,34 @@ export default function VehicleDetail() {
     return (
       <div className="card p-6">
         <button onClick={() => navigate(-1)} className="text-sm text-blue-600 mb-4">← Volver</button>
-        <p className="text-red-600 text-sm">Error al cargar el vehículo. ¿Está asignado a tu empresa?</p>
+        <p className="text-red-600 text-sm">Error al cargar el vehículo. ¿Está asignado a tu cuenta?</p>
       </div>
     )
   }
 
   const vehicle = data
   const imei = vehicle.deviceIMEI
+
+  // Compute live map position — prefer live stats if tracking, otherwise vehicle data
+  const mapVehicle = isAutoTracking && liveLocationStats
+    ? {
+        ...vehicle,
+        status: 'active',
+        location: {
+          ...vehicle.location,
+          coordinates: [liveLocationStats.lng, liveLocationStats.lat],
+        },
+        speed: liveLocationStats.speed,
+      }
+    : vehicle
+
+  // Compute metrics from vehicle data
+  const uptime = vehicle.lastUpdate
+    ? Math.round((Date.now() - new Date(vehicle.lastUpdate)) / 60000)
+    : null
+  const fuelLevel = vehicle.sensors?.fuel ?? null
+  const odometer = vehicle.odometer || 0
+  const speed = vehicle.speed || (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0)
 
   return (
     <div className="space-y-6">
@@ -294,10 +357,10 @@ export default function VehicleDetail() {
             <div>
               <h2 className="text-sm font-semibold text-gray-700 mb-2">Estado</h2>
               <p className="text-sm"><span className="font-medium capitalize">{vehicle.status}</span></p>
-              <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{vehicle.speed} km/h</span></p>
-              <p className="text-sm text-gray-600 mt-1">Odómetro: <span className="font-medium">{vehicle.odometer} km</span></p>
-              {vehicle.sensors?.fuel != null && (
-                <p className="text-sm text-gray-600 mt-1">Combustible: <span className={`font-bold ${vehicle.sensors.fuel <= 15 ? 'text-red-600' : 'text-emerald-600'}`}>{vehicle.sensors.fuel}%</span></p>
+              <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{speed} km/h</span></p>
+              <p className="text-sm text-gray-600 mt-1">Odómetro: <span className="font-medium">{odometer} km</span></p>
+              {fuelLevel != null && (
+                <p className="text-sm text-gray-600 mt-1">Combustible: <span className={`font-bold ${fuelLevel <= 15 ? 'text-red-600' : 'text-emerald-600'}`}>{fuelLevel}%</span></p>
               )}
             </div>
             <div>
@@ -311,9 +374,54 @@ export default function VehicleDetail() {
               <h2 className="text-sm font-semibold text-gray-700 mb-2">Ubicación</h2>
               <p className="text-sm text-gray-600">{vehicle.location?.address || 'Sin dirección'}</p>
               <p className="text-xs text-gray-500 mt-1">{vehicle.location?.city} {vehicle.location?.country}</p>
+              {uptime !== null && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {uptime < 1 ? '✅ Activo ahora' : uptime < 60 ? `Hace ${uptime} min` : `Hace ${Math.round(uptime/60)}h`}
+                </p>
+              )}
             </div>
           </div>
         )}
+      </div>
+
+      {/* ===== MÉTRICAS RÁPIDAS ===== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          {
+            icon: '⚡',
+            label: 'Velocidad Actual',
+            value: `${speed} km/h`,
+            color: speed > 100 ? 'text-red-600' : speed > 60 ? 'text-orange-600' : 'text-emerald-600',
+            bg: 'from-emerald-50 to-teal-50',
+          },
+          {
+            icon: '📍',
+            label: 'Ciudad',
+            value: vehicle.location?.city || 'Desconocida',
+            color: 'text-blue-700',
+            bg: 'from-blue-50 to-indigo-50',
+          },
+          {
+            icon: '⛽',
+            label: 'Combustible',
+            value: fuelLevel != null ? `${fuelLevel}%` : 'N/A',
+            color: fuelLevel != null && fuelLevel <= 15 ? 'text-red-600' : 'text-purple-700',
+            bg: 'from-purple-50 to-pink-50',
+          },
+          {
+            icon: '🛣️',
+            label: 'Odómetro',
+            value: `${odometer.toLocaleString()} km`,
+            color: 'text-slate-700',
+            bg: 'from-slate-50 to-gray-50',
+          },
+        ].map(({ icon, label, value, color, bg }) => (
+          <div key={label} className={`bg-gradient-to-br ${bg} border border-gray-100 rounded-2xl p-4 shadow-sm`}>
+            <p className="text-2xl mb-1">{icon}</p>
+            <p className="text-xs text-gray-500 font-medium">{label}</p>
+            <p className={`text-lg font-black mt-1 ${color}`}>{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* ===== MAPA DE UBICACIÓN EN VIVO ===== */}
@@ -322,19 +430,24 @@ export default function VehicleDetail() {
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             📍 Mapa de Ubicación en Tiempo Real
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-              vehicle.status === 'active' ? 'bg-emerald-100 text-emerald-700 font-mono' : 'bg-gray-100 text-gray-600 font-mono'
+              isAutoTracking ? 'bg-emerald-100 text-emerald-700 animate-pulse font-mono' :
+              vehicle.status === 'active' ? 'bg-blue-100 text-blue-700 font-mono' : 'bg-gray-100 text-gray-600 font-mono'
             }`}>
-              {vehicle.status === 'active' ? '● En Vivo' : '● ' + vehicle.status}
+              {isAutoTracking ? '🔴 RASTREANDO EN VIVO' : vehicle.status === 'active' ? '● En Línea' : '● ' + vehicle.status}
             </span>
           </h2>
           <span className="text-xs text-gray-500 font-mono">
-            {vehicle.location?.address || 'Ubicación registrada'}
+            {isAutoTracking && liveLocationStats
+              ? `${liveLocationStats.lat.toFixed(5)}, ${liveLocationStats.lng.toFixed(5)}`
+              : vehicle.location?.address || 'Ubicación registrada'}
           </span>
         </div>
         <div className="h-[420px] rounded-xl overflow-hidden border border-gray-200">
+          {/* key={id} forces MapComponent to re-initialize when changing vehicles */}
           <MapComponent
-            vehicles={[vehicle]}
-            selectedVehicle={vehicle}
+            key={`map-${id}-${isAutoTracking}`}
+            vehicles={[mapVehicle]}
+            selectedVehicle={mapVehicle}
             onVehicleSelect={() => {}}
           />
         </div>
@@ -392,6 +505,7 @@ export default function VehicleDetail() {
               { label: 'SIM Card', value: vehicle.simCardNumber || 'No requiere (Smart Tag BLE)' },
               { label: 'Modelo GPS', value: vehicle.deviceModel || 'N/A' },
               { label: 'Cortacorriente', value: vehicle.motorCutStatus ? '🔒 ACTIVO' : '🟢 Normal' },
+              { label: 'Última actualización', value: vehicle.lastUpdate ? new Date(vehicle.lastUpdate).toLocaleString('es-CL') : 'N/A' },
             ].map(({ label, value, mono }) => (
               <div key={label} className="flex justify-between border-b pb-2">
                 <span className="text-gray-500">{label}</span>
@@ -411,7 +525,7 @@ export default function VehicleDetail() {
             </div>
             <div>
               <h2 className="text-lg font-black tracking-wide text-indigo-100 flex items-center gap-2">
-                Smart Tag & Gateway Móvil BLE
+                Smart Tag &amp; Gateway Móvil BLE
                 <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
                   Xtag11 / TomVista TagX
                 </span>
@@ -465,9 +579,9 @@ export default function VehicleDetail() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
               </span>
               <div>
-                <p className="font-bold text-emerald-300 text-sm">Rastreando GPS Real en Vivo...</p>
+                <p className="font-bold text-emerald-300 text-sm">Rastreando GPS Real en Vivo — {vehicle.licensePlate}</p>
                 <p className="text-emerald-100/70 text-[11px]">
-                  Enviando datos automáticamente al backend a medida que te desplazas.
+                  Este dispositivo envía coordenadas EXCLUSIVAMENTE a este vehículo. Paquetes enviados: <strong>{sentPacketsCount}</strong>
                 </p>
               </div>
             </div>
@@ -476,9 +590,9 @@ export default function VehicleDetail() {
               <div className="flex flex-wrap gap-4 text-emerald-200 font-mono bg-emerald-900/40 p-2 rounded-lg border border-emerald-700/50">
                 <div>Lat: <span className="font-bold text-white">{liveLocationStats.lat.toFixed(5)}</span></div>
                 <div>Lng: <span className="font-bold text-white">{liveLocationStats.lng.toFixed(5)}</span></div>
-                <div>Velocidad: <span className="font-bold text-white">{liveLocationStats.speed} km/h</span></div>
+                <div>Vel: <span className="font-bold text-white">{liveLocationStats.speed} km/h</span></div>
                 <div>Precisión: <span className="font-bold text-white">±{liveLocationStats.accuracy}m</span></div>
-                <div>Paquetes: <span className="font-bold text-emerald-400">{sentPacketsCount}</span></div>
+                <div>Hora: <span className="font-bold text-emerald-400">{liveLocationStats.time}</span></div>
               </div>
             )}
           </div>
@@ -487,7 +601,7 @@ export default function VehicleDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-indigo-100/90 pt-1">
           <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40 space-y-1">
             <span className="font-bold text-emerald-400 block">1. Modo Rastreo Celular / Gateway</span>
-            Al activar el botón rojo, el GPS de tu celular transmitirá las coordenadas reales del vehículo en movimiento a medida que manejas por Valparaíso.
+            Al activar el botón, el GPS de <strong>este dispositivo</strong> transmitirá coordenadas <strong>solo a este vehículo</strong>. Si cambias de vehículo, deberás detener y reiniciar el rastreo.
           </div>
           <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40 space-y-1">
             <span className="font-bold text-indigo-300 block">2. Vincular por Bluetooth</span>
@@ -498,7 +612,7 @@ export default function VehicleDetail() {
             <button
               onClick={() => {
                 const targetIMEI = vehicle.deviceIMEI || 'XTAG11-DEMO'
-                const url = `https://einsoft-gp-sbcknd.vercel.app/api/sensors/find-hub?imei=${targetIMEI}`
+                const url = `https://einsoft-gp-sbcknd.vercel.app/api/sensors/upload`
                 navigator.clipboard.writeText(url)
                 alert('📋 URL Webhook copiada al portapapeles:\n' + url)
               }}
