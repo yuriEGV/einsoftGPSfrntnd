@@ -32,6 +32,8 @@ export default function VehicleDetail() {
   const [isAutoTracking, setIsAutoTracking] = useState(false)
   const [liveLocationStats, setLiveLocationStats] = useState(null)
   const [sentPacketsCount, setSentPacketsCount] = useState(0)
+  const [gpsAccuracyWarning, setGpsAccuracyWarning] = useState(null)
+  const [mapKey, setMapKey] = useState(0)  // bump to force map re-mount
   const watchIdRef = useRef(null)
 
   // Track whether forms have been initialized from server data (only do it once)
@@ -152,11 +154,22 @@ export default function VehicleDetail() {
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        const accuracyM = Math.round(pos.coords.accuracy)
+
+        // ─── Accuracy filter ───────────────────────────────────────────────
+        // Discard readings with accuracy worse than 200m — those are cached
+        // or cell-tower-only positions that don't reflect real GPS location.
+        if (accuracyM > 200) {
+          setGpsAccuracyWarning(`⚠️ Precisión GPS baja (±${accuracyM}m). Espera que el GPS del teléfono mejore...`)
+          return  // don't send bad data to server
+        }
+        setGpsAccuracyWarning(null)
+
         const stats = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-          accuracy: Math.round(pos.coords.accuracy),
+          accuracy: accuracyM,
           time: new Date().toLocaleTimeString(),
         }
         setLiveLocationStats(stats)
@@ -171,7 +184,6 @@ export default function VehicleDetail() {
           }
         }).then(() => {
           setSentPacketsCount(prev => prev + 1)
-          // Refetch vehicle data to update map position
           queryClient.invalidateQueries(['vehicle', id])
         }).catch(err => {
           console.error('Error enviando posición live:', err)
@@ -185,7 +197,11 @@ export default function VehicleDetail() {
           sessionStorage.removeItem(ACTIVE_TRACKER_KEY)
         }
       },
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,      // ← CRITICAL: never use cached GPS position
+        timeout: 30000,     // allow 30s to get a fresh GPS lock
+      }
     )
 
     watchIdRef.current = watchId
@@ -220,6 +236,7 @@ export default function VehicleDetail() {
     () => apiClient.post(`/vehicles/${id}/reset-location`),
     {
       onSuccess: () => {
+        setMapKey(k => k + 1)  // force map re-mount so stale tile doesn't linger
         refetch()
         queryClient.invalidateQueries(['vehicle', id])
         queryClient.invalidateQueries('vehicles')
@@ -487,9 +504,9 @@ export default function VehicleDetail() {
           </span>
         </div>
         <div className="h-[420px] rounded-xl overflow-hidden border border-gray-200">
-          {/* key={id} forces MapComponent to re-initialize when changing vehicles */}
+          {/* mapKey changes when location is reset, forcing full re-mount */}
           <MapComponent
-            key={`map-${id}-${isAutoTracking}`}
+            key={`map-${id}-${isAutoTracking}-${mapKey}`}
             vehicles={[mapVehicle]}
             selectedVehicle={mapVehicle}
             onVehicleSelect={() => {}}
@@ -573,7 +590,7 @@ export default function VehicleDetail() {
                 disabled={resetLocationMutation.isLoading}
                 className="w-full text-xs font-bold text-amber-600 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg py-2 px-3 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {resetLocationMutation.isLoading ? '⏳ Limpiando...' : '🗑️ Borrar Ubicación Guardada (incorrecta)'}
+                {resetLocationMutation.isLoading ? '⏳ Limpiando...' : '🗑️ Borrar Ubicación Guardada'}
               </button>
               {resetLocationMutation.isSuccess && (
                 <p className="text-xs text-emerald-600 font-bold mt-1.5 text-center">✓ Ubicación borrada. Esperando nuevo dato GPS...</p>
@@ -639,27 +656,46 @@ export default function VehicleDetail() {
 
         {/* Live Tracking Status Bar */}
         {isAutoTracking && (
-          <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </span>
-              <div>
-                <p className="font-bold text-emerald-300 text-sm">Rastreando GPS Real en Vivo — {vehicle.licensePlate}</p>
-                <p className="text-emerald-100/70 text-[11px]">
-                  Este dispositivo envía coordenadas EXCLUSIVAMENTE a este vehículo. Paquetes enviados: <strong>{sentPacketsCount}</strong>
-                </p>
+          <div className="space-y-2">
+            {gpsAccuracyWarning ? (
+              /* Waiting for GPS lock */
+              <div className="bg-amber-950/80 border border-amber-500/50 rounded-xl p-3 flex items-center gap-3 text-xs">
+                <span className="text-2xl animate-pulse">📡</span>
+                <div>
+                  <p className="font-bold text-amber-300">Buscando señal GPS precisa...</p>
+                  <p className="text-amber-200/80">{gpsAccuracyWarning}</p>
+                  <p className="text-amber-100/60 mt-0.5">Mantén el teléfono con cielo visible. No se envían datos hasta que mejore la precisión.</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* GPS locked and sending */
+              <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <div>
+                    <p className="font-bold text-emerald-300 text-sm">Rastreando GPS Real en Vivo — {vehicle.licensePlate}</p>
+                    <p className="text-emerald-100/70 text-[11px]">
+                      Coordenadas enviadas EXCLUSIVAMENTE a este vehículo. Paquetes: <strong>{sentPacketsCount}</strong>
+                    </p>
+                  </div>
+                </div>
 
-            {liveLocationStats && (
-              <div className="flex flex-wrap gap-4 text-emerald-200 font-mono bg-emerald-900/40 p-2 rounded-lg border border-emerald-700/50">
-                <div>Lat: <span className="font-bold text-white">{liveLocationStats.lat.toFixed(5)}</span></div>
-                <div>Lng: <span className="font-bold text-white">{liveLocationStats.lng.toFixed(5)}</span></div>
-                <div>Vel: <span className="font-bold text-white">{liveLocationStats.speed} km/h</span></div>
-                <div>Precisión: <span className="font-bold text-white">±{liveLocationStats.accuracy}m</span></div>
-                <div>Hora: <span className="font-bold text-emerald-400">{liveLocationStats.time}</span></div>
+                {liveLocationStats && (
+                  <div className="flex flex-wrap gap-4 text-emerald-200 font-mono bg-emerald-900/40 p-2 rounded-lg border border-emerald-700/50">
+                    <div>Lat: <span className="font-bold text-white">{liveLocationStats.lat.toFixed(5)}</span></div>
+                    <div>Lng: <span className="font-bold text-white">{liveLocationStats.lng.toFixed(5)}</span></div>
+                    <div>Vel: <span className="font-bold text-white">{liveLocationStats.speed} km/h</span></div>
+                    <div>
+                      Precisión: <span className={`font-bold ${liveLocationStats.accuracy <= 30 ? 'text-emerald-300' : liveLocationStats.accuracy <= 80 ? 'text-yellow-300' : 'text-orange-300'}`}>
+                        ±{liveLocationStats.accuracy}m
+                      </span>
+                    </div>
+                    <div>Hora: <span className="font-bold text-emerald-400">{liveLocationStats.time}</span></div>
+                  </div>
+                )}
               </div>
             )}
           </div>
