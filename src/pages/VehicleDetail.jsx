@@ -53,8 +53,8 @@ export default function VehicleDetail() {
     const response = await apiClient.get(`/vehicles/${id}`)
     return response.data
   }, {
-    refetchInterval: isAutoTracking ? 8000 : false, // Auto-refresh every 8s while tracking
-    refetchOnWindowFocus: false,
+    refetchInterval: 5000, // Always auto-refresh location every 5s from backend (Hardware GPS / Smart Tag / Webhook)
+    refetchOnWindowFocus: true,
     onSuccess: (v) => {
       if (!editFormInitialized.current || !isEditing) {
         setEditForm({
