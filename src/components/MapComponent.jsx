@@ -84,9 +84,9 @@ function formatAge(lastUpdate) {
 }
 
 export default function MapComponent({ vehicles = [], selectedVehicle, onVehicleSelect, realTimeData }) {
-  // Default center: Chile
-  const defaultCenter = [-33.45, -70.66]
-  const defaultZoom = 12
+  // Default center: Valparaíso (V Región)
+  const defaultCenter = [-33.04, -71.61]
+  const defaultZoom = 13
 
   // Determine map center: selected vehicle's location, else center of valid vehicles
   let mapCenter = defaultCenter
