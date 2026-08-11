@@ -13,6 +13,7 @@ import Geofences from './pages/Geofences'
 import Companies from './pages/Companies'
 import Users from './pages/Users'
 import DriverDashboard from './pages/DriverDashboard'
+import PublicTracker from './pages/PublicTracker'
 import MainLayout from './layouts/MainLayout'
 import './index.css'
 
@@ -70,6 +71,9 @@ function App() {
         <Routes>
           {/* ── Login ── */}
           <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
+
+          {/* ── Rastreador Móvil Directo por Celular ── */}
+          <Route path="/track/:id" element={<PublicTracker />} />
 
           {/* ── Dashboard del Conductor — acceso exclusivo para drivers ── */}
           <Route
