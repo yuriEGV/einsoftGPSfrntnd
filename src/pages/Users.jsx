@@ -4,10 +4,9 @@ import { apiClient } from '../services/api'
 
 const ROLES = [
   { value: 'admin', label: 'Administrador (Global)' },
-  { value: 'fleet_manager', label: 'Gestor de flota (Empresa)' },
-  { value: 'independent', label: 'Particular / Plan Familiar (Sin Empresa)' },
+  { value: 'fleet_manager', label: 'Gestor de Flota (Empresa)' },
+  { value: 'independent', label: 'Particular / Plan Familiar' },
   { value: 'driver', label: 'Conductor' },
-  { value: 'viewer', label: 'Solo lectura' },
 ]
 
 const ROLE_COLORS = {
@@ -15,7 +14,6 @@ const ROLE_COLORS = {
   fleet_manager: 'bg-blue-100 text-blue-700',
   independent: 'bg-indigo-100 text-indigo-700',
   driver: 'bg-emerald-100 text-emerald-700',
-  viewer: 'bg-gray-100 text-gray-700',
 }
 
 const ROLE_LABELS = {
@@ -23,7 +21,6 @@ const ROLE_LABELS = {
   fleet_manager: '🏢 Gestor de Flota',
   independent: '👤 Particular / Plan Familiar',
   driver: '🚗 Conductor',
-  viewer: '👁️ Solo lectura',
 }
 
 export default function Users() {

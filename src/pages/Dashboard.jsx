@@ -22,6 +22,9 @@ export default function Dashboard() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
+  const isFleetManager = user.role === 'fleet_manager'
+  const isIndependent = user.role === 'independent'
+  const canManageFleet = isAdmin || isFleetManager
 
   // Fetch vehicles with polling fallback for Vercel
   const { data: vehicles = [], isLoading } = useQuery('vehicles', async () => {
@@ -31,19 +34,19 @@ export default function Dashboard() {
     refetchInterval: 5000,
   })
 
-  // Fetch companies (for filtering)
+  // Fetch companies — solo admin
   const { data: companies = [] } = useQuery('companies', async () => {
     const response = await apiClient.get('/companies')
     return response.data
   }, { enabled: isAdmin })
 
-  // Fetch drivers / users (for filtering)
+  // Fetch users/conductores — solo admin y fleet_manager (no independiente)
   const { data: usersList = [] } = useQuery('users', async () => {
     const response = await apiClient.get('/users')
     return response.data
-  })
+  }, { enabled: canManageFleet })
 
-  // Fetch alerts
+  // Fetch alerts — por scope del rol (el backend filtra)
   const { data: alerts = [] } = useQuery('alerts', async () => {
     const response = await apiClient.get('/alerts', { params: { limit: 10 } })
     return response.data
@@ -112,9 +115,13 @@ export default function Dashboard() {
       {/* Encabezado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Control de Gestión de Viajes & Flota</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+            {canManageFleet ? 'Control de Gestión de Viajes & Flota' : 'Mis Vehículos'}
+          </h1>
           <p className="text-xs text-gray-500 mt-1">
-            Monitoreo interactivo en tiempo real por Empresa, Conductor y Dispositivo GPS.
+            {canManageFleet
+              ? 'Monitoreo interactivo en tiempo real por Empresa, Conductor y Dispositivo GPS.'
+              : 'Monitoreo en tiempo real de tus vehículos registrados.'}
           </p>
         </div>
         <div className="text-sm font-semibold text-gray-600 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
@@ -166,7 +173,8 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Filtro Conductor / Usuario */}
+          {/* Filtro Conductor / Usuario — solo admin y fleet_manager */}
+          {canManageFleet && (
           <div>
             <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">Conductor / Usuario</label>
             <select
@@ -180,6 +188,7 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
+          )}
 
           {/* Filtro Estado */}
           <div>
