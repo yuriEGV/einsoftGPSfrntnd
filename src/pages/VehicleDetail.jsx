@@ -589,14 +589,16 @@ export default function VehicleDetail() {
 
             {/* Location Management Actions */}
             <div className="pt-3 space-y-2 border-t border-gray-100 mt-2">
-              <a
-                href={`/track/${id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-xs font-bold text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 rounded-xl py-2 px-3 transition-all flex items-center justify-center gap-2 shadow-sm text-center block"
+              <button
+                onClick={() => {
+                  const link = `${window.location.origin}/track/${id}`
+                  navigator.clipboard.writeText(link)
+                  alert('¡Enlace de transmisión copiado! Puedes enviarlo por WhatsApp al conductor del vehículo.')
+                }}
+                className="w-full text-xs font-bold text-slate-700 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl py-2 px-3 transition-all flex items-center justify-center gap-2 shadow-sm text-center"
               >
-                📱 Abrir Rastreador Celular Directo (Para usar Teléfono como GPS)
-              </a>
+                📋 Copiar Enlace para Conductor (Enviar por WhatsApp)
+              </button>
 
               <button
                 onClick={() => {
