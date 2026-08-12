@@ -1,9 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
+
+// Helper component to smoothly center Leaflet map on target person
+function ChangeView({ center, zoom }) {
+  const map = useMap()
+  const prevCenter = useRef(null)
+
+  useEffect(() => {
+    if (!center || (center[0] === 0 && center[1] === 0)) return
+    const changed = !prevCenter.current ||
+      Math.abs(prevCenter.current[0] - center[0]) > 0.0001 ||
+      Math.abs(prevCenter.current[1] - center[1]) > 0.0001
+    if (changed) {
+      map.flyTo(center, zoom, { duration: 1.2, easeLinearity: 0.5 })
+      prevCenter.current = center
+    }
+  }, [center, zoom, map])
+
+  return null
+}
 
 // Custom Person Markers
 function makePersonIcon(isPanic, isOffline) {
@@ -320,15 +339,16 @@ export default function PeopleTracker() {
                     </button>
 
                     {hasRealCoords && (
-                      <a
-                        href={`https://maps.google.com/?q=${lat},${lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold flex items-center gap-1"
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedPerson(person)
+                          refetch()
+                        }}
+                        className="px-3 py-1.5 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition"
                       >
-                        🗺️ Google Maps
-                      </a>
+                        📍 Ubicar en el Mapa
+                      </button>
                     )}
 
                     {/* Panic Toggle button */}
@@ -370,9 +390,18 @@ export default function PeopleTracker() {
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 🗺️ Mapa de Ubicación en Tiempo Real
               </h2>
-              <span className="text-xs text-slate-500 font-medium">
-                Actualización automática cada 4s
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+                  Actualización cada 4s
+                </span>
+                <button
+                  onClick={() => refetch()}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
+                  title="Refrescar posiciones de mapa"
+                >
+                  🔄 Refrescar Mapa
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 rounded-xl overflow-hidden relative border border-slate-100">
@@ -381,6 +410,15 @@ export default function PeopleTracker() {
                 zoom={13}
                 className="h-full w-full"
               >
+                <ChangeView
+                  center={
+                    selectedPerson?.location?.coordinates &&
+                    (selectedPerson.location.coordinates[0] !== 0 || selectedPerson.location.coordinates[1] !== 0)
+                      ? [selectedPerson.location.coordinates[1], selectedPerson.location.coordinates[0]]
+                      : defaultCenter
+                  }
+                  zoom={selectedPerson ? 16 : 13}
+                />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
