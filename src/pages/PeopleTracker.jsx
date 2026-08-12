@@ -202,6 +202,12 @@ export default function PeopleTracker() {
               const coords = person.location?.coordinates || [0, 0];
               const lat = coords[1];
               const lng = coords[0];
+              const hasRealCoords = Boolean(
+                person.hasReportedLocation &&
+                lat && lng &&
+                (lat !== 0 || lng !== 0) &&
+                !(Math.abs(lat - (-33.45694)) < 0.001 && Math.abs(lng - (-70.64827)) < 0.001)
+              );
               const publicUrl = `${window.location.origin}/person-track/${person.trackerCode}`;
 
               return (
@@ -250,7 +256,7 @@ export default function PeopleTracker() {
                     <div>
                       <span className="text-slate-400 block text-[10px]">Precisión GPS</span>
                       <span className="font-bold text-slate-700">
-                        🎯 {person.gpsAccuracy ? `±${Math.round(person.gpsAccuracy)}m` : 'Baja'}
+                        🎯 {hasRealCoords ? (person.gpsAccuracy ? `±${Math.round(person.gpsAccuracy)}m` : 'Alta') : 'Sin señal'}
                       </span>
                     </div>
                     <div>
@@ -262,13 +268,13 @@ export default function PeopleTracker() {
                   </div>
 
                   {/* Location string or Initial Warning */}
-                  {!person.hasReportedLocation && (!lat || lat === 0) ? (
+                  {!hasRealCoords ? (
                     <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 mb-3 text-xs space-y-1.5">
                       <div className="flex items-center gap-1 font-extrabold text-amber-800">
                         <span>⚠️</span> Esperando conexión GPS del teléfono
                       </div>
                       <p className="text-[11px] text-amber-700 leading-tight">
-                        Para activar la posición real en el mapa, abre el enlace en el smartphone de {person.name} o presiona el botón de prueba a continuación:
+                        Para activar la posición real en el mapa, abre el enlace en el smartphone de {person.name} o presiona el botón a continuación:
                       </p>
                       <button
                         onClick={(e) => {
@@ -313,7 +319,7 @@ export default function PeopleTracker() {
                       📱 Abrir en Celular / QR
                     </button>
 
-                    {lat && lng && lat !== 0 && lng !== 0 && (
+                    {hasRealCoords && (
                       <a
                         href={`https://maps.google.com/?q=${lat},${lng}`}
                         target="_blank"
