@@ -385,7 +385,7 @@ export default function PeopleTracker() {
 
       {/* ── Modal: Agregar Persona ── */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
@@ -467,7 +467,7 @@ export default function PeopleTracker() {
 
       {/* ── Modal: Enlace & QR para Smartphone de la Persona ── */}
       {activeLinkModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl space-y-5">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
