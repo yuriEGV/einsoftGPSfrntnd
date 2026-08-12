@@ -119,11 +119,16 @@ export default function PeopleTracker() {
     createMutation.mutate(formData)
   }
 
-  // Calculate default map center
-  const validLocations = people.filter(p => p.location?.coordinates && p.location.coordinates[0] !== 0)
+  // Calculate default map center (Default to Valparaíso if no valid reported positions)
+  const validLocations = people.filter(p =>
+    p.hasReportedLocation &&
+    p.location?.coordinates &&
+    Array.isArray(p.location.coordinates) &&
+    (p.location.coordinates[0] !== 0 || p.location.coordinates[1] !== 0)
+  )
   const defaultCenter = validLocations.length > 0
     ? [validLocations[0].location.coordinates[1], validLocations[0].location.coordinates[0]]
-    : [-33.45694, -70.64827] // Santiago default
+    : [-33.045, -71.615] // Default Valparaíso, Chile
 
   return (
     <div className="space-y-6">
@@ -256,10 +261,45 @@ export default function PeopleTracker() {
                     </div>
                   </div>
 
-                  {/* Location string */}
-                  <p className="text-xs text-slate-600 mb-3 truncate">
-                    📍 <span className="font-medium">{person.location?.address || 'Ubicación reportada'}</span>
-                  </p>
+                  {/* Location string or Initial Warning */}
+                  {!person.hasReportedLocation && (!lat || lat === 0) ? (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 mb-3 text-xs space-y-1.5">
+                      <div className="flex items-center gap-1 font-extrabold text-amber-800">
+                        <span>⚠️</span> Esperando conexión GPS del teléfono
+                      </div>
+                      <p className="text-[11px] text-amber-700 leading-tight">
+                        Para activar la posición real en el mapa, abre el enlace en el smartphone de {person.name} o presiona el botón de prueba a continuación:
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!navigator.geolocation) return alert('Geolocalización no soportada en este navegador.')
+                          navigator.geolocation.getCurrentPosition(async (pos) => {
+                            try {
+                              await apiClient.post(`/people-trackers/public/${person.trackerCode}/location`, {
+                                latitude: pos.coords.latitude,
+                                longitude: pos.coords.longitude,
+                                gpsAccuracy: pos.coords.accuracy,
+                                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
+                                batteryLevel: 100,
+                              })
+                              queryClient.invalidateQueries('peopleTrackers')
+                              alert(`¡Coordenadas GPS enviadas a ${person.name} con éxito!`)
+                            } catch (err) {
+                              alert('Error enviando ubicación de prueba.')
+                            }
+                          })
+                        }}
+                        className="w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs shadow-sm flex items-center justify-center gap-1"
+                      >
+                        📡 Transmitir mi GPS actual a {person.name} (Prueba)
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-600 mb-3 truncate">
+                      📍 <span className="font-medium">{person.location?.address || 'Ubicación reportada'}</span>
+                    </p>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
@@ -273,7 +313,7 @@ export default function PeopleTracker() {
                       📱 Abrir en Celular / QR
                     </button>
 
-                    {lat && lng && (
+                    {lat && lng && lat !== 0 && lng !== 0 && (
                       <a
                         href={`https://maps.google.com/?q=${lat},${lng}`}
                         target="_blank"
@@ -342,7 +382,8 @@ export default function PeopleTracker() {
 
                 {people.map((person) => {
                   const coords = person.location?.coordinates;
-                  if (!coords || (coords[0] === 0 && coords[1] === 0)) return null;
+                  const hasRealLocation = person.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0);
+                  if (!hasRealLocation) return null; // Do NOT render marker until phone transmits real GPS!
                   const isPanic = person.status === 'panic' || person.panicAlert?.active;
                   const isOffline = person.status === 'offline';
 
