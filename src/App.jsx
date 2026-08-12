@@ -14,6 +14,8 @@ import Companies from './pages/Companies'
 import Users from './pages/Users'
 import DriverDashboard from './pages/DriverDashboard'
 import PublicTracker from './pages/PublicTracker'
+import PeopleTracker from './pages/PeopleTracker'
+import PublicPersonTracker from './pages/PublicPersonTracker'
 import MainLayout from './layouts/MainLayout'
 import './index.css'
 
@@ -74,6 +76,7 @@ function App() {
 
           {/* ── Rastreador Móvil Directo por Celular ── */}
           <Route path="/track/:id" element={<PublicTracker />} />
+          <Route path="/person-track/:code" element={<PublicPersonTracker />} />
 
           {/* ── Dashboard del Conductor — acceso exclusivo para drivers ── */}
           <Route
@@ -119,6 +122,16 @@ function App() {
                       element={
                         <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
                           <VehicleDetail />
+                        </RoleGuard>
+                      }
+                    />
+
+                    {/* Rastreo Personal & Celulares — admin, fleet_manager, independent */}
+                    <Route
+                      path="/people-tracker"
+                      element={
+                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                          <PeopleTracker />
                         </RoleGuard>
                       }
                     />

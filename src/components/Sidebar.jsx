@@ -23,6 +23,13 @@ const ALL_MENU_ITEMS = [
     allowedRoles: ['admin', 'fleet_manager', 'independent'],
   },
   {
+    label: 'Rastreo Personal',
+    icon: '📱',
+    path: '/people-tracker',
+    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    badge: 'SOS',
+  },
+  {
     label: 'Reportes',
     icon: '📈',
     path: '/reports',
@@ -136,7 +143,12 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
                 <span className={`text-xl transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                   {item.icon}
                 </span>
-                <span className="text-sm font-bold tracking-tight">{item.label}</span>
+                <span className="text-sm font-bold tracking-tight flex-1">{item.label}</span>
+                {item.badge && (
+                  <span className="px-1.5 py-0.5 text-[9px] font-black bg-purple-500 text-white rounded-md tracking-wider uppercase shadow-sm">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             )
           })}
