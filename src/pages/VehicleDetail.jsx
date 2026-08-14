@@ -616,11 +616,60 @@ export default function VehicleDetail() {
 
               <button
                 onClick={() => {
+                  if (!navigator.geolocation) return alert('Tu navegador no soporta geolocalización.')
+                  navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                      try {
+                        await apiClient.post(`/vehicles/${id}/set-location`, {
+                          latitude: pos.coords.latitude,
+                          longitude: pos.coords.longitude,
+                        })
+                        queryClient.invalidateQueries(['vehicle', id])
+                        refetch()
+                        setMapKey(prev => prev + 1)
+                        alert('¡Ubicación GPS del vehículo actualizada exitosamente a tu posición actual!')
+                      } catch (err) {
+                        alert('Error al actualizar ubicación: ' + (err.response?.data?.error || err.message))
+                      }
+                    },
+                    (err) => alert('Error al obtener GPS de este dispositivo: ' + err.message),
+                    { enableHighAccuracy: true }
+                  )
+                }}
+                className="w-full text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl py-2.5 px-4 transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 text-center"
+              >
+                📡 Transmitir mi Ubicación GPS Actual a este Vehículo
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    await apiClient.post(`/vehicles/${id}/set-location`, {
+                      latitude: -33.0245,
+                      longitude: -71.6318,
+                      address: 'Playa Ancha, Valparaíso',
+                      city: 'Valparaíso (Playa Ancha)',
+                    })
+                    queryClient.invalidateQueries(['vehicle', id])
+                    refetch()
+                    setMapKey(prev => prev + 1)
+                    alert('¡Ubicación actualizada a Playa Ancha, Valparaíso!')
+                  } catch (err) {
+                    alert('Error al fijar ubicación en Playa Ancha: ' + (err.response?.data?.error || err.message))
+                  }
+                }}
+                className="w-full text-xs font-bold text-slate-700 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl py-2 px-3 transition-all flex items-center justify-center gap-2 shadow-sm text-center"
+              >
+                📍 Fijar Ubicación Rápidamente (Playa Ancha, Valparaíso)
+              </button>
+
+              <button
+                onClick={() => {
                   const link = `${window.location.origin}/track/${id}`
                   navigator.clipboard.writeText(link)
                   alert('¡Enlace de transmisión copiado! Puedes enviarlo por WhatsApp al conductor del vehículo.')
                 }}
-                className="w-full text-xs font-bold text-slate-700 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl py-2 px-3 transition-all flex items-center justify-center gap-2 shadow-sm text-center"
+                className="w-full text-xs font-bold text-slate-500 hover:text-slate-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl py-1.5 px-3 transition-all flex items-center justify-center gap-2 text-center"
               >
                 📋 Copiar Enlace para Conductor (Enviar por WhatsApp)
               </button>
