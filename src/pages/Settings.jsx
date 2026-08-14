@@ -65,6 +65,68 @@ const PLANS = [
   },
 ]
 
+// Pricing Plans for Personal & Phone Tracking Service
+const PERSON_PLANS = [
+  {
+    key: 'person_individual',
+    name: 'Plan Personal Individual',
+    icon: '👤',
+    color: 'from-purple-600 to-indigo-700',
+    badge: '1 Persona',
+    basePrice: 4990,
+    currency: 'CLP',
+    period: 'mes/persona',
+    features: [
+      '✅ 1 Celular / Familiar rastreado',
+      '✅ Geolocalización GPS en tiempo real',
+      '✅ Botón de Pánico SOS Instantáneo',
+      '✅ Monitoreo de porcentaje de Batería',
+      '✅ Alertas de velocidad y precisión GPS',
+      '✅ Historial de ruta (14 días)',
+    ],
+    note: null,
+  },
+  {
+    key: 'person_family',
+    name: 'Plan Protección Familiar SOS',
+    icon: '👨‍👩‍👧‍👦',
+    color: 'from-purple-700 to-pink-700',
+    badge: '3 Personas',
+    basePrice: 9990,
+    currency: 'CLP',
+    period: 'mes (hasta 3 personas)',
+    features: [
+      '✅ Hasta 3 familiares / celulares incluidos',
+      '✅ Geolocalización GPS en tiempo real',
+      '✅ Botón de Pánico SOS Instantáneo',
+      '✅ Sirena auditiva SOS y síntesis de voz',
+      '✅ Enlace público directo para WhatsApp',
+      '✅ Monitoreo de batería y precisión GPS',
+      '✅ Historial de ruta (30 días)',
+    ],
+    note: 'Ideal para grupos familiares, niños y adultos mayores.',
+  },
+  {
+    key: 'person_enterprise',
+    name: 'Plan Personal de Campo / Seguridad',
+    icon: '🛡️',
+    color: 'from-slate-800 to-indigo-900',
+    badge: 'Empresas / Hasta 10 Personas',
+    basePrice: 24990,
+    currency: 'CLP',
+    period: 'mes (hasta 10 personas)',
+    features: [
+      '✅ Hasta 10 guardias / trabajadores de campo',
+      '✅ Panel centralizado de emergencias SOS',
+      '✅ Mapa en tiempo real con actualización cada 4s',
+      '✅ Alertas SOS auditivas y por correo',
+      '✅ Reportes de ubicación y asistencia',
+      '✅ Soporte técnico prioritario 24/7',
+    ],
+    note: null,
+  },
+]
+
 function PlanCard({ plan, vehicleCount = 1 }) {
   const extraVehicles = Math.max(0, vehicleCount - 1)
   const totalPrice = plan.key === 'independent'
@@ -369,25 +431,61 @@ export default function Settings() {
 
       {/* ────── TAB: PLANS ────── */}
       {activeTab === 'plans' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {PLANS.map(plan => (
-              <PlanCard key={plan.key} plan={plan} vehicleCount={1} />
-            ))}
+        <div className="space-y-10">
+          {/* Section 1: Vehicular Tracking Plans */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 border-b pb-3">
+              <span className="text-2xl">🚗</span>
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Planes de Rastreo Vehicular</h2>
+                <p className="text-xs text-slate-500">Para automóviles, camiones, motocicletas y flotas corporativas.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {PLANS.map(plan => (
+                <PlanCard key={plan.key} plan={plan} vehicleCount={1} />
+              ))}
+            </div>
+
+            <FamilyPricingCalculator />
+
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 text-sm">
+              <h3 className="font-bold text-blue-800 text-base mb-3">📋 Condiciones del Plan Vehicular Familiar</h3>
+              <ul className="space-y-2 text-blue-700">
+                <li>• El <strong>Plan Particular / Familiar</strong> incluye 1 vehículo principal por <strong>$9.990 CLP/mes</strong>.</li>
+                <li>• Cada vehículo familiar adicional (cónyuge, hijos, etc.) tiene un recargo del <strong>25%</strong> sobre la tarifa base.</li>
+                <li>• Precio por vehículo adicional: <strong>$12.488 CLP/mes</strong> (=$9.990 × 1.25).</li>
+                <li>• Para flotas corporativas, consulta los planes <strong>Empresa Básico</strong> o <strong>Empresa Pro</strong>.</li>
+              </ul>
+            </div>
           </div>
 
-          <FamilyPricingCalculator />
+          {/* Section 2: Personal & Cellphone Tracking Plans */}
+          <div className="space-y-4 pt-4">
+            <div className="flex items-center gap-3 border-b pb-3">
+              <span className="text-2xl">📱</span>
+              <div>
+                <h2 className="text-xl font-black text-purple-950">Planes de Rastreo Personal y Celulares</h2>
+                <p className="text-xs text-purple-700/80">Servicio independiente para familiares, adultos mayores, niños y personal de campo con Botón de Pánico SOS.</p>
+              </div>
+            </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 text-sm">
-            <h3 className="font-bold text-blue-800 text-base mb-3">📋 Condiciones del Plan Familiar</h3>
-            <ul className="space-y-2 text-blue-700">
-              <li>• El <strong>Plan Particular / Familiar</strong> incluye 1 vehículo principal por <strong>$9.990 CLP/mes</strong>.</li>
-              <li>• Cada vehículo familiar adicional (cónyuge, hijos, etc.) tiene un recargo del <strong>25%</strong> sobre la tarifa base.</li>
-              <li>• Precio por vehículo adicional: <strong>$12.488 CLP/mes</strong> (=$9.990 × 1.25).</li>
-              <li>• Los usuarios del plan familiar solo tienen acceso a <strong>sus propios vehículos</strong>, sin visibilidad de otros clientes.</li>
-              <li>• El plan familiar <strong>no incluye</strong> acceso corporativo, gestión de flotas, ni reportes avanzados.</li>
-              <li>• Para flotas corporativas, consulta los planes <strong>Empresa Básico</strong> o <strong>Empresa Pro</strong>.</li>
-            </ul>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {PERSON_PLANS.map(plan => (
+                <PlanCard key={plan.key} plan={plan} vehicleCount={1} />
+              ))}
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-6 text-sm">
+              <h3 className="font-bold text-purple-900 text-base mb-3">🚨 Ventajas del Servicio de Rastreo Personal & SOS</h3>
+              <ul className="space-y-2 text-purple-800">
+                <li>• <strong>Servicio 100% Independiente</strong>: No interfiere con las cuotas ni la gestión de los vehículos.</li>
+                <li>• <strong>Botón de Pánico Instantáneo</strong>: Funciona con un solo toque desde cualquier navegador smartphone.</li>
+                <li>• <strong>Alertas Auditivas en Vivo</strong>: La consola central emite un tono de emergencia e indica la voz en tiempo real cuando se activa la alarma.</li>
+                <li>• <strong>Monitoreo de Batería</strong>: Visualiza el nivel de batería restante de los smartphones de tus familiares o trabajadores.</li>
+              </ul>
+            </div>
           </div>
         </div>
       )}

@@ -36,6 +36,16 @@ export default function VehicleDetail() {
   const [mapKey, setMapKey] = useState(0)  // bump to force map re-mount
   const watchIdRef = useRef(null)
 
+  const mapSectionRef = useRef(null)
+
+  const handleLocateOnMap = () => {
+    setMapKey(prev => prev + 1)
+    refetch()
+    if (mapSectionRef.current) {
+      mapSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
   // Track whether forms have been initialized from server data (only do it once)
   const editFormInitialized = useRef(false)
   const deviceFormInitialized = useRef(false)
@@ -499,7 +509,7 @@ export default function VehicleDetail() {
       </div>
 
       {/* ===== MAPA DE UBICACIÓN EN VIVO ===== */}
-      <div className="card p-4 overflow-hidden">
+      <div ref={mapSectionRef} className="card p-4 overflow-hidden">
         <div className="flex items-center justify-between mb-3 px-2">
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             📍 Mapa de Ubicación en Tiempo Real
@@ -510,11 +520,19 @@ export default function VehicleDetail() {
               {isAutoTracking ? '🔴 RASTREANDO EN VIVO' : vehicle.status === 'active' ? '● En Línea' : '● ' + vehicle.status}
             </span>
           </h2>
-          <span className="text-xs text-gray-500 font-mono">
-            {isAutoTracking && liveLocationStats
-              ? `${liveLocationStats.lat.toFixed(5)}, ${liveLocationStats.lng.toFixed(5)}`
-              : vehicle.location?.address || 'Ubicación registrada'}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLocateOnMap}
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
+            >
+              📍 Ubicar en Mapa
+            </button>
+            <span className="text-xs text-gray-500 font-mono hidden sm:inline">
+              {isAutoTracking && liveLocationStats
+                ? `${liveLocationStats.lat.toFixed(5)}, ${liveLocationStats.lng.toFixed(5)}`
+                : vehicle.location?.address || 'Ubicación registrada'}
+            </span>
+          </div>
         </div>
         <div className="h-[420px] rounded-xl overflow-hidden border border-gray-200">
           {/* mapKey changes when location is reset, forcing full re-mount */}
@@ -589,6 +607,13 @@ export default function VehicleDetail() {
 
             {/* Location Management Actions */}
             <div className="pt-3 space-y-2 border-t border-gray-100 mt-2">
+              <button
+                onClick={handleLocateOnMap}
+                className="w-full text-xs font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl py-2.5 px-4 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 text-center"
+              >
+                📍 Ubicar Vehículo en el Mapa
+              </button>
+
               <button
                 onClick={() => {
                   const link = `${window.location.origin}/track/${id}`
