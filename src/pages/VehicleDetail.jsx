@@ -642,28 +642,6 @@ export default function VehicleDetail() {
               </button>
 
               <button
-                onClick={async () => {
-                  try {
-                    await apiClient.post(`/vehicles/${id}/set-location`, {
-                      latitude: -33.0245,
-                      longitude: -71.6318,
-                      address: 'Playa Ancha, Valparaíso',
-                      city: 'Valparaíso (Playa Ancha)',
-                    })
-                    queryClient.invalidateQueries(['vehicle', id])
-                    refetch()
-                    setMapKey(prev => prev + 1)
-                    alert('¡Ubicación actualizada a Playa Ancha, Valparaíso!')
-                  } catch (err) {
-                    alert('Error al fijar ubicación en Playa Ancha: ' + (err.response?.data?.error || err.message))
-                  }
-                }}
-                className="w-full text-xs font-bold text-slate-700 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl py-2 px-3 transition-all flex items-center justify-center gap-2 shadow-sm text-center"
-              >
-                📍 Fijar Ubicación Rápidamente (Playa Ancha, Valparaíso)
-              </button>
-
-              <button
                 onClick={() => {
                   const link = `${window.location.origin}/track/${id}`
                   navigator.clipboard.writeText(link)
