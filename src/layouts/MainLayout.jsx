@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
+import AiCopilotWidget from '../components/AiCopilotWidget'
 
 export default function MainLayout({ children, onLogout }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -17,6 +18,9 @@ export default function MainLayout({ children, onLogout }) {
           {children}
         </main>
       </div>
+
+      {/* 🧠 Copiloto IA Gemini 3.6 - Flotante Web */}
+      <AiCopilotWidget />
     </div>
   )
 }

@@ -295,30 +295,6 @@ export default function PeopleTracker() {
                       <p className="text-[11px] text-amber-700 leading-tight">
                         Para activar la posición real en el mapa, abre el enlace en el smartphone de {person.name} o presiona el botón a continuación:
                       </p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!navigator.geolocation) return alert('Geolocalización no soportada en este navegador.')
-                          navigator.geolocation.getCurrentPosition(async (pos) => {
-                            try {
-                              await apiClient.post(`/people-trackers/public/${person.trackerCode}/location`, {
-                                latitude: pos.coords.latitude,
-                                longitude: pos.coords.longitude,
-                                gpsAccuracy: pos.coords.accuracy,
-                                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0,
-                                batteryLevel: 100,
-                              })
-                              queryClient.invalidateQueries('peopleTrackers')
-                              alert(`¡Coordenadas GPS enviadas a ${person.name} con éxito!`)
-                            } catch (err) {
-                              alert('Error enviando ubicación de prueba.')
-                            }
-                          })
-                        }}
-                        className="w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs shadow-sm flex items-center justify-center gap-1"
-                      >
-                        📡 Transmitir mi GPS actual a {person.name} (Prueba)
-                      </button>
                     </div>
                   ) : (
                     <p className="text-xs text-slate-600 mb-3 truncate">

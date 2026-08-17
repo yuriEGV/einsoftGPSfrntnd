@@ -616,33 +616,6 @@ export default function VehicleDetail() {
 
               <button
                 onClick={() => {
-                  if (!navigator.geolocation) return alert('Tu navegador no soporta geolocalización.')
-                  navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                      try {
-                        await apiClient.post(`/vehicles/${id}/set-location`, {
-                          latitude: pos.coords.latitude,
-                          longitude: pos.coords.longitude,
-                        })
-                        queryClient.invalidateQueries(['vehicle', id])
-                        refetch()
-                        setMapKey(prev => prev + 1)
-                        alert('¡Ubicación GPS del vehículo actualizada exitosamente a tu posición actual!')
-                      } catch (err) {
-                        alert('Error al actualizar ubicación: ' + (err.response?.data?.error || err.message))
-                      }
-                    },
-                    (err) => alert('Error al obtener GPS de este dispositivo: ' + err.message),
-                    { enableHighAccuracy: true }
-                  )
-                }}
-                className="w-full text-xs font-black text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-xl py-2.5 px-4 transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 text-center"
-              >
-                📡 Transmitir mi Ubicación GPS Actual a este Vehículo
-              </button>
-
-              <button
-                onClick={() => {
                   const link = `${window.location.origin}/track/${id}`
                   navigator.clipboard.writeText(link)
                   alert('¡Enlace de transmisión copiado! Puedes enviarlo por WhatsApp al conductor del vehículo.')
