@@ -17,13 +17,18 @@ export default function Navbar({ toggleSidebar }) {
           </button>
           <h2 className="text-lg font-semibold text-gray-900 truncate">Panel de control</h2>
         </div>
-        <div className="flex items-center space-x-4">
-          <div className="hidden sm:block text-sm text-gray-600">
+        <div className="flex items-center space-x-3">
+          <a
+            href="https://t.me/EinGpsBot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20"
+          >
+            <span>📱</span> Bot @EinGpsBot
+          </a>
+          <div className="hidden sm:block text-sm text-gray-600 font-medium">
             {user.name || 'Usuario'}
           </div>
-          <button className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-colors">
-            Perfil
-          </button>
         </div>
       </div>
     </nav>

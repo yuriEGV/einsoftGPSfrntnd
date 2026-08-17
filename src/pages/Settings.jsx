@@ -290,6 +290,7 @@ export default function Settings() {
 
   const tabs = [
     { key: 'account', label: '👤 Mi Cuenta', icon: '👤' },
+    { key: 'telegram', label: '📱 Bot Telegram & Alertas SOS', icon: '📱' },
     { key: 'hardware', label: '🔧 Hardware GPS', icon: '🔧' },
     { key: 'plans', label: '💳 Planes y Precios', icon: '💳' },
   ]
@@ -385,6 +386,100 @@ export default function Settings() {
                   {changePasswordMutation.isLoading ? 'Actualizando...' : 'Actualizar Contraseña'}
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ────── TAB: TELEGRAM BOT ────── */}
+      {activeTab === 'telegram' && (
+        <div className="space-y-6">
+          {/* Main Bot Card */}
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-indigo-500/30 relative overflow-hidden">
+            <div className="absolute -right-8 -bottom-8 w-56 h-56 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl shadow-xl shadow-blue-500/30">
+                  📱
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-white">Bot Oficial de Telegram EINSoft GPS</h2>
+                    <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Activo & Conectado
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-200/80 mt-1 max-w-xl">
+                    Recibe alertas de pánico SOS instantáneas, excesos de velocidad y consulta el estado de vehículos y personas directamente desde tu teléfono en Telegram.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="https://t.me/EinGpsBot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold rounded-2xl text-xs shadow-xl shadow-blue-500/30 transition-all transform hover:scale-105 flex items-center gap-2"
+                >
+                  🚀 Abrir Bot @EinGpsBot en Telegram
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Steps Box */}
+            <div className="mt-6 pt-6 border-t border-indigo-800/40 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-indigo-500/20">
+                <p className="font-bold text-blue-300 mb-1">1️⃣ Inicia el Bot en Telegram</p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Abre Telegram en tu teléfono o PC, busca <strong>@EinGpsBot</strong> o haz click en el botón azul y presiona <strong>/start</strong>.
+                </p>
+              </div>
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-indigo-500/20">
+                <p className="font-bold text-emerald-300 mb-1">2️⃣ Recibe Alertas Automáticas</p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Si un vehículo o persona presiona el botón de Pánico SOS o excede los 120 km/h, recibirás una notificación urgente con mapa.
+                </p>
+              </div>
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-indigo-500/20">
+                <p className="font-bold text-purple-300 mb-1">3️⃣ Consulta con IA o Comandos</p>
+                <p className="text-slate-300 text-[11px] leading-relaxed">
+                  Usa comandos determinísticos como <code>/vehiculos</code>, <code>/ubicacion</code> o simplemente escribe en texto libre a la IA.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Telegram Command Guide */}
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+            <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <span>📖</span> Guía de Comandos Disponibles en Telegram
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-blue-700 font-bold text-sm block mb-1">/start</code>
+                <p className="text-slate-600">Bienvenida, verificación de rol y menú principal de la plataforma.</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-blue-700 font-bold text-sm block mb-1">/resumen</code>
+                <p className="text-slate-600">Resumen ejecutivo instantáneo de vehículos activos, offline y alertas.</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-blue-700 font-bold text-sm block mb-1">/vehiculos</code>
+                <p className="text-slate-600">Lista completa de vehículos monitoreados con su estado y dirección.</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-blue-700 font-bold text-sm block mb-1">/ubicacion PATENTE</code>
+                <p className="text-slate-600">Ubica un vehículo específico en el mapa y entrega coordenadas exactas.</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-red-700 font-bold text-sm block mb-1">/panico</code>
+                <p className="text-slate-600">Muestra emergencias SOS activas con botones interactivos para reconocer ✅ y resolver ✔️.</p>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <code className="text-purple-700 font-bold text-sm block mb-1">/personas</code>
+                <p className="text-slate-600">Lista de personal y familiares rastreados con su nivel de batería.</p>
+              </div>
             </div>
           </div>
         </div>
