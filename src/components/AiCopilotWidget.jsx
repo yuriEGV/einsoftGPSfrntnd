@@ -1,6 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { apiClient } from '../services/api'
 
+function renderFormattedText(text) {
+  if (!text) return ''
+  let clean = text.replace(/<b>/g, '**').replace(/<\/b>/g, '**')
+  const parts = clean.split(/(\*\*.*?\*\*)/g)
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-black text-purple-200">{part.slice(2, -2)}</strong>
+    }
+    return part
+  })
+}
+
 export default function AiCopilotWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
@@ -148,7 +160,7 @@ export default function AiCopilotWidget() {
                       : 'bg-slate-800/90 text-slate-100 border border-slate-700/60 rounded-bl-none shadow-sm whitespace-pre-wrap'
                   }`}
                 >
-                  {m.text}
+                  {renderFormattedText(m.text)}
                 </div>
               </div>
             ))}
