@@ -58,6 +58,7 @@ export default function Dashboard() {
   // Setup WebSocket — also invalidate vehicles query when real-time data arrives
   useEffect(() => {
     const newSocket = setupSocketConnection()
+    if (!newSocket) return
     setSocket(newSocket)
 
     newSocket.on('location_update', (data) => {

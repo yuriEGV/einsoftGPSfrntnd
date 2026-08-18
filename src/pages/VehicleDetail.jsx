@@ -753,7 +753,7 @@ export default function VehicleDetail() {
           </div>
           <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40 space-y-1">
             <span className="font-bold text-indigo-300 block">2. Vincular por Bluetooth</span>
-            Usa el botón "Escanear Tag BLE" en Chrome/Edge para vincular la señal Bluetooth de tu Xtag11 directamente.
+            Usa el botón &quot;Escanear Tag BLE&quot; en Chrome/Edge para vincular la señal Bluetooth de tu Xtag11 directamente.
           </div>
           <div className="bg-indigo-950/60 p-3 rounded-xl border border-indigo-800/40 space-y-1">
             <span className="font-bold text-blue-300 block">3. URL Webhook Automático</span>

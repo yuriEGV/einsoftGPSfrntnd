@@ -189,7 +189,7 @@ export default function PublicTracker() {
         <div className="w-full bg-slate-900/30 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 space-y-2">
           <p className="font-bold text-slate-300">ℹ️ ¿Cómo funciona esta pantalla?</p>
           <p>
-            Al presionar <strong>"INICIAR RASTREO EN RUTA"</strong>, el GPS de este celular transmitirá automáticamente las coordenadas de la ruta hacia la consola central de <strong>Einsoft GPS</strong>.
+            Al presionar <strong>&quot;INICIAR RASTREO EN RUTA&quot;</strong>, el GPS de este celular transmitirá automáticamente las coordenadas de la ruta hacia la consola central de <strong>Einsoft GPS</strong>.
           </p>
         </div>
       </main>

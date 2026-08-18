@@ -90,7 +90,7 @@ export default function Vehicles() {
           <p className="text-blue-800 text-sm leading-relaxed">
             Bienvenido a tu panel de control. Para comenzar a monitorear:
             <br />
-            1. **Registra el auto**: Usa el botón "Registrar Nuevo Vehículo" arriba.
+            1. **Registra el auto**: Usa el botón &quot;Registrar Nuevo Vehículo&quot; arriba.
             <br />
             2. **Vincula el chip**: Haz clic en el vehículo creado para asociar su IMEI y asignar un conductor.
             <br />

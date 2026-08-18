@@ -5,17 +5,17 @@ export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/a
 // Cross-browser safe storage — falls back to sessionStorage if localStorage is blocked
 export const safeStorage = {
   get(key) {
-    try { return localStorage.getItem(key) } catch (_) { }
-    try { return sessionStorage.getItem(key) } catch (_) { }
+    try { return localStorage.getItem(key) } catch (_) { /* fallback */ }
+    try { return sessionStorage.getItem(key) } catch (_) { /* fallback */ }
     return null
   },
   set(key, value) {
-    try { localStorage.setItem(key, value); return } catch (_) { }
-    try { sessionStorage.setItem(key, value) } catch (_) { }
+    try { localStorage.setItem(key, value); return } catch (_) { /* fallback */ }
+    try { sessionStorage.setItem(key, value) } catch (_) { /* fallback */ }
   },
   remove(key) {
-    try { localStorage.removeItem(key) } catch (_) { }
-    try { sessionStorage.removeItem(key) } catch (_) { }
+    try { localStorage.removeItem(key) } catch (_) { /* fallback */ }
+    try { sessionStorage.removeItem(key) } catch (_) { /* fallback */ }
   },
 }
 
