@@ -636,6 +636,8 @@ function BotUsersPanel() {
   const [webhookStatus, setWebhookStatus] = useState(null)
   const [webhookLoading, setWebhookLoading] = useState(false)
 
+  const [testAlertLoading, setTestAlertLoading] = useState(false)
+
   const handleSetupWebhook = async () => {
     setWebhookLoading(true)
     try {
@@ -648,6 +650,18 @@ function BotUsersPanel() {
       setWebhookStatus({ type: 'error', msg: err.response?.data?.error || 'No se pudo conectar el Webhook con Telegram' })
     } finally {
       setWebhookLoading(false)
+    }
+  }
+
+  const handleTestAlert = async () => {
+    setTestAlertLoading(true)
+    try {
+      const res = await apiClient.post('/bot/test-alert')
+      alert(`✅ Alerta de prueba enviada a Telegram (${res.data.count} usuario(s)): ${res.data.recipients.join(', ')}`)
+    } catch (err) {
+      alert(`❌ Error al enviar prueba: ${err.response?.data?.error || err.message}`)
+    } finally {
+      setTestAlertLoading(false)
     }
   }
 
@@ -665,14 +679,24 @@ function BotUsersPanel() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleSetupWebhook}
-          disabled={webhookLoading}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 whitespace-nowrap self-start sm:self-center"
-        >
-          {webhookLoading ? 'Conectando...' : '⚡ Vincular Webhook Telegram'}
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <button
+            type="button"
+            onClick={handleTestAlert}
+            disabled={testAlertLoading}
+            className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl border border-red-200 shadow-sm transition-all flex items-center gap-1.5 whitespace-nowrap"
+          >
+            {testAlertLoading ? 'Enviando...' : '🔔 Probar Alerta en Telegram'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSetupWebhook}
+            disabled={webhookLoading}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            {webhookLoading ? 'Conectando...' : '⚡ Vincular Webhook'}
+          </button>
+        </div>
       </div>
 
       {webhookStatus && (
