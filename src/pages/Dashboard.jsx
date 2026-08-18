@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react'
-import { useQuery } from 'react-query'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import { useQuery, useQueryClient } from 'react-query'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../services/api'
 import MapComponent from '../components/MapComponent'
@@ -10,6 +10,7 @@ import { setupSocketConnection } from '../services/socket'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [selectedVehicle, setSelectedVehicle] = useState(null)
   const [socket, setSocket] = useState(null)
   const [realTimeData, setRealTimeData] = useState({})
@@ -54,7 +55,7 @@ export default function Dashboard() {
     refetchInterval: 5000,
   })
 
-  // Setup WebSocket
+  // Setup WebSocket — also invalidate vehicles query when real-time data arrives
   useEffect(() => {
     const newSocket = setupSocketConnection()
     setSocket(newSocket)
@@ -64,6 +65,8 @@ export default function Dashboard() {
         ...prev,
         [data.vehicleId]: data
       }))
+      // Also invalidate vehicles cache so the vehicle list refreshes with new position
+      queryClient.invalidateQueries('vehicles')
     })
 
     if (selectedVehicle) {

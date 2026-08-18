@@ -88,26 +88,40 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
   const defaultCenter = [-33.04, -71.61]
   const defaultZoom = 13
 
+  // Compute effective positions merging realTimeData (socket/polling overrides)
+  // This ensures the map always shows the freshest coordinates available
+  const getEffectivePosition = (vehicle) => {
+    const rtData = realTimeData?.[vehicle._id]
+    if (rtData?.gps?.coordinates && isValidCoords(rtData.gps.coordinates)) {
+      return [rtData.gps.coordinates[1], rtData.gps.coordinates[0]]
+    }
+    const coords = vehicle.location?.coordinates
+    if (isValidCoords(coords)) {
+      return [coords[1], coords[0]]
+    }
+    return null
+  }
+
   // Determine map center: selected vehicle's location, else center of valid vehicles
   let mapCenter = defaultCenter
   let mapZoom = defaultZoom
 
   if (selectedVehicle) {
-    const coords = selectedVehicle.location?.coordinates
-    if (isValidCoords(coords)) {
-      mapCenter = [coords[1], coords[0]]
+    const pos = getEffectivePosition(selectedVehicle)
+    if (pos) {
+      mapCenter = pos
       mapZoom = 15
     }
   } else {
     // Auto-center on fleet if no vehicle selected
-    const validVehicles = vehicles.filter(v => isValidCoords(v.location?.coordinates))
+    const validVehicles = vehicles.filter(v => getEffectivePosition(v) !== null)
     if (validVehicles.length === 1) {
-      const c = validVehicles[0].location.coordinates
-      mapCenter = [c[1], c[0]]
+      mapCenter = getEffectivePosition(validVehicles[0])
       mapZoom = 14
     } else if (validVehicles.length > 1) {
-      const lats = validVehicles.map(v => v.location.coordinates[1])
-      const lngs = validVehicles.map(v => v.location.coordinates[0])
+      const positions = validVehicles.map(v => getEffectivePosition(v)).filter(Boolean)
+      const lats = positions.map(p => p[0])
+      const lngs = positions.map(p => p[1])
       mapCenter = [
         (Math.min(...lats) + Math.max(...lats)) / 2,
         (Math.min(...lngs) + Math.max(...lngs)) / 2,
@@ -116,8 +130,8 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
     }
   }
 
-  const vehiclesWithLocation = vehicles.filter(v => isValidCoords(v.location?.coordinates))
-  const vehiclesWithoutLocation = vehicles.filter(v => !isValidCoords(v.location?.coordinates))
+  const vehiclesWithLocation = vehicles.filter(v => isValidCoords(v.location?.coordinates) || !!realTimeData?.[v._id]?.gps?.coordinates)
+  const vehiclesWithoutLocation = vehicles.filter(v => !isValidCoords(v.location?.coordinates) && !realTimeData?.[v._id]?.gps?.coordinates)
 
   return (
     <div className="card h-full min-h-[500px] overflow-hidden">
@@ -148,23 +162,24 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
           />
 
           {vehiclesWithLocation.map((vehicle) => {
-            const coords = vehicle.location.coordinates  // [lng, lat]
-            const position = [coords[1], coords[0]]     // Leaflet: [lat, lng]
             const isSelected = selectedVehicle?._id === vehicle._id
+            const displayPosition = getEffectivePosition(vehicle)
+            if (!displayPosition) return null
 
-            // Merge real-time override if available
+            // Use realtime data for speed/status if available
             const rtData = realTimeData?.[vehicle._id]
-            const displayPosition = rtData?.gps?.coordinates
-              ? [rtData.gps.coordinates[1], rtData.gps.coordinates[0]]
-              : position
-
+            const displaySpeed = rtData?.gps?.speed ?? vehicle.speed ?? 0
+            const displayAddress = rtData?.location?.address || vehicle.location?.address || `${displayPosition[0].toFixed(4)}, ${displayPosition[1].toFixed(4)}`
             const status = vehicle.status || 'offline'
             const color = STATUS_COLORS[status] || STATUS_COLORS.offline
             const icon = makeIcon(color, isSelected)
 
+            // Key includes position so marker re-renders when position changes
+            const markerKey = `${vehicle._id}-${displayPosition[0].toFixed(5)}-${displayPosition[1].toFixed(5)}`
+
             return (
               <Marker
-                key={vehicle._id}
+                key={markerKey}
                 position={displayPosition}
                 icon={icon}
                 eventHandlers={{ click: () => onVehicleSelect && onVehicleSelect(vehicle) }}
@@ -182,10 +197,11 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
                       </span>
                     </p>
                     <p className="text-xs mt-1">
-                      <span className="font-semibold">Velocidad:</span> {vehicle.speed || 0} km/h
+                      <span className="font-semibold">Velocidad:</span> {Math.round(displaySpeed)} km/h
+                      {rtData && <span className="ml-1 text-emerald-600 font-bold text-[10px]">● VIVO</span>}
                     </p>
                     <p className="text-xs mt-1">
-                      <span className="font-semibold">Ubicación:</span> {vehicle.location?.address || `${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}`}
+                      <span className="font-semibold">Ubicación:</span> {displayAddress}
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
                       🕐 {formatAge(vehicle.lastUpdate)}

@@ -444,7 +444,7 @@ export default function Settings() {
               <div className="bg-slate-900/80 p-4 rounded-2xl border border-indigo-500/20">
                 <p className="font-bold text-purple-300 mb-1">3️⃣ Consulta con IA o Comandos</p>
                 <p className="text-slate-300 text-[11px] leading-relaxed">
-                  Usa comandos determinísticos como <code>/vehiculos</code>, <code>/ubicacion</code> o simplemente escribe en texto libre a la IA.
+                  Usa comandos como <code>/vehiculos</code>, <code>/ubicacion</code> o escribe en texto libre para consultar a la IA inteligente.
                 </p>
               </div>
             </div>
@@ -482,6 +482,9 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {/* Panic Alert Recipients */}
+          <BotUsersPanel />
         </div>
       )}
 
@@ -584,6 +587,168 @@ export default function Settings() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── BotUsersPanel: Manage who receives Telegram panic alerts ─────────────────
+function BotUsersPanel() {
+  const queryClient = useQueryClient()
+  const [newUser, setNewUser] = useState({ telegramId: '', telegramUsername: '', role: 'admin' })
+  const [addStatus, setAddStatus] = useState(null)
+
+  const { data: botUsers = [], isLoading } = useQuery('botUsers', async () => {
+    const res = await apiClient.get('/bot/users')
+    return res.data
+  })
+
+  const addMutation = useMutation(
+    async (payload) => {
+      const res = await apiClient.post('/bot/users', payload)
+      return res.data
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries('botUsers')
+        setNewUser({ telegramId: '', telegramUsername: '', role: 'admin' })
+        setAddStatus({ type: 'success', msg: `Usuario @${data.telegramUsername || data.telegramId} registrado. Se le ha enviado un mensaje de bienvenida en Telegram.` })
+        setTimeout(() => setAddStatus(null), 5000)
+      },
+      onError: (err) => {
+        setAddStatus({ type: 'error', msg: err.response?.data?.error || 'Error al registrar usuario' })
+      }
+    }
+  )
+
+  const removeMutation = useMutation(
+    async (telegramId) => apiClient.delete(`/bot/users/${telegramId}`),
+    {
+      onSuccess: () => queryClient.invalidateQueries('botUsers'),
+    }
+  )
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    if (!newUser.telegramId) return
+    addMutation.mutate(newUser)
+  }
+
+  return (
+    <div className="bg-white rounded-3xl p-6 shadow-sm border border-red-100">
+      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
+        <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl">
+          🚨
+        </div>
+        <div>
+          <h3 className="text-base font-black text-slate-900">Telefonos Configurados para Alertas SOS</h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Estas cuentas de Telegram reciben alertas instantaneas cuando se activa un boton de Panico SOS en cualquier vehiculo o persona.
+          </p>
+        </div>
+      </div>
+
+      {/* How to get Telegram ID */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 text-xs">
+        <p className="font-bold text-blue-800 mb-2">Como obtener tu Telegram ID:</p>
+        <ol className="space-y-1 text-blue-700 list-decimal list-inside">
+          <li>Abre Telegram y busca el bot <strong>@userinfobot</strong></li>
+          <li>Escribe <code className="bg-blue-100 px-1 rounded">/start</code> y te dara tu ID numerico</li>
+          <li>Copia ese numero y pega lo aqui abajo</li>
+        </ol>
+      </div>
+
+      {/* Add new bot user */}
+      <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-5">
+        <div>
+          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Telegram ID (numerico)</label>
+          <input
+            type="text"
+            value={newUser.telegramId}
+            onChange={e => setNewUser({ ...newUser, telegramId: e.target.value })}
+            placeholder="Ej: 123456789"
+            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Username (sin @)</label>
+          <input
+            type="text"
+            value={newUser.telegramUsername}
+            onChange={e => setNewUser({ ...newUser, telegramUsername: e.target.value })}
+            placeholder="Ej: yuri_gv"
+            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Rol</label>
+          <select
+            value={newUser.role}
+            onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+            className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-red-500 focus:outline-none"
+          >
+            <option value="admin">Admin (recibe todas las alertas)</option>
+            <option value="operator">Operador (recibe alertas)</option>
+            <option value="viewer">Observador (solo consultas)</option>
+          </select>
+        </div>
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={addMutation.isLoading || !newUser.telegramId}
+            className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+          >
+            {addMutation.isLoading ? '...' : '+ Agregar Alerta SOS'}
+          </button>
+        </div>
+      </form>
+
+      {addStatus && (
+        <div className={`p-3 rounded-xl text-xs font-medium mb-4 ${addStatus.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          {addStatus.type === 'success' ? '✅' : '❌'} {addStatus.msg}
+        </div>
+      )}
+
+      {/* Bot users list */}
+      <div className="space-y-2">
+        {isLoading ? (
+          <p className="text-xs text-slate-400 text-center py-4">Cargando...</p>
+        ) : botUsers.length === 0 ? (
+          <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <p className="text-2xl mb-2">📵</p>
+            <p className="text-xs text-slate-500 font-medium">No hay telefonos configurados para alertas SOS.</p>
+            <p className="text-xs text-slate-400 mt-1">Agrega un Telegram ID arriba para empezar a recibir notificaciones de Panico.</p>
+          </div>
+        ) : (
+          botUsers.map(u => (
+            <div key={u._id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${u.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                  {u.role === 'admin' ? '🛡️' : u.role === 'operator' ? '🔧' : '👁️'}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-800">
+                    {u.telegramUsername ? `@${u.telegramUsername}` : `ID: ${u.telegramId}`}
+                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold ${u.enabled ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {u.enabled ? 'Activo' : 'Desactivado'}
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    ID: {u.telegramId} · Rol: {u.role} · Ultima actividad: {u.lastActivity ? new Date(u.lastActivity).toLocaleDateString('es-CL') : 'Nunca'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { if (confirm('Deshabilitar este usuario de alertas SOS?')) removeMutation.mutate(u.telegramId) }}
+                disabled={removeMutation.isLoading}
+                className="text-[10px] text-red-600 hover:text-red-800 font-bold bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Quitar
+              </button>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }
