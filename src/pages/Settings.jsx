@@ -641,9 +641,7 @@ function BotUsersPanel() {
   const handleSetupWebhook = async () => {
     setWebhookLoading(true)
     try {
-      const baseUrl = window.location.origin.includes('localhost')
-        ? 'https://einsoft-gp-sbcknd.vercel.app'
-        : window.location.origin
+      const baseUrl = 'https://einsoft-gp-sbcknd.vercel.app'
       const res = await apiClient.post('/bot/setup-webhook', { baseUrl })
       setWebhookStatus({ type: 'success', msg: `Webhook configurado exitosamente: ${res.data.webhookUrl}` })
     } catch (err) {
