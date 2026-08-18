@@ -633,19 +633,53 @@ function BotUsersPanel() {
     addMutation.mutate(newUser)
   }
 
+  const [webhookStatus, setWebhookStatus] = useState(null)
+  const [webhookLoading, setWebhookLoading] = useState(false)
+
+  const handleSetupWebhook = async () => {
+    setWebhookLoading(true)
+    try {
+      const baseUrl = window.location.origin.includes('localhost')
+        ? 'https://einsoft-gp-sbcknd.vercel.app'
+        : window.location.origin
+      const res = await apiClient.post('/bot/setup-webhook', { baseUrl })
+      setWebhookStatus({ type: 'success', msg: `Webhook configurado exitosamente: ${res.data.webhookUrl}` })
+    } catch (err) {
+      setWebhookStatus({ type: 'error', msg: err.response?.data?.error || 'No se pudo conectar el Webhook con Telegram' })
+    } finally {
+      setWebhookLoading(false)
+    }
+  }
+
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-red-100">
-      <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
-        <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl">
-          🚨
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center text-xl">
+            🚨
+          </div>
+          <div>
+            <h3 className="text-base font-black text-slate-900">Teléfonos & Operadores para Alertas SOS Telegram</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Configura quiénes reciben notificaciones urgentes con mapa cuando se presione el Botón de Pánico SOS.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-base font-black text-slate-900">Telefonos Configurados para Alertas SOS</h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Estas cuentas de Telegram reciben alertas instantaneas cuando se activa un boton de Panico SOS en cualquier vehiculo o persona.
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={handleSetupWebhook}
+          disabled={webhookLoading}
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 whitespace-nowrap self-start sm:self-center"
+        >
+          {webhookLoading ? 'Conectando...' : '⚡ Vincular Webhook Telegram'}
+        </button>
       </div>
+
+      {webhookStatus && (
+        <div className={`p-3 rounded-xl text-xs font-medium mb-4 ${webhookStatus.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          {webhookStatus.type === 'success' ? '✅' : '❌'} {webhookStatus.msg}
+        </div>
+      )}
 
       {/* How to get Telegram ID */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 text-xs">
