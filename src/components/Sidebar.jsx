@@ -2,71 +2,77 @@ import React from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 
 // ─── Menú por rol ──────────────────────────────────────────────────────────────
-// Cada ítem puede tener allowedRoles: si está vacío o no existe, solo admin lo ve.
 const ALL_MENU_ITEMS = [
   {
     label: 'Panel',
     icon: '📊',
     path: '/',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
   },
   {
     label: 'Clientes',
     icon: '🏢',
     path: '/companies',
-    allowedRoles: ['admin'], // Solo superadmin
+    allowedRoles: ['superadmin', 'admin'],
   },
   {
     label: 'Vehículos',
     icon: '🚗',
     path: '/vehicles',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
   },
   {
     label: 'Rastreo Personal',
     icon: '📱',
     path: '/people-tracker',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent'],
     badge: 'SOS',
   },
   {
     label: 'Reportes',
     icon: '📈',
     path: '/reports',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
   },
   {
     label: 'Alertas',
     icon: '⚠️',
     path: '/alerts',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent'],
   },
   {
     label: 'Geocercas',
     icon: '🗺️',
     path: '/geofences',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent'],
   },
   {
     label: 'Usuarios',
     icon: '👥',
     path: '/users',
-    allowedRoles: ['admin', 'fleet_manager'], // Solo gestión de flota
+    allowedRoles: ['superadmin', 'admin', 'supervisor', 'auditor', 'fleet_manager'],
   },
   {
     label: 'Configuración',
     icon: '⚙️',
     path: '/settings',
-    allowedRoles: ['admin', 'fleet_manager', 'independent'],
+    allowedRoles: ['superadmin', 'admin', 'fleet_manager', 'independent'],
   },
 ]
 
 // Etiquetas de rol para mostrar en el sidebar
 const ROLE_DISPLAY = {
-  admin: { label: 'Administrador', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
-  fleet_manager: { label: 'Gestor de Flota', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  independent: { label: 'Plan Familiar', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
-  driver: { label: 'Conductor', badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  superadmin: { label: '🔴 Superadmin', badge: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  admin: { label: '🔴 Administrador', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  operator: { label: '🔴 Operador GPS', badge: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30' },
+  supervisor: { label: '🔴 Supervisor', badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' },
+  driver: { label: '🟠 Conductor', badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+  mobile_gps_user: { label: '🟢 Celular GPS', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+  client: { label: '🟠 Cliente Consulta', badge: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+  auditor: { label: '🟡 Auditor (Lectura)', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+  // Legacy support
+  fleet_manager: { label: '🔴 Administrador', badge: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+  independent: { label: '🟢 Celular GPS', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
 }
 
 export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
@@ -74,11 +80,14 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
   const location = useLocation()
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const role = user.role || 'independent'
-  const roleInfo = ROLE_DISPLAY[role] || ROLE_DISPLAY.independent
+  let role = user.role || 'client'
+  if (role === 'fleet_manager') role = 'admin'
+  if (role === 'independent') role = 'mobile_gps_user'
+  
+  const roleInfo = ROLE_DISPLAY[user.role] || ROLE_DISPLAY[role] || ROLE_DISPLAY.client
 
   // Filtrar menú estrictamente por rol
-  const menuItems = ALL_MENU_ITEMS.filter(item => item.allowedRoles.includes(role))
+  const menuItems = ALL_MENU_ITEMS.filter(item => item.allowedRoles.includes(user.role) || item.allowedRoles.includes(role))
 
   const handleLogoutClick = () => {
     if (typeof onLogout === 'function') onLogout()

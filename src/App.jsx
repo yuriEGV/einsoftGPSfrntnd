@@ -13,6 +13,7 @@ import Geofences from './pages/Geofences'
 import Companies from './pages/Companies'
 import Users from './pages/Users'
 import DriverDashboard from './pages/DriverDashboard'
+import MobileGpsDashboard from './pages/MobileGpsDashboard'
 import PublicTracker from './pages/PublicTracker'
 import PeopleTracker from './pages/PeopleTracker'
 import PublicPersonTracker from './pages/PublicPersonTracker'
@@ -30,23 +31,35 @@ const queryClient = new QueryClient({
   },
 })
 
+// Normalize role helper
+function getNormalizedRole(user) {
+  let r = user?.role || ''
+  if (r === 'fleet_manager') return 'admin'
+  if (r === 'independent') return 'mobile_gps_user'
+  return r
+}
+
 // ─── RoleGuard: redirige si el usuario no tiene el rol requerido ──────────────
 function RoleGuard({ allowedRoles, children, fallback = '/' }) {
   const user = JSON.parse(safeStorage.get('user') || '{}')
   const token = safeStorage.get('token')
 
   if (!token || !user.role) return <Navigate to="/login" replace />
-  if (!allowedRoles.includes(user.role)) return <Navigate to={fallback} replace />
+  const currentRole = getNormalizedRole(user)
+  if (!allowedRoles.includes(user.role) && !allowedRoles.includes(currentRole)) {
+    return <Navigate to={fallback} replace />
+  }
   return children
 }
 
-// ─── AuthGuard: redirige a login si no autenticado, a /driver si es conductor ─
+// ─── AuthGuard: redirige a login si no autenticado, a /driver o /mobile-gps según rol ─
 function AuthGuard({ children }) {
   const user = JSON.parse(safeStorage.get('user') || '{}')
   const token = safeStorage.get('token')
 
   if (!token || !user.role) return <Navigate to="/login" replace />
   if (user.role === 'driver') return <Navigate to="/driver" replace />
+  if (user.role === 'mobile_gps_user' || user.role === 'independent') return <Navigate to="/mobile-gps" replace />
   return children
 }
 
@@ -66,6 +79,7 @@ function App() {
   }
 
   const user = JSON.parse(safeStorage.get('user') || '{}')
+  const normalizedRole = getNormalizedRole(user)
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -88,31 +102,41 @@ function App() {
             }
           />
 
-          {/* ── Layout principal — todos excepto drivers ── */}
+          {/* ── Dashboard del Usuario Celular GPS — acceso exclusivo para móviles en terreno ── */}
+          <Route
+            path="/mobile-gps"
+            element={
+              isAuthenticated && (user.role === 'mobile_gps_user' || user.role === 'independent')
+                ? <MobileGpsDashboard onLogout={handleLogout} />
+                : <Navigate to={isAuthenticated ? '/' : '/login'} replace />
+            }
+          />
+
+          {/* ── Layout principal — para roles de administración, monitoreo, supervisión, cliente y auditor ── */}
           <Route
             path="/*"
             element={
               <AuthGuard>
                 <MainLayout onLogout={handleLogout}>
                   <Routes>
-                    {/* Panel principal — admin, fleet_manager, independent */}
+                    {/* Panel principal */}
                     <Route path="/" element={<Dashboard />} />
 
-                    {/* Empresas/Clientes — solo superadmin (admin sin empresa) */}
+                    {/* Empresas/Clientes — Superadmin y Admin */}
                     <Route
                       path="/companies"
                       element={
-                        <RoleGuard allowedRoles={['admin']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin']}>
                           <Companies />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Vehículos — admin, fleet_manager, independent */}
+                    {/* Vehículos — Superadmin, Admin, Operador, Supervisor, Cliente, Auditor */}
                     <Route
                       path="/vehicles"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent']}>
                           <Vehicles />
                         </RoleGuard>
                       }
@@ -120,67 +144,67 @@ function App() {
                     <Route
                       path="/vehicles/:id"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent']}>
                           <VehicleDetail />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Rastreo Personal & Celulares — admin, fleet_manager, independent */}
+                    {/* Rastreo Personal & Celulares */}
                     <Route
                       path="/people-tracker"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
                           <PeopleTracker />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Reportes — admin, fleet_manager, independent */}
+                    {/* Reportes */}
                     <Route
                       path="/reports"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent']}>
                           <Reports />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Alertas — admin, fleet_manager, independent */}
+                    {/* Alertas */}
                     <Route
                       path="/alerts"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
                           <Alerts />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Geocercas — admin, fleet_manager, independent */}
+                    {/* Geocercas */}
                     <Route
                       path="/geofences"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
                           <Geofences />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Usuarios — solo admin y fleet_manager */}
+                    {/* Usuarios */}
                     <Route
                       path="/users"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager']} fallback="/">
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'supervisor', 'auditor', 'fleet_manager']} fallback="/">
                           <Users />
                         </RoleGuard>
                       }
                     />
 
-                    {/* Configuración — admin, fleet_manager, independent */}
+                    {/* Configuración */}
                     <Route
                       path="/settings"
                       element={
-                        <RoleGuard allowedRoles={['admin', 'fleet_manager', 'independent']}>
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'fleet_manager', 'independent']}>
                           <Settings />
                         </RoleGuard>
                       }

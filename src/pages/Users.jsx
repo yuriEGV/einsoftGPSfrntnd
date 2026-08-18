@@ -1,45 +1,70 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
+import { usePermissions } from '../hooks/usePermissions'
 
 const ROLES = [
-  { value: 'admin', label: 'Administrador (Global)' },
-  { value: 'fleet_manager', label: 'Gestor de Flota (Empresa)' },
-  { value: 'independent', label: 'Particular / Plan Familiar' },
-  { value: 'driver', label: 'Conductor' },
+  { value: 'superadmin', label: '🔴 Superadministrador (Control Total)' },
+  { value: 'admin', label: '🔴 Administrador (Organización/Flota)' },
+  { value: 'operator', label: '🔴 Operador GPS (Centro de Monitoreo)' },
+  { value: 'supervisor', label: '🔴 Supervisor (Supervisión y Análisis)' },
+  { value: 'driver', label: '🟠 Conductor (Vehículo asignado)' },
+  { value: 'mobile_gps_user', label: '🟢 Usuario Celular GPS (Móvil en Terreno / SOS)' },
+  { value: 'client', label: '🟠 Cliente / Consulta (Solo lectura autorizada)' },
+  { value: 'auditor', label: '🟡 Auditor (Solo lectura global)' },
 ]
 
 const ROLE_COLORS = {
-  admin: 'bg-purple-100 text-purple-700',
-  fleet_manager: 'bg-blue-100 text-blue-700',
-  independent: 'bg-indigo-100 text-indigo-700',
-  driver: 'bg-emerald-100 text-emerald-700',
+  superadmin: 'bg-red-100 text-red-700 border-red-300',
+  admin: 'bg-purple-100 text-purple-700 border-purple-300',
+  operator: 'bg-cyan-100 text-cyan-700 border-cyan-300',
+  supervisor: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+  driver: 'bg-amber-100 text-amber-700 border-amber-300',
+  mobile_gps_user: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+  client: 'bg-blue-100 text-blue-700 border-blue-300',
+  auditor: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  // Legacy
+  fleet_manager: 'bg-purple-100 text-purple-700 border-purple-300',
+  independent: 'bg-emerald-100 text-emerald-700 border-emerald-300',
 }
 
 const ROLE_LABELS = {
-  admin: '🔑 Administrador',
-  fleet_manager: '🏢 Gestor de Flota',
-  independent: '👤 Particular / Plan Familiar',
+  superadmin: '🔴 Superadministrador',
+  admin: '🔴 Administrador',
+  operator: '🔴 Operador GPS',
+  supervisor: '🔴 Supervisor',
   driver: '🚗 Conductor',
+  mobile_gps_user: '📱 Celular GPS',
+  client: '👁️ Cliente Consulta',
+  auditor: '📋 Auditor',
+  // Legacy
+  fleet_manager: '🔴 Administrador',
+  independent: '📱 Celular GPS',
 }
 
 export default function Users() {
   const queryClient = useQueryClient()
+  const { role: myRole, isSuperAdmin, isAdmin, isReadOnly, canWrite } = usePermissions()
+
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'independent',
+    role: 'mobile_gps_user',
     companyId: '',
+    phone: '',
+    imei: '',
   })
 
   // Edit modal state
-  const [editUser, setEditUser] = useState(null) // null = closed
+  const [editUser, setEditUser] = useState(null)
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-    role: 'independent',
+    role: 'mobile_gps_user',
     status: 'active',
+    phone: '',
+    imei: '',
     newPassword: '',
   })
 
@@ -54,16 +79,21 @@ export default function Users() {
   })
 
   const creator = JSON.parse(localStorage.getItem('user') || '{}')
-  const isAdmin = creator.role === 'admin'
+
+  // Filter available roles for creation based on creator's role
+  const availableRoles = ROLES.filter(r => {
+    if (r.value === 'superadmin') return isSuperAdmin
+    return true
+  })
 
   const createMutation = useMutation(
     () => apiClient.post('/users', {
       ...form,
-      companyId: form.role === 'independent' ? undefined : form.companyId,
+      companyId: form.role === 'mobile_gps_user' && !form.companyId ? undefined : form.companyId,
     }),
     {
       onSuccess: () => {
-        setForm({ name: '', email: '', password: '', role: 'independent', companyId: '' })
+        setForm({ name: '', email: '', password: '', role: 'mobile_gps_user', companyId: '', phone: '', imei: '' })
         queryClient.invalidateQueries('users')
         alert('✅ Usuario creado correctamente')
       },
@@ -119,8 +149,8 @@ export default function Users() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name || !form.email || !form.password) return
-    if (isAdmin && form.role !== 'independent' && form.role !== 'admin' && !form.companyId) {
-      return alert('Debe seleccionar una empresa para roles de gestión corporativa')
+    if (isAdmin && !['mobile_gps_user', 'superadmin'].includes(form.role) && !form.companyId) {
+      return alert('Debe seleccionar una empresa para roles corporativos')
     }
     createMutation.mutate()
   }
@@ -132,6 +162,8 @@ export default function Users() {
       email: u.email,
       role: u.role,
       status: u.status || 'active',
+      phone: u.phone || '',
+      imei: u.imei || '',
       newPassword: '',
     })
   }
@@ -143,6 +175,8 @@ export default function Users() {
       email: editForm.email,
       role: editForm.role,
       status: editForm.status,
+      phone: editForm.phone,
+      imei: editForm.imei,
     }
     updateMutation.mutate({ id: editUser._id, data: payload })
   }
@@ -158,113 +192,139 @@ export default function Users() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h1>
+          <p className="text-xs text-gray-500 mt-1">Control de acceso y perfiles de EINSoft GPS</p>
+        </div>
         <p className="text-sm text-gray-500">
           Total: <span className="font-bold">{users.length}</span> usuarios
         </p>
       </div>
 
-      {/* CREATE FORM */}
-      <div className="card">
-        <h2 className="card-header">{isAdmin ? 'Registrar nuevo usuario en el sistema' : 'Crear usuario en esta empresa'}</h2>
-        <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 text-sm">
-          {isAdmin && (
+      {/* Auditor Read-only banner */}
+      {isReadOnly && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 flex items-center gap-3 text-yellow-800 text-sm">
+          <span className="text-xl">🟡</span>
+          <div>
+            <span className="font-bold">Modo Auditor / Consulta:</span> Tienes permisos de solo lectura. No puedes crear, modificar ni eliminar usuarios.
+          </div>
+        </div>
+      )}
+
+      {/* CREATE FORM - Only if canWrite */}
+      {canWrite && (
+        <div className="card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-slate-900 text-white px-6 py-3 font-bold text-sm">
+            {isSuperAdmin ? '⚡ Registrar nuevo usuario en la plataforma' : '⚡ Crear usuario en esta organización'}
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
+            {isAdmin && (
+              <div>
+                <label className="block text-gray-700 mb-1 font-semibold text-xs">Organización / Empresa</label>
+                <select
+                  value={form.companyId}
+                  onChange={(e) => setForm(prev => ({ ...prev, companyId: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
+                >
+                  <option value="">🏢 Sin Empresa Asignada</option>
+                  {companies.map(c => (
+                    <option key={c._id} value={c._id}>🏢 {c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
-              <label className="block text-gray-700 mb-1 font-semibold">Empresa / Cliente</label>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">Nombre Completo *</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="Ej: Daniel Arp"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">Correo Electrónico *</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="correo@ejemplo.com"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">Contraseña *</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="8+ caracteres"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">Rol Asignado *</label>
               <select
-                value={form.companyId}
-                onChange={(e) => {
-                  const companyId = e.target.value
-                  if (companyId) {
-                    setForm(prev => ({
-                      ...prev,
-                      companyId,
-                      role: prev.role === 'independent' ? 'fleet_manager' : prev.role,
-                    }))
-                  } else {
-                    setForm(prev => ({ ...prev, companyId: '', role: 'independent' }))
-                  }
-                }}
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
               >
-                <option value="">🏠 Sin Empresa (Particular / Plan Familiar)</option>
-                {companies.map(c => (
-                  <option key={c._id} value={c._id}>🏢 {c.name}</option>
+                {availableRoles.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
             </div>
-          )}
-          <div>
-            <label className="block text-gray-700 mb-1 font-semibold">Nombre Completo</label>
-            <input
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Ej: Daniel Arp"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1 font-semibold">Correo Electrónico</label>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="correo@ejemplo.com"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1 font-semibold">Contraseña</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="8+ caracteres"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 mb-1 font-semibold">Rol Asignado</label>
-            <select
-              value={form.role}
-              onChange={(e) => {
-                const role = e.target.value
-                if (role === 'independent') {
-                  setForm(prev => ({ ...prev, role, companyId: '' }))
-                } else {
-                  setForm(prev => ({ ...prev, role }))
-                }
-              }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={createMutation.isLoading}
-              className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-lg shadow-emerald-500/10 transition-all disabled:opacity-50"
-            >
-              {createMutation.isLoading ? '...' : '🚀 Crear Usuario'}
-            </button>
-          </div>
-        </form>
-      </div>
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">Teléfono Móvil (Opcional)</label>
+              <input
+                type="text"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="+56 9 1234 5678"
+              />
+            </div>
+            {['mobile_gps_user', 'driver'].includes(form.role) && (
+              <div>
+                <label className="block text-gray-700 mb-1 font-semibold text-xs">IMEI / Device ID (Opcional)</label>
+                <input
+                  type="text"
+                  value={form.imei}
+                  onChange={(e) => setForm({ ...form, imei: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                  placeholder="Ej: 867543029182736"
+                />
+              </div>
+            )}
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={createMutation.isLoading}
+                className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-lg shadow-emerald-500/10 transition-all disabled:opacity-50"
+              >
+                {createMutation.isLoading ? 'Creando...' : '🚀 Crear Usuario'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* USERS TABLE */}
-      <div className="card">
-        <h2 className="card-header">Usuarios del sistema</h2>
+      <div className="card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+          <h2 className="font-bold text-gray-900 text-base">Directorio de Usuarios</h2>
+          <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-semibold">
+            {users.length} Registros
+          </span>
+        </div>
         {isLoading ? (
-          <div className="p-6 text-sm text-gray-500">Cargando...</div>
+          <div className="p-6 text-sm text-gray-500">Cargando usuarios...</div>
         ) : users.length === 0 ? (
-          <div className="p-6 text-sm text-gray-500">No hay usuarios todavía.</div>
+          <div className="p-6 text-sm text-gray-500">No hay usuarios registrados.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -274,25 +334,31 @@ export default function Users() {
                   <th className="px-4 py-3 text-left text-gray-700 font-semibold">Correo</th>
                   <th className="px-4 py-3 text-left text-gray-700 font-semibold">Empresa</th>
                   <th className="px-4 py-3 text-left text-gray-700 font-semibold">Rol</th>
+                  <th className="px-4 py-3 text-left text-gray-700 font-semibold">Teléfono / IMEI</th>
                   <th className="px-4 py-3 text-left text-gray-700 font-semibold">Estado</th>
-                  <th className="px-4 py-3 text-right text-gray-700 font-semibold">Acciones</th>
+                  {canWrite && <th className="px-4 py-3 text-right text-gray-700 font-semibold">Acciones</th>}
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
                   <tr key={u._id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium">{u.name}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
                     <td className="px-4 py-3 text-gray-600">{u.email}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">
                       {u.company?.name || <span className="italic text-gray-400">Sin empresa</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${ROLE_COLORS[u.role] || 'bg-gray-100 text-gray-700'}`}>
                         {ROLE_LABELS[u.role] || u.role}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {u.phone && <div>📞 {u.phone}</div>}
+                      {u.imei && <div className="font-mono text-[10px] text-slate-400">IMEI: {u.imei}</div>}
+                      {!u.phone && !u.imei && <span className="text-gray-300">--</span>}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full font-semibold ${
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-semibold ${
                         u.status === 'active' ? 'bg-green-100 text-green-700' :
                         u.status === 'suspended' ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-600'
@@ -300,29 +366,31 @@ export default function Users() {
                         {u.status === 'active' ? '● Activo' : u.status === 'suspended' ? '● Suspendido' : u.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => openEditModal(u)}
-                          className="px-3 py-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-all"
-                        >
-                          ✏️ Editar
-                        </button>
-                        {u._id !== creator.id && (
+                    {canWrite && (
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => {
-                              if (window.confirm(`¿Estás seguro de eliminar a ${u.name}?`)) {
-                                deleteMutation.mutate(u._id)
-                              }
-                            }}
-                            disabled={deleteMutation.isLoading}
-                            className="px-3 py-1.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all disabled:opacity-50"
+                            onClick={() => openEditModal(u)}
+                            className="px-3 py-1.5 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-all"
                           >
-                            🗑️ Eliminar
+                            ✏️ Editar
                           </button>
-                        )}
-                      </div>
-                    </td>
+                          {u._id !== creator.id && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`¿Estás seguro de eliminar a ${u.name}?`)) {
+                                  deleteMutation.mutate(u._id)
+                                }
+                              }}
+                              disabled={deleteMutation.isLoading}
+                              className="px-3 py-1.5 text-xs font-bold bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg transition-all disabled:opacity-50"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -332,7 +400,7 @@ export default function Users() {
       </div>
 
       {/* EDIT MODAL */}
-      {editUser && (
+      {editUser && canWrite && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex items-center justify-between">
@@ -347,7 +415,6 @@ export default function Users() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Profile form */}
               <form onSubmit={handleEditSubmit} className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Nombre Completo</label>
@@ -369,6 +436,16 @@ export default function Users() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Teléfono</label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none text-sm transition-all"
+                    placeholder="+56 9 1234 5678"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Rol</label>
@@ -377,7 +454,7 @@ export default function Users() {
                       onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                       className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:border-blue-500 outline-none text-sm bg-white"
                     >
-                      {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      {availableRoles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -421,7 +498,6 @@ export default function Users() {
                     {resetPasswordMutation.isLoading ? '...' : '🔑 Cambiar'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">⚠️ El usuario deberá iniciar sesión nuevamente con la nueva contraseña.</p>
               </div>
             </div>
           </div>
@@ -430,3 +506,4 @@ export default function Users() {
     </div>
   )
 }
+
