@@ -42,20 +42,30 @@ export default function DownloadApp() {
 
           <div className="space-y-2 pt-2">
             <a
-              href="https://github.com/traccar/traccar-client-android/releases/download/v8.1/traccar-client-release.apk"
-              download
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 text-sm"
-            >
-              📥 Descarga Directa de Archivo .APK
-            </a>
-
-            <a
               href="https://play.google.com/store/apps/details?id=org.traccar.client"
               target="_blank"
               rel="noreferrer"
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 border border-slate-700 transition-all text-xs"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 text-sm"
             >
               🟢 Descargar desde Google Play Store
+            </a>
+
+            <a
+              href="https://www.traccar.org/client/"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all text-xs shadow"
+            >
+              🌐 Descarga Directa APK (Web Oficial)
+            </a>
+
+            <a
+              href="https://github.com/traccar/traccar-client/releases"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium rounded-2xl text-center flex items-center justify-center gap-2 border border-slate-700 transition-all text-xs"
+            >
+              📦 Ver Versiones en GitHub Releases
             </a>
           </div>
         </div>
