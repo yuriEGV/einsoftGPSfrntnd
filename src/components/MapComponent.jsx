@@ -16,7 +16,28 @@ L.Icon.Default.mergeOptions({
 })
 
 // ─── Custom colored icons per vehicle status ───────────────────────────────────
-function makeIcon(color, selected = false) {
+function makeIcon(color, selected = false, isAlert = false) {
+  if (isAlert) {
+    // 🚨 Pulsating radar emergency marker for vehicles in panic/alert
+    const svg = encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 50">
+        <circle cx="20" cy="20" r="18" fill="#ef4444" opacity="0.4">
+          <animate attributeName="r" values="14;20;14" dur="1s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.7;0.1;0.7" dur="1s" repeatCount="indefinite"/>
+        </circle>
+        <path d="M20 2C11.2 2 4 9.2 4 18c0 12 16 30 16 30s16-18 16-30c0-8.8-7.2-16-16-16z" fill="#dc2626" stroke="#ffffff" stroke-width="2"/>
+        <circle cx="20" cy="18" r="8" fill="#ffffff"/>
+        <text x="20" y="23" font-size="14" font-family="Arial" font-weight="900" fill="#dc2626" text-anchor="middle">!</text>
+      </svg>
+    `)
+    return L.icon({
+      iconUrl: `data:image/svg+xml,${svg}`,
+      iconSize: [44, 55],
+      iconAnchor: [22, 55],
+      popupAnchor: [0, -50],
+    })
+  }
+
   const size = selected ? 38 : 30
   const svg = encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36">
@@ -171,11 +192,12 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
             const displaySpeed = rtData?.gps?.speed ?? vehicle.speed ?? 0
             const displayAddress = rtData?.location?.address || vehicle.location?.address || `${displayPosition[0].toFixed(4)}, ${displayPosition[1].toFixed(4)}`
             const status = vehicle.status || 'offline'
+            const isAlert = status === 'alert' || !!rtData?.alert
             const color = STATUS_COLORS[status] || STATUS_COLORS.offline
-            const icon = makeIcon(color, isSelected)
+            const icon = makeIcon(color, isSelected, isAlert)
 
             // Key includes position so marker re-renders when position changes
-            const markerKey = `${vehicle._id}-${displayPosition[0].toFixed(5)}-${displayPosition[1].toFixed(5)}`
+            const markerKey = `${vehicle._id}-${status}-${displayPosition[0].toFixed(5)}-${displayPosition[1].toFixed(5)}`
 
             return (
               <Marker
@@ -183,17 +205,22 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
                 position={displayPosition}
                 icon={icon}
                 eventHandlers={{ click: () => onVehicleSelect && onVehicleSelect(vehicle) }}
-                zIndexOffset={isSelected ? 1000 : 0}
+                zIndexOffset={isAlert ? 2000 : isSelected ? 1000 : 0}
               >
-                <Popup minWidth={200}>
+                <Popup minWidth={220}>
                   <div className="text-sm p-1">
+                    {isAlert && (
+                      <div className="mb-2 p-1.5 bg-red-600 text-white font-black text-center text-xs rounded animate-pulse">
+                        🚨 ¡EMERGENCIA SOS ACTIVA!
+                      </div>
+                    )}
                     <p className="font-black text-gray-900 text-base">{vehicle.licensePlate}</p>
                     <p className="text-gray-600">{vehicle.make} {vehicle.model} {vehicle.year && `• ${vehicle.year}`}</p>
                     <hr className="my-1.5" />
                     <p className="text-xs">
                       <span className="font-semibold">Estado:</span>{' '}
-                      <span className={`font-bold capitalize ${status === 'active' ? 'text-emerald-600' : status === 'alert' ? 'text-red-600' : 'text-gray-500'}`}>
-                        {status === 'active' ? '🟢 En ruta' : status === 'alert' ? '🔴 Alerta' : '⚪ Detenido'}
+                      <span className={`font-bold capitalize ${status === 'active' ? 'text-emerald-600' : isAlert ? 'text-red-600 font-black' : 'text-gray-500'}`}>
+                        {isAlert ? '🚨 ¡EN PÁNICO / ALERTA!' : status === 'active' ? '🟢 En ruta' : '⚪ Detenido'}
                       </span>
                     </p>
                     <p className="text-xs mt-1">

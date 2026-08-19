@@ -76,7 +76,7 @@ export const ROLE_DEFAULT_PERMISSIONS = {
     'device.own.view', 'notifications.own', 'profile.own.update'
   ],
   client: [
-    'vehicles.view', 'locations.view', 'reports.view'
+    'vehicles.view', 'locations.view', 'alerts.view', 'reports.view'
   ],
   auditor: [
     'users.view', 'vehicles.view', 'devices.view', 'locations.view', 'locations.history',

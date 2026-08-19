@@ -280,6 +280,19 @@ export default function VehicleDetail() {
     },
   )
 
+  // Resolve emergency / panic alert
+  const resolveAlertMutation = useMutation(
+    () => apiClient.put(`/vehicles/${id}`, { status: 'active' }),
+    {
+      onSuccess: () => {
+        refetch()
+        queryClient.invalidateQueries(['vehicle', id])
+        queryClient.invalidateQueries('vehicles')
+        queryClient.invalidateQueries('alerts')
+      },
+    },
+  )
+
   if (isLoading) {
     return (
       <div className="card animate-pulse">
@@ -302,10 +315,9 @@ export default function VehicleDetail() {
 
   const vehicle = data
   const imei = vehicle.deviceIMEI
+  const isAlert = vehicle.status === 'alert'
 
   // ─── Smart Tag detection ──────────────────────────────────────────────────
-  // Smart Tags (BLE beacons like XTAG11, TomVista, etc.) have NO onboard sensors.
-  // They don't measure fuel, RPM, or real motion. GPS speed is always noise drift.
   const isSmartTag = (() => {
     const m = (vehicle.deviceModel || '').toLowerCase()
     return ['xtag', 'smart tag', 'smarttag', 'beacon', 'tomvista', 'tagx',
@@ -317,7 +329,7 @@ export default function VehicleDetail() {
   const mapVehicle = isAutoTracking && liveLocationStats
     ? {
         ...vehicle,
-        status: 'active',
+        status: isAlert ? 'alert' : 'active',
         location: {
           ...vehicle.location,
           coordinates: [liveLocationStats.lng, liveLocationStats.lat],
@@ -330,10 +342,8 @@ export default function VehicleDetail() {
   const uptime = vehicle.lastUpdate
     ? Math.round((Date.now() - new Date(vehicle.lastUpdate)) / 60000)
     : null
-  // Smart Tags never have fuel sensors — show null to trigger 'N/A' display
   const fuelLevel = isSmartTag ? null : (vehicle.sensors?.fuel ?? null)
   const odometer = vehicle.odometer || 0
-  // Smart Tags: ignore DB speed (GPS noise). Show live speed only when gateway active.
   const speed = isSmartTag
     ? (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0)
     : (vehicle.speed || (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0))
@@ -349,8 +359,32 @@ export default function VehicleDetail() {
         </button>
       </div>
 
+      {/* ===== 🚨 BANNER DE ALERTA DE EMERGENCIA / PÁNICO ===== */}
+      {isAlert && (
+        <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white p-5 rounded-2xl shadow-xl shadow-red-900/30 flex flex-col md:flex-row items-center justify-between gap-4 border-2 border-red-400 animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+              🚨
+            </div>
+            <div>
+              <h2 className="text-lg font-black tracking-wide">¡ALERTA DE PÁNICO SOS ACTIVA EN ESTA UNIDAD!</h2>
+              <p className="text-sm text-red-100 font-medium">
+                El conductor o sensor ha activado una señal de auxilio crítico. La unidad requiere atención inmediata.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => resolveAlertMutation.mutate()}
+            disabled={resolveAlertMutation.isLoading}
+            className="px-5 py-2.5 bg-white text-red-700 hover:bg-red-50 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex-shrink-0"
+          >
+            {resolveAlertMutation.isLoading ? 'Atendiendo...' : '✓ Atender y Resolver Emergencia'}
+          </button>
+        </div>
+      )}
+
       {/* ===== INFO PRINCIPAL ===== */}
-      <div className="card overflow-hidden">
+      <div className={`card overflow-hidden ${isAlert ? 'border-2 border-red-500 shadow-xl shadow-red-900/10' : ''}`}>
         <div className="card-header flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl">🚗</span>
@@ -434,7 +468,11 @@ export default function VehicleDetail() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
             <div>
               <h2 className="text-sm font-semibold text-gray-700 mb-2">Estado</h2>
-              <p className="text-sm"><span className="font-medium capitalize">{vehicle.status}</span></p>
+              <p className="text-sm">
+                <span className={`font-bold px-2.5 py-1 rounded-full text-xs uppercase tracking-wide inline-flex items-center gap-1 ${isAlert ? 'bg-red-600 text-white animate-pulse' : vehicle.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
+                  {isAlert ? '🚨 ¡EN PÁNICO / EMERGENCIA!' : vehicle.status === 'active' ? '🟢 Activo (En ruta)' : '⚪ Detenido'}
+                </span>
+              </p>
               <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{speed} km/h{isSmartTag && speed === 0 ? ' (detenido)' : ''}</span></p>
               <p className="text-sm text-gray-600 mt-1">Odómetro: <span className="font-medium">{odometer} km</span></p>
               {!isSmartTag && fuelLevel != null && (
