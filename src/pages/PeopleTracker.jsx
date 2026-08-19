@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
+import { getDeviceConnectionStatus } from '../utils/deviceState'
 
 // Helper component to smoothly center Leaflet map on target person
 function ChangeView({ center, zoom }) {
@@ -258,9 +259,15 @@ export default function PeopleTracker() {
                         🚨 PÁNICO SOS
                       </span>
                     ) : (
-                      <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
-                        🟢 Normal
-                      </span>
+                      (() => {
+                        const conn = getDeviceConnectionStatus(person.lastSeen || person.updatedAt)
+                        return (
+                          <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full flex items-center gap-1 ${conn.badgeClass}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${conn.dotClass}`}></span>
+                            {conn.label}
+                          </span>
+                        )
+                      })()
                     )}
                   </div>
 
@@ -314,6 +321,26 @@ export default function PeopleTracker() {
                       📱 Abrir en Celular / QR
                     </button>
 
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        try {
+                          await apiClient.post('/telemetry/command', {
+                            deviceId: person.code || person._id,
+                            command: 'LOCATE_NOW',
+                            targetType: 'person',
+                          })
+                          alert(`📍 Solicitud de localización enviada a ${person.name}`)
+                        } catch (err) {
+                          alert(`Error: ${err.message}`)
+                        }
+                      }}
+                      className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition"
+                      title="Solicitar actualización GPS inmediata al celular"
+                    >
+                      📍 Ping
+                    </button>
+
                     {hasRealCoords && (
                       <button
                         onClick={(e) => {
@@ -323,7 +350,7 @@ export default function PeopleTracker() {
                         }}
                         className="px-3 py-1.5 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition"
                       >
-                        📍 Ubicar en el Mapa
+                        🗺️ Ver Mapa
                       </button>
                     )}
 

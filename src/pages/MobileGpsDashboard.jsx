@@ -3,6 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
+import { telemetryClient } from '../services/telemetryClient'
+import { getDeviceConnectionStatus } from '../utils/deviceState'
 
 // Simple flyTo helper for Leaflet
 function MapUpdater({ center }) {
@@ -24,13 +26,11 @@ const customIcon = L.icon({
 
 export default function MobileGpsDashboard({ onLogout }) {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
-  const [coords, setCoords] = useState(null)
-  const [accuracy, setAccuracy] = useState(null)
-  const [speed, setSpeed] = useState(null)
-  const [batteryLevel, setBatteryLevel] = useState(null)
-  const [isBroadcasting, setIsBroadcasting] = useState(true)
-  const [lastSync, setLastSync] = useState(null)
-  const [syncStatus, setSyncStatus] = useState('Conectando GPS...')
+  const [telemetry, setTelemetry] = useState(null)
+  const [lastPacketTime, setLastPacketTime] = useState(null)
+  const [offlineCount, setOfflineCount] = useState(0)
+  const [isNetOnline, setIsNetOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [packetsSentTotal, setPacketsSentTotal] = useState(0)
   
   // Panic Alert state & countdown
   const [panicCountdown, setPanicCountdown] = useState(null)
@@ -38,64 +38,39 @@ export default function MobileGpsDashboard({ onLogout }) {
   const [panicMessage, setPanicMessage] = useState('')
   const countdownTimer = useRef(null)
 
-  // Watch GPS Geolocation
+  // Start Telemetry Client on mount
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setSyncStatus('Geolocalización no soportada en este navegador')
-      return
-    }
+    telemetryClient.start({
+      deviceId: user.imei || user.deviceId || user.id || 'MOBILE-GPS',
+      userId: user.id,
+      trackerCode: user.personTracker,
+    })
 
-    const watchId = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        const acc = pos.coords.accuracy
-        const spd = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0
-
-        setCoords([lat, lng])
-        setAccuracy(Math.round(acc))
-        setSpeed(spd)
-        setLastSync(new Date())
-        setSyncStatus('🟢 GPS Activo y transmitiendo')
-
-        // Send location report to backend
-        try {
-          await apiClient.post('/people-trackers/report', {
-            latitude: lat,
-            longitude: lng,
-            accuracy: acc,
-            speed: spd,
-            battery: batteryLevel,
-          }).catch(() => {})
-        } catch {
-          // Silent catch for background updates
-        }
-      },
-      (err) => {
-        console.warn('GPS Watch error:', err)
-        setSyncStatus(`⚠️ Error GPS: ${err.message}`)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5000,
+    const unsubscribe = telemetryClient.subscribe((event) => {
+      if (event.type === 'telemetry_sample') {
+        setTelemetry(event.sample)
+      } else if (event.type === 'packet_sent') {
+        setLastPacketTime(new Date())
+        setPacketsSentTotal(prev => prev + 1)
+        setOfflineCount(telemetryClient.getOfflineQueueCount())
+      } else if (event.type === 'offline_queue_updated') {
+        setOfflineCount(event.count)
+      } else if (event.type === 'network_status') {
+        setIsNetOnline(event.isOnline)
+      } else if (event.type === 'sync_completed') {
+        setOfflineCount(0)
+        setLastPacketTime(new Date())
       }
-    )
+    })
 
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [batteryLevel])
-
-  // Get Battery Level if supported
-  useEffect(() => {
-    if (navigator.getBattery) {
-      navigator.getBattery().then((battery) => {
-        setBatteryLevel(Math.round(battery.level * 100))
-        battery.addEventListener('levelchange', () => {
-          setBatteryLevel(Math.round(battery.level * 100))
-        })
-      })
+    return () => {
+      unsubscribe()
+      telemetryClient.stop()
     }
-  }, [])
+  }, [user.id, user.imei, user.deviceId, user.personTracker])
+
+  // Periodic check of offline count and connection state
+  const connStatus = getDeviceConnectionStatus(lastPacketTime)
 
   // Trigger Panic with accidental cancel window (5 seconds)
   const initiatePanic = () => {
@@ -112,7 +87,6 @@ export default function MobileGpsDashboard({ onLogout }) {
         setPanicCountdown(panicCountdown - 1)
       }, 1000)
     } else if (panicCountdown === 0) {
-      // Execute actual panic send
       sendPanicAlert()
       setPanicCountdown(null)
     }
@@ -122,22 +96,28 @@ export default function MobileGpsDashboard({ onLogout }) {
   const cancelPanic = () => {
     clearTimeout(countdownTimer.current)
     setPanicCountdown(null)
-    setPanicMessage('Alerta cancelada a tiempo')
+    telemetryClient.setEmergencyMode(false)
+    setPanicActive(false)
+    setPanicMessage('Alerta cancelada')
     setTimeout(() => setPanicMessage(''), 4000)
   }
 
   const sendPanicAlert = async () => {
     try {
       setPanicActive(true)
+      telemetryClient.setEmergencyMode(true)
       await apiClient.post('/alerts/panic', {
-        latitude: coords ? coords[0] : null,
-        longitude: coords ? coords[1] : null,
+        latitude: telemetry ? telemetry.latitude : null,
+        longitude: telemetry ? telemetry.longitude : null,
+        address: 'Ubicación de emergencia celular',
       })
-      setPanicMessage('🚨 ALERTA SOS ENVIADA AL CENTRO DE MONITOREO')
+      setPanicMessage('🚨 ALERTA SOS ENVIADA — TRANSMITIENDO RÁFAGA CADA 3s')
     } catch (err) {
       setPanicMessage('⚠️ Error al enviar pánico: ' + (err.response?.data?.error || err.message))
     }
   }
+
+  const coords = telemetry ? [telemetry.latitude, telemetry.longitude] : null
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between">
@@ -165,11 +145,18 @@ export default function MobileGpsDashboard({ onLogout }) {
       <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col gap-4">
         {/* Status Bar */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-400">{syncStatus}</span>
-            {lastSync && (
-              <span className="text-[10px] text-slate-500">
-                {lastSync.toLocaleTimeString()}
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <span className={`text-xs px-2.5 py-1 rounded-full ${connStatus.badgeClass} flex items-center gap-1.5`}>
+              <span className={`w-2 h-2 rounded-full ${connStatus.dotClass}`}></span>
+              {connStatus.label}
+            </span>
+            {offlineCount > 0 ? (
+              <span className="text-[10px] bg-amber-900/40 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold animate-pulse">
+                📦 {offlineCount} en cola offline
+              </span>
+            ) : (
+              <span className="text-[10px] text-emerald-400 font-medium">
+                ✓ Sincronizado ({packetsSentTotal} paq.)
               </span>
             )}
           </div>
@@ -177,16 +164,24 @@ export default function MobileGpsDashboard({ onLogout }) {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-slate-800/60 rounded-xl p-2.5">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">Precisión</span>
-              <span className="text-sm font-black text-blue-400">{accuracy !== null ? `±${accuracy}m` : '--'}</span>
+              <span className="text-sm font-black text-blue-400">{telemetry?.accuracy != null ? `±${telemetry.accuracy}m` : '--'}</span>
             </div>
             <div className="bg-slate-800/60 rounded-xl p-2.5">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">Velocidad</span>
-              <span className="text-sm font-black text-emerald-400">{speed !== null ? `${speed} km/h` : '0 km/h'}</span>
+              <span className="text-sm font-black text-emerald-400">{telemetry?.speed != null ? `${telemetry.speed} km/h` : '0 km/h'}</span>
             </div>
             <div className="bg-slate-800/60 rounded-xl p-2.5">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">Batería</span>
-              <span className="text-sm font-black text-amber-400">{batteryLevel !== null ? `${batteryLevel}%` : 'N/A'}</span>
+              <span className="text-sm font-black text-amber-400">{telemetry?.battery != null ? `${telemetry.battery}%` : 'N/A'}</span>
             </div>
+          </div>
+
+          {/* Adaptive Frequency Indicator */}
+          <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+            <span>Frecuencia adaptativa:</span>
+            <span className="font-semibold text-slate-200">
+              {panicActive ? '🚨 Ráfaga Pánico (3s)' : (telemetry?.speed || 0) > 5 ? '🚗 En Movimiento (8s)' : '🛑 Detenido (30s)'}
+            </span>
           </div>
         </div>
 
@@ -255,7 +250,7 @@ export default function MobileGpsDashboard({ onLogout }) {
 
         {/* Device & IMEI info footer */}
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 text-center text-[11px] text-slate-400 space-y-1">
-          <p>📡 <span className="font-semibold">Transmisión en tiempo real activa</span></p>
+          <p>📡 <span className="font-semibold">{isNetOnline ? 'Red Móvil Conectada' : '⚠️ Sin Conexión — Guardando Offline'}</span></p>
           {user.imei && <p className="text-[10px] text-slate-500 font-mono">IMEI / ID: {user.imei}</p>}
         </div>
       </main>

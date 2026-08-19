@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { apiClient } from '../services/api'
+import { telemetryClient } from '../services/telemetryClient'
+import { getDeviceConnectionStatus } from '../utils/deviceState'
 
 export default function PublicPersonTracker() {
   const { code } = useParams()
   const [person, setPerson] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [isTransmitting, setIsTransmitting] = useState(true)
   const [isPanicActive, setIsPanicActive] = useState(false)
   const [sentCount, setSentCount] = useState(0)
-  const [batteryLevel, setBatteryLevel] = useState(100)
-  const [lastLocation, setLastLocation] = useState(null)
-
-  const watchIdRef = useRef(null)
+  const [offlineCount, setOfflineCount] = useState(0)
+  const [telemetry, setTelemetry] = useState(null)
+  const [lastPacketTime, setLastPacketTime] = useState(null)
 
   // 1. Fetch initial public details for this code
   useEffect(() => {
@@ -33,61 +33,38 @@ export default function PublicPersonTracker() {
     loadData()
   }, [code])
 
-  // 2. Battery API check if available
+  // 2. Start Telemetry Client for this tracker code
   useEffect(() => {
-    if ('getBattery' in navigator) {
-      navigator.getBattery().then((battery) => {
-        setBatteryLevel(Math.round(battery.level * 100))
-        battery.addEventListener('levelchange', () => {
-          setBatteryLevel(Math.round(battery.level * 100))
-        })
-      }).catch(() => {})
-    }
-  }, [])
+    if (!code) return
 
-  // 3. Geolocation Watch Position
-  useEffect(() => {
-    if (!isTransmitting || !code) return
+    telemetryClient.start({
+      deviceId: code,
+      trackerCode: code,
+    })
 
-    if (!navigator.geolocation) {
-      alert('Tu navegador no soporta geolocalización en tiempo real.')
-      return
-    }
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy, speed } = pos.coords
-        setLastLocation({ latitude, longitude, accuracy })
-
-        try {
-          await apiClient.post(`/people-trackers/public/${code}/location`, {
-            latitude,
-            longitude,
-            gpsAccuracy: accuracy,
-            speed: speed ? Math.round(speed * 3.6) : 0,
-            batteryLevel,
-          })
-          setSentCount((c) => c + 1)
-        } catch (e) {
-          console.error('Error enviando ubicación de celular:', e)
-        }
-      },
-      (err) => {
-        console.warn('Error de geolocalización:', err.message)
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 10000,
+    const unsubscribe = telemetryClient.subscribe((event) => {
+      if (event.type === 'telemetry_sample') {
+        setTelemetry(event.sample)
+      } else if (event.type === 'packet_sent') {
+        setLastPacketTime(new Date())
+        setSentCount((c) => c + 1)
+        setOfflineCount(telemetryClient.getOfflineQueueCount())
+      } else if (event.type === 'offline_queue_updated') {
+        setOfflineCount(event.count)
+      } else if (event.type === 'sync_completed') {
+        setOfflineCount(0)
+        setLastPacketTime(new Date())
       }
-    )
+    })
 
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current)
-      }
+      unsubscribe()
+      telemetryClient.stop()
     }
-  }, [isTransmitting, code, batteryLevel])
+  }, [code])
+
+  // Connection status calculation
+  const connStatus = getDeviceConnectionStatus(lastPacketTime)
 
   // 4. Handle Panic SOS button click
   const handlePanicToggle = async () => {
