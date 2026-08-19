@@ -42,30 +42,19 @@ export default function DownloadApp() {
 
           <div className="space-y-2 pt-2">
             <a
+              href="https://github.com/traccar/traccar-client/releases/download/v10.0.12/app-release.apk"
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm cursor-pointer"
+            >
+              📥 Descargar Archivo APK Directo (.apk)
+            </a>
+
+            <a
               href="https://play.google.com/store/apps/details?id=org.traccar.client"
               target="_blank"
               rel="noreferrer"
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 text-sm"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 border border-slate-700 transition-all text-xs"
             >
-              🟢 Descargar desde Google Play Store
-            </a>
-
-            <a
-              href="https://www.traccar.org/client/"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all text-xs shadow"
-            >
-              🌐 Descarga Directa APK (Web Oficial)
-            </a>
-
-            <a
-              href="https://github.com/traccar/traccar-client/releases"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium rounded-2xl text-center flex items-center justify-center gap-2 border border-slate-700 transition-all text-xs"
-            >
-              📦 Ver Versiones en GitHub Releases
+              🟢 O Instalar desde Google Play Store
             </a>
           </div>
         </div>
