@@ -324,35 +324,21 @@ export default function PeopleTracker() {
                     <button
                       onClick={async (e) => {
                         e.stopPropagation()
+                        setSelectedPerson(person)
+                        refetch()
                         try {
                           await apiClient.post('/telemetry/command', {
                             deviceId: person.code || person._id,
                             command: 'LOCATE_NOW',
                             targetType: 'person',
                           })
-                          alert(`📍 Solicitud de localización enviada a ${person.name}`)
-                        } catch (err) {
-                          alert(`Error: ${err.message}`)
-                        }
+                        } catch (_) {}
                       }}
-                      className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition"
-                      title="Solicitar actualización GPS inmediata al celular"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-blue-600/30 transition-all active:scale-95"
+                      title="Centrar en el mapa y solicitar posición GPS satelital inmediata"
                     >
-                      📍 Ping
+                      📍 Localizar / Ping
                     </button>
-
-                    {hasRealCoords && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedPerson(person)
-                          refetch()
-                        }}
-                        className="px-3 py-1.5 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm transition"
-                      >
-                        🗺️ Ver Mapa
-                      </button>
-                    )}
 
                     {/* Panic Toggle button */}
                     <button

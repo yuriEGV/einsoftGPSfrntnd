@@ -8,6 +8,7 @@ export default function VehicleList({ vehicles, selectedVehicle, onSelectVehicle
 
   const handlePingLocation = async (e, vehicle) => {
     e.stopPropagation()
+    if (onSelectVehicle) onSelectVehicle(vehicle)
     try {
       setPingingId(vehicle._id)
       const deviceId = vehicle.deviceIMEI || vehicle.licensePlate || vehicle._id
@@ -16,10 +17,10 @@ export default function VehicleList({ vehicles, selectedVehicle, onSelectVehicle
         command: 'LOCATE_NOW',
         targetType: 'vehicle',
       })
-      setPingMessage(`📍 Comando de localización inmediata enviado a ${vehicle.licensePlate}`)
+      setPingMessage(`📍 Localizando en mapa a ${vehicle.licensePlate}...`)
       setTimeout(() => setPingMessage(''), 4000)
     } catch (err) {
-      setPingMessage(`⚠️ Error al enviar comando: ${err.response?.data?.error || err.message}`)
+      setPingMessage(`⚠️ Error: ${err.response?.data?.error || err.message}`)
       setTimeout(() => setPingMessage(''), 4000)
     } finally {
       setTimeout(() => setPingingId(null), 1000)
