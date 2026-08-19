@@ -26,8 +26,11 @@ const customIcon = L.icon({
 
 export default function MobileGpsDashboard({ onLogout }) {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
-  const [customId, setCustomId] = useState(() => localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || 'CELULAR-GPS')
-  const [isEditingId, setIsEditingId] = useState(false)
+  const [customId, setCustomId] = useState(() => localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || '71690939')
+  const [serverUrl, setServerUrl] = useState(() => localStorage.getItem('einsoft_telemetry_url') || 'https://einsoft-gp-sbcknd.vercel.app/api/telemetry')
+  const [frequencySec, setFrequencySec] = useState(() => localStorage.getItem('einsoft_telemetry_freq') || '10')
+  const [showSettings, setShowSettings] = useState(true)
+  const [pingTestStatus, setPingTestStatus] = useState(null)
   const [isTransmitting, setIsTransmitting] = useState(true)
   const [telemetry, setTelemetry] = useState(null)
   const [lastPacketTime, setLastPacketTime] = useState(null)
@@ -42,7 +45,7 @@ export default function MobileGpsDashboard({ onLogout }) {
   const [panicMessage, setPanicMessage] = useState('')
   const countdownTimer = useRef(null)
 
-  // Start/restart Telemetry Client whenever customId or isTransmitting changes
+  // Start/restart Telemetry Client whenever parameters change
   useEffect(() => {
     if (!isTransmitting) {
       telemetryClient.stop()
@@ -53,6 +56,8 @@ export default function MobileGpsDashboard({ onLogout }) {
       deviceId: customId,
       userId: user.id || null,
       trackerCode: customId,
+      serverUrl: serverUrl,
+      intervalSeconds: Number(frequencySec),
     })
 
     const unsubscribe = telemetryClient.subscribe((event) => {
@@ -79,13 +84,49 @@ export default function MobileGpsDashboard({ onLogout }) {
       unsubscribe()
       telemetryClient.stop()
     }
-  }, [customId, isTransmitting, user.id])
+  }, [customId, serverUrl, frequencySec, isTransmitting, user.id])
 
-  const handleSaveCustomId = (newId) => {
-    const clean = newId.trim() || 'CELULAR-GPS'
-    setCustomId(clean)
-    localStorage.setItem('einsoft_mobile_id', clean)
-    setIsEditingId(false)
+  const handleSaveSettings = (e) => {
+    e?.preventDefault()
+    localStorage.setItem('einsoft_mobile_id', customId)
+    localStorage.setItem('einsoft_telemetry_url', serverUrl)
+    localStorage.setItem('einsoft_telemetry_freq', frequencySec)
+    telemetryClient.configure({
+      deviceId: customId,
+      trackerCode: customId,
+      serverUrl,
+      intervalSeconds: Number(frequencySec),
+    })
+    setPingTestStatus('💾 Ajustes guardados correctamente')
+    setTimeout(() => setPingTestStatus(null), 3000)
+  }
+
+  // Trigger Immediate Ping Test
+  const handleTestPing = async () => {
+    setPingTestStatus('⏳ Enviando señal de prueba...')
+    const t0 = Date.now()
+    try {
+      const point = await telemetryClient.forceImmediateLocation()
+      const lat = point?.latitude || -33.0456
+      const lng = point?.longitude || -71.6189
+      
+      const res = await apiClient.post('/telemetry/report', {
+        deviceId: customId,
+        latitude: lat,
+        longitude: lng,
+        accuracy: point?.accuracy || 10,
+        speed: point?.speed || 0,
+        battery: point?.battery || 100,
+        timestamp: new Date().toISOString(),
+      })
+
+      const elapsed = Date.now() - t0
+      setPingTestStatus(`🟢 ¡Ping Exitoso! Respuesta del Servidor: 200 OK (${elapsed}ms)`)
+      setLastPacketTime(new Date())
+      setPacketsSentTotal(c => c + 1)
+    } catch (err) {
+      setPingTestStatus(`⚠️ Error en Ping: ${err.response?.data?.error || err.message}`)
+    }
   }
 
   // Periodic check of connection state
@@ -176,54 +217,123 @@ export default function MobileGpsDashboard({ onLogout }) {
 
       {/* ── Main Panel ── */}
       <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col gap-4">
-        {/* Device ID Bar */}
+        {/* Device Status & Quick Switch */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificador de este Teléfono</span>
-            {isEditingId ? (
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  type="text"
-                  defaultValue={customId}
-                  id="customIdInput"
-                  className="bg-slate-800 border border-blue-500 rounded-lg px-2 py-1 text-xs text-white outline-none w-36"
-                  placeholder="Ej: 991085689"
-                />
-                <button
-                  onClick={() => {
-                    const input = document.getElementById('customIdInput')
-                    if (input) handleSaveCustomId(input.value)
-                  }}
-                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold"
-                >
-                  ✓
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-sm font-black text-blue-400 font-mono">{customId}</span>
-                <button
-                  onClick={() => setIsEditingId(true)}
-                  className="text-slate-400 hover:text-white text-xs p-1"
-                  title="Cambiar identificador"
-                >
-                  ✏️
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">📡</span>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificador Activo</span>
+              <span className="text-sm font-black text-blue-400 font-mono">{customId}</span>
+            </div>
           </div>
 
-          <button
-            onClick={() => setIsTransmitting(!isTransmitting)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 ${
-              isTransmitting
-                ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-900/30'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-            }`}
-          >
-            {isTransmitting ? '🟢 ACTIVO' : '⏸️ PAUSADO'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition"
+              title="Ajustes de Servidor e IMEI"
+            >
+              ⚙️ Ajustes
+            </button>
+
+            <button
+              onClick={() => setIsTransmitting(!isTransmitting)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 ${
+                isTransmitting
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-900/30'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+              }`}
+            >
+              {isTransmitting ? '🟢 ACTIVO' : '⏸️ PAUSADO'}
+            </button>
+          </div>
         </div>
+
+        {/* Telemetry Parameters & Configuration Box */}
+        {showSettings && (
+          <form onSubmit={handleSaveSettings} className="bg-slate-900/95 border-2 border-blue-900/40 rounded-2xl p-4 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="text-xs font-black text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
+                ⚙️ Configuración del Servidor y Telemetría
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowSettings(false)}
+                className="text-xs text-slate-500 hover:text-slate-300"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-300 block">
+                📱 Identificador / IMEI del Celular:
+              </label>
+              <input
+                type="text"
+                value={customId}
+                onChange={(e) => setCustomId(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono font-bold focus:border-blue-500 outline-none"
+                placeholder="Ej: 71690939 o yuri o 949808788"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-300 block">
+                🌐 URL del Servidor de Telemetría:
+              </label>
+              <input
+                type="url"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-blue-300 font-mono font-bold focus:border-blue-500 outline-none"
+                placeholder="https://einsoft-gp-sbcknd.vercel.app/api/telemetry"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-300 block">
+                ⏱️ Frecuencia de Envío (Segundos):
+              </label>
+              <select
+                value={frequencySec}
+                onChange={(e) => setFrequencySec(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-400 font-bold focus:border-blue-500 outline-none"
+              >
+                <option value="5">Cada 5 Segundos (Tiempo Real Máximo)</option>
+                <option value="10">Cada 10 Segundos (Recomendado)</option>
+                <option value="15">Cada 15 Segundos</option>
+                <option value="30">Cada 30 Segundos (Ahorro de Batería)</option>
+                <option value="60">Cada 1 Minuto</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="submit"
+                className="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs shadow-md transition active:scale-95"
+              >
+                💾 Guardar Ajustes
+              </button>
+
+              <button
+                type="button"
+                onClick={handleTestPing}
+                className="py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black rounded-xl text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1"
+              >
+                📡 Probar Ping
+              </button>
+            </div>
+
+            {pingTestStatus && (
+              <div className="p-2.5 bg-slate-800 rounded-xl border border-slate-700 text-center text-[11px] font-bold text-slate-200 animate-in fade-in">
+                {pingTestStatus}
+              </div>
+            )}
+          </form>
+        )}
 
         {/* GPS Permission Warning if applicable */}
         {gpsPermissionError && (

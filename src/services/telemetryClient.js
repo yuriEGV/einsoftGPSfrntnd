@@ -29,6 +29,8 @@ class TelemetryClient {
       userId: null,
       trackerCode: null,
     };
+    this.serverUrl = typeof localStorage !== 'undefined' ? (localStorage.getItem('einsoft_telemetry_url') || 'https://einsoft-gp-sbcknd.vercel.app/api/telemetry') : 'https://einsoft-gp-sbcknd.vercel.app/api/telemetry';
+    this.intervalSeconds = typeof localStorage !== 'undefined' ? Number(localStorage.getItem('einsoft_telemetry_interval') || 10) : 10;
     this.listeners = new Set();
     this.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
     this.isTransmitting = false;
@@ -50,6 +52,8 @@ class TelemetryClient {
   // ─── Configurar dispositivo ──────────────────────────────────────────────────
   configure(config = {}) {
     this.deviceConfig = { ...this.deviceConfig, ...config };
+    if (config.serverUrl) this.serverUrl = config.serverUrl;
+    if (config.intervalSeconds) this.intervalSeconds = Number(config.intervalSeconds);
     this.flushOfflineQueue();
   }
 
