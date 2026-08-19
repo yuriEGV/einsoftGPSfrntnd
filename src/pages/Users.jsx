@@ -288,18 +288,16 @@ export default function Users() {
                 placeholder="+56 9 1234 5678"
               />
             </div>
-            {['mobile_gps_user', 'driver'].includes(form.role) && (
-              <div>
-                <label className="block text-gray-700 mb-1 font-semibold text-xs">IMEI / Device ID (Opcional)</label>
-                <input
-                  type="text"
-                  value={form.imei}
-                  onChange={(e) => setForm({ ...form, imei: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
-                  placeholder="Ej: 867543029182736"
-                />
-              </div>
-            )}
+            <div>
+              <label className="block text-gray-700 mb-1 font-semibold text-xs">📱 IMEI / ID GPS (Opcional)</label>
+              <input
+                type="text"
+                value={form.imei}
+                onChange={(e) => setForm({ ...form, imei: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                placeholder="Ej: 866140042278017"
+              />
+            </div>
             <div className="flex items-end">
               <button
                 type="submit"
@@ -444,6 +442,16 @@ export default function Users() {
                     onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none text-sm transition-all"
                     placeholder="+56 9 1234 5678"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">📱 IMEI / ID Dispositivo GPS</label>
+                  <input
+                    type="text"
+                    value={editForm.imei}
+                    onChange={(e) => setEditForm({ ...editForm, imei: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 focus:border-blue-500 outline-none text-sm transition-all font-mono"
+                    placeholder="Ej: 866140042278017 o ID celular"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">

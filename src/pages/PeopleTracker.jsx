@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
@@ -66,19 +66,98 @@ function playPanicBeep() {
 
 export default function PeopleTracker() {
   const queryClient = useQueryClient()
+  const mapContainerRef = useRef(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
-  const [activeLinkModal, setActiveLinkModal] = useState(null)
-  const [formData, setFormData] = useState({ name: '', phone: '', roleDescription: 'Familiar / Personal' })
+  const [trails, setTrails] = useState({})
+  const [isCapturing, setIsCapturing] = useState(false)
+  const [pingNotification, setPingNotification] = useState(null)
+  const [pingingPersonId, setPingingPersonId] = useState(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    roleDescription: 'Familiar / Personal',
+  })
   const alarmIntervalRef = useRef(null)
 
-  // Fetch tracked people
+  // Fetch tracked people from API
   const { data: people = [], isLoading, refetch } = useQuery('peopleTrackers', async () => {
     const res = await apiClient.get('/people-trackers')
     return res.data
   }, {
     refetchInterval: 4000, // Poll every 4 seconds for live location & panic updates
   })
+
+  // Update breadcrumb movement trails
+  useEffect(() => {
+    people.forEach(p => {
+      const coords = p.location?.coordinates
+      if (p.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0)) {
+        const latLng = [coords[1], coords[0]]
+        setTrails(prev => {
+          const current = prev[p._id] || []
+          const last = current[current.length - 1]
+          if (!last || Math.abs(last[0] - latLng[0]) > 0.00005 || Math.abs(last[1] - latLng[1]) > 0.00005) {
+            return {
+              ...prev,
+              [p._id]: [...current, latLng].slice(-50)
+            }
+          }
+          return prev
+        })
+      }
+    })
+  }, [people])
+
+  // Clear movement trails
+  const handleClearTrails = () => {
+    setTrails({})
+    refetch()
+  }
+
+  // Screenshot map capture
+  const handleCaptureScreenshot = async () => {
+    if (!mapContainerRef.current) return
+    setIsCapturing(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(mapContainerRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+      })
+      const link = document.createElement('a')
+      link.download = `mapa-personas-einsoft-gps-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (err) {
+      console.error('Error al capturar mapa de personas:', err)
+      alert('Error al generar screenshot: ' + err.message)
+    } finally {
+      setIsCapturing(false)
+    }
+  }
+
+  // Ping handler
+  const handlePing = async (person) => {
+    setPingingPersonId(person._id)
+    setSelectedPerson(person)
+    try {
+      await apiClient.post(`/people-trackers/${person._id}/ping`)
+      await apiClient.post('/telemetry/command', {
+        deviceId: person.deviceId || person.trackerCode || person.code || person._id,
+        command: 'LOCATE_NOW',
+        targetType: 'person',
+      }).catch(() => {})
+      setPingNotification(`📡 Solicitud de ping y localización emitida a ${person.name}. Solicitando reporte satelital...`)
+      setTimeout(() => setPingNotification(null), 6000)
+      refetch()
+    } catch (err) {
+      console.error('Error pinging person:', err)
+    } finally {
+      setPingingPersonId(null)
+    }
+  }
 
   // Check if any person is in Panic mode -> trigger alarm
   const panicCount = people.filter(p => p.status === 'panic' || p.panicAlert?.active).length
@@ -324,22 +403,15 @@ export default function PeopleTracker() {
                     </button>
 
                     <button
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         e.stopPropagation()
-                        setSelectedPerson(person)
-                        refetch()
-                        try {
-                          await apiClient.post('/telemetry/command', {
-                            deviceId: person.code || person._id,
-                            command: 'LOCATE_NOW',
-                            targetType: 'person',
-                          })
-                        } catch (_) {}
+                        handlePing(person)
                       }}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-blue-600/30 transition-all active:scale-95"
+                      disabled={pingingPersonId === person._id}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
                       title="Centrar en el mapa y solicitar posición GPS satelital inmediata"
                     >
-                      📍 Localizar / Ping
+                      {pingingPersonId === person._id ? '⏳ Emitiendo...' : '📍 Localizar / Ping'}
                     </button>
 
                     {/* Panic Toggle button */}
@@ -376,21 +448,39 @@ export default function PeopleTracker() {
 
         {/* Right Column: Live Map */}
         <div className="lg:col-span-7">
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm h-[600px] flex flex-col">
-            <div className="flex items-center justify-between mb-3">
+          <div ref={mapContainerRef} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm h-[600px] flex flex-col">
+            {pingNotification && (
+              <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <span>🛰️</span>
+                <span>{pingNotification}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 🗺️ Mapa de Ubicación en Tiempo Real
               </h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-                  Actualización cada 4s
-                </span>
+                <button
+                  onClick={handleClearTrails}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition border border-slate-200 shadow-sm"
+                  title="Limpiar líneas de recorrido y trazas del mapa"
+                >
+                  🧹 Limpiar Trazas
+                </button>
+                <button
+                  onClick={handleCaptureScreenshot}
+                  disabled={isCapturing}
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm shadow-blue-500/20 disabled:opacity-50"
+                  title="Guardar imagen / captura de pantalla del mapa actual"
+                >
+                  {isCapturing ? '📸 Capturando...' : '📸 Capturar Mapa'}
+                </button>
                 <button
                   onClick={() => refetch()}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
                   title="Refrescar posiciones de mapa"
                 >
-                  🔄 Refrescar Mapa
+                  🔄 Refrescar
                 </button>
               </div>
             </div>
@@ -414,6 +504,24 @@ export default function PeopleTracker() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
+
+                {/* Render Trajectory Polyline Trails for People */}
+                {Object.entries(trails).map(([personId, points]) => {
+                  if (!points || points.length < 2) return null
+                  const isSel = selectedPerson?._id === personId
+                  return (
+                    <Polyline
+                      key={`trail-${personId}`}
+                      positions={points}
+                      pathOptions={{
+                        color: isSel ? '#8b5cf6' : '#a855f7',
+                        weight: isSel ? 5 : 3,
+                        opacity: isSel ? 0.9 : 0.6,
+                        dashArray: '6, 8',
+                      }}
+                    />
+                  )
+                })}
 
                 {people.map((person) => {
                   const coords = person.location?.coordinates;

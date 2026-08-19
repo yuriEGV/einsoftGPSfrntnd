@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import React, { useEffect, useRef, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -80,15 +80,12 @@ function ChangeView({ center, zoom }) {
 }
 
 // ─── isValidCoordinates ────────────────────────────────────────────────────────
-// Returns true only if the coordinates are a real non-null position
 function isValidCoords(coords) {
   if (!coords || !Array.isArray(coords) || coords.length < 2) return false
   const [lng, lat] = coords
   if (typeof lng !== 'number' || typeof lat !== 'number') return false
   if (isNaN(lng) || isNaN(lat)) return false
-  // [0, 0] is the default "no data" value — ignore it
   if (lng === 0 && lat === 0) return false
-  // Validate reasonable world bounds
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false
   return true
 }
@@ -105,12 +102,15 @@ function formatAge(lastUpdate) {
 }
 
 export default function MapComponent({ vehicles = [], selectedVehicle, onVehicleSelect, realTimeData }) {
+  const mapContainerRef = useRef(null)
+  const [trails, setTrails] = useState({})
+  const [isCapturing, setIsCapturing] = useState(false)
+
   // Default center: Valparaíso (V Región)
   const defaultCenter = [-33.04, -71.61]
   const defaultZoom = 13
 
   // Compute effective positions merging realTimeData (socket/polling overrides)
-  // This ensures the map always shows the freshest coordinates available
   const getEffectivePosition = (vehicle) => {
     const rtData = realTimeData?.[vehicle._id]
     if (rtData?.gps?.coordinates && isValidCoords(rtData.gps.coordinates)) {
@@ -121,6 +121,54 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
       return [coords[1], coords[0]]
     }
     return null
+  }
+
+  // Update trails when new positions arrive
+  useEffect(() => {
+    vehicles.forEach(v => {
+      const pos = getEffectivePosition(v)
+      if (pos) {
+        setTrails(prev => {
+          const current = prev[v._id] || []
+          const last = current[current.length - 1]
+          if (!last || Math.abs(last[0] - pos[0]) > 0.00005 || Math.abs(last[1] - pos[1]) > 0.00005) {
+            return {
+              ...prev,
+              [v._id]: [...current, pos].slice(-50) // keep last 50 points
+            }
+          }
+          return prev
+        })
+      }
+    })
+  }, [vehicles, realTimeData])
+
+  // Clear movement trails
+  const handleClearTrails = () => {
+    setTrails({})
+  }
+
+  // Screenshot capture using html2canvas
+  const handleCaptureScreenshot = async () => {
+    if (!mapContainerRef.current) return
+    setIsCapturing(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(mapContainerRef.current, {
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#1e293b',
+      })
+      const link = document.createElement('a')
+      link.download = `mapa-flota-einsoft-gps-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (err) {
+      console.error('Error al capturar el mapa:', err)
+      alert('Error al generar screenshot del mapa: ' + err.message)
+    } finally {
+      setIsCapturing(false)
+    }
   }
 
   // Determine map center: selected vehicle's location, else center of valid vehicles
@@ -155,8 +203,8 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
   const vehiclesWithoutLocation = vehicles.filter(v => !isValidCoords(v.location?.coordinates) && !realTimeData?.[v._id]?.gps?.coordinates)
 
   return (
-    <div className="card h-full min-h-[500px] overflow-hidden">
-      <div className="card-header flex items-center justify-between">
+    <div ref={mapContainerRef} className="card h-full min-h-[500px] overflow-hidden flex flex-col">
+      <div className="card-header flex items-center justify-between flex-wrap gap-2">
         <span className="flex items-center gap-2">
           🗺️ Mapa de Flota en Tiempo Real
           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
@@ -168,8 +216,27 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
             </span>
           )}
         </span>
+
+        {/* Action buttons: Clear Trails & Screenshot */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleClearTrails}
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all border border-slate-300 shadow-sm"
+            title="Limpiar líneas de recorrido y trazas del mapa"
+          >
+            🧹 Limpiar Trazas
+          </button>
+          <button
+            onClick={handleCaptureScreenshot}
+            disabled={isCapturing}
+            className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-sm shadow-blue-500/20 disabled:opacity-50"
+            title="Guardar imagen / captura de pantalla del mapa actual"
+          >
+            {isCapturing ? '📸 Capturando...' : '📸 Capturar Mapa'}
+          </button>
+        </div>
       </div>
-      <div className="w-full h-[500px] overflow-hidden">
+      <div className="w-full h-[500px] overflow-hidden relative">
         <MapContainer
           center={mapCenter}
           zoom={mapZoom}
@@ -181,6 +248,24 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+
+          {/* Render Trajectory Polyline Trails */}
+          {Object.entries(trails).map(([vId, points]) => {
+            if (!points || points.length < 2) return null
+            const isSel = selectedVehicle?._id === vId
+            return (
+              <Polyline
+                key={`trail-${vId}`}
+                positions={points}
+                pathOptions={{
+                  color: isSel ? '#2563eb' : '#6366f1',
+                  weight: isSel ? 5 : 3,
+                  opacity: isSel ? 0.9 : 0.6,
+                  dashArray: '6, 8',
+                }}
+              />
+            )
+          })}
 
           {vehiclesWithLocation.map((vehicle) => {
             const isSelected = selectedVehicle?._id === vehicle._id
