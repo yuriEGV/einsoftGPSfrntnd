@@ -17,6 +17,7 @@ import MobileGpsDashboard from './pages/MobileGpsDashboard'
 import PublicTracker from './pages/PublicTracker'
 import PeopleTracker from './pages/PeopleTracker'
 import PublicPersonTracker from './pages/PublicPersonTracker'
+import DownloadApp from './pages/DownloadApp'
 import MainLayout from './layouts/MainLayout'
 import './index.css'
 
@@ -208,6 +209,12 @@ function App() {
                           <Settings />
                         </RoleGuard>
                       }
+                    />
+
+                    {/* Descargar App Celular APK */}
+                    <Route
+                      path="/download-app"
+                      element={<DownloadApp />}
                     />
 
                     {/* Fallback */}

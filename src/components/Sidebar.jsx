@@ -58,6 +58,13 @@ const ALL_MENU_ITEMS = [
     path: '/settings',
     allowedRoles: ['superadmin', 'admin', 'fleet_manager', 'independent'],
   },
+  {
+    label: 'App Celular (APK)',
+    icon: '📥',
+    path: '/download-app',
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
+    badge: 'APK',
+  },
 ]
 
 // Etiquetas de rol para mostrar en el sidebar
