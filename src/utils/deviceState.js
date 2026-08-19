@@ -33,11 +33,11 @@ export function getDeviceConnectionStatus(lastUpdateDate) {
 
   const diffSeconds = Math.max(0, Math.round((Date.now() - lastSeenMs) / 1000));
 
-  if (diffSeconds <= 30) {
+  if (diffSeconds <= 90) {
     return {
       status: 'online',
       secondsAgo: diffSeconds,
-      label: diffSeconds < 5 ? '🟢 En vivo (<5s)' : `🟢 En línea (${diffSeconds}s)`,
+      label: diffSeconds < 10 ? '🟢 En vivo (<10s)' : `🟢 En línea (${diffSeconds}s)`,
       badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold',
       dotClass: 'bg-emerald-500 animate-ping',
       icon: '🟢',
@@ -45,14 +45,14 @@ export function getDeviceConnectionStatus(lastUpdateDate) {
     };
   }
 
-  if (diffSeconds <= 180) {
+  if (diffSeconds <= 300) {
     const mins = Math.floor(diffSeconds / 60);
     const secs = diffSeconds % 60;
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
     return {
       status: 'stale',
       secondsAgo: diffSeconds,
-      label: `🟡 Sin actualización (${timeStr})`,
+      label: `🟡 En reposo (${timeStr})`,
       badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300 font-medium',
       dotClass: 'bg-amber-500',
       icon: '🟡',

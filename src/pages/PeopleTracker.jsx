@@ -340,7 +340,7 @@ export default function PeopleTracker() {
                       </span>
                     ) : (
                       (() => {
-                        const conn = getDeviceConnectionStatus(person.lastSeen || person.updatedAt)
+                        const conn = getDeviceConnectionStatus(person.lastSeen || person.location?.timestamp || person.updatedAt)
                         return (
                           <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full flex items-center gap-1 ${conn.badgeClass}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${conn.dotClass}`}></span>
