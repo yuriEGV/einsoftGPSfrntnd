@@ -39,14 +39,22 @@ export default function DownloadApp() {
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="space-y-2 pt-2">
+            <a
+              href="/einsoft-gps.apk"
+              download="einsoft-gps.apk"
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm"
+            >
+              📥 Descargar Archivo APK Nativo (.apk)
+            </a>
+
             <a
               href="/mobile-gps"
               target="_blank"
               rel="noreferrer"
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-blue-900/25 transition-all active:scale-95 text-sm"
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow"
             >
-              🚀 Abrir App Móvil EINSoft GPS
+              🚀 O Abrir en Navegador Móvil
             </a>
           </div>
         </div>
