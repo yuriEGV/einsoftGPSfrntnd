@@ -69,6 +69,7 @@ export default function PeopleTracker() {
   const mapContainerRef = useRef(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
+  const [activeLinkModal, setActiveLinkModal] = useState(null)
   const [trails, setTrails] = useState({})
   const [isCapturing, setIsCapturing] = useState(false)
   const [pingNotification, setPingNotification] = useState(null)
