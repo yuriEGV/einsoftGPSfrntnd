@@ -276,7 +276,9 @@ export default function PeopleTracker() {
                     <div>
                       <span className="text-slate-400 block text-[10px]">Batería Celular</span>
                       <span className="font-bold text-slate-700 flex items-center gap-1">
-                        🔋 {person.batteryLevel ?? 100}%
+                        {person.hasReportedLocation && person.batteryLevel != null
+                          ? `🔋 ${person.batteryLevel}%`
+                          : '🔋 Sin datos'}
                       </span>
                     </div>
                     <div>
