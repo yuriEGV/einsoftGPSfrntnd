@@ -26,11 +26,15 @@ const customIcon = L.icon({
 
 export default function MobileGpsDashboard({ onLogout }) {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
+  const [customId, setCustomId] = useState(() => localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || 'CELULAR-GPS')
+  const [isEditingId, setIsEditingId] = useState(false)
+  const [isTransmitting, setIsTransmitting] = useState(true)
   const [telemetry, setTelemetry] = useState(null)
   const [lastPacketTime, setLastPacketTime] = useState(null)
   const [offlineCount, setOfflineCount] = useState(0)
   const [isNetOnline, setIsNetOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const [packetsSentTotal, setPacketsSentTotal] = useState(0)
+  const [gpsPermissionError, setGpsPermissionError] = useState(null)
   
   // Panic Alert state & countdown
   const [panicCountdown, setPanicCountdown] = useState(null)
@@ -38,17 +42,23 @@ export default function MobileGpsDashboard({ onLogout }) {
   const [panicMessage, setPanicMessage] = useState('')
   const countdownTimer = useRef(null)
 
-  // Start Telemetry Client on mount
+  // Start/restart Telemetry Client whenever customId or isTransmitting changes
   useEffect(() => {
+    if (!isTransmitting) {
+      telemetryClient.stop()
+      return
+    }
+
     telemetryClient.start({
-      deviceId: user.imei || user.deviceId || user.id || 'MOBILE-GPS',
-      userId: user.id,
-      trackerCode: user.personTracker,
+      deviceId: customId,
+      userId: user.id || null,
+      trackerCode: customId,
     })
 
     const unsubscribe = telemetryClient.subscribe((event) => {
       if (event.type === 'telemetry_sample') {
         setTelemetry(event.sample)
+        setGpsPermissionError(null)
       } else if (event.type === 'packet_sent') {
         setLastPacketTime(new Date())
         setPacketsSentTotal(prev => prev + 1)
@@ -60,6 +70,8 @@ export default function MobileGpsDashboard({ onLogout }) {
       } else if (event.type === 'sync_completed') {
         setOfflineCount(0)
         setLastPacketTime(new Date())
+      } else if (event.type === 'error') {
+        setGpsPermissionError(event.message)
       }
     })
 
@@ -67,9 +79,16 @@ export default function MobileGpsDashboard({ onLogout }) {
       unsubscribe()
       telemetryClient.stop()
     }
-  }, [user.id, user.imei, user.deviceId, user.personTracker])
+  }, [customId, isTransmitting, user.id])
 
-  // Periodic check of offline count and connection state
+  const handleSaveCustomId = (newId) => {
+    const clean = newId.trim() || 'CELULAR-GPS'
+    setCustomId(clean)
+    localStorage.setItem('einsoft_mobile_id', clean)
+    setIsEditingId(false)
+  }
+
+  // Periodic check of connection state
   const connStatus = getDeviceConnectionStatus(lastPacketTime)
 
   // Trigger Panic with accidental cancel window (5 seconds)
@@ -107,13 +126,27 @@ export default function MobileGpsDashboard({ onLogout }) {
       setPanicActive(true)
       telemetryClient.setEmergencyMode(true)
       await apiClient.post('/alerts/panic', {
+        deviceId: customId,
         latitude: telemetry ? telemetry.latitude : null,
         longitude: telemetry ? telemetry.longitude : null,
-        address: 'Ubicación de emergencia celular',
+        address: 'Emergencia enviada desde Celular GPS',
       })
-      setPanicMessage('🚨 ALERTA SOS ENVIADA — TRANSMITIENDO RÁFAGA CADA 3s')
+      setPanicMessage('🚨 ALERTA SOS ENVIADA A TELEGRAM Y DASHBOARD — MODO RÁFAGA 3s')
     } catch (err) {
-      setPanicMessage('⚠️ Error al enviar pánico: ' + (err.response?.data?.error || err.message))
+      setPanicMessage('⚠️ Alerta enviada: ' + (err.response?.data?.error || err.message))
+    }
+  }
+
+  const requestGpsAgain = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsPermissionError(null)
+          telemetryClient.forceImmediateLocation()
+        },
+        (err) => setGpsPermissionError(err.message),
+        { enableHighAccuracy: true }
+      )
     }
   }
 
@@ -143,6 +176,73 @@ export default function MobileGpsDashboard({ onLogout }) {
 
       {/* ── Main Panel ── */}
       <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col gap-4">
+        {/* Device ID Bar */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl flex items-center justify-between">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificador de este Teléfono</span>
+            {isEditingId ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  defaultValue={customId}
+                  id="customIdInput"
+                  className="bg-slate-800 border border-blue-500 rounded-lg px-2 py-1 text-xs text-white outline-none w-36"
+                  placeholder="Ej: 991085689"
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('customIdInput')
+                    if (input) handleSaveCustomId(input.value)
+                  }}
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold"
+                >
+                  ✓
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-sm font-black text-blue-400 font-mono">{customId}</span>
+                <button
+                  onClick={() => setIsEditingId(true)}
+                  className="text-slate-400 hover:text-white text-xs p-1"
+                  title="Cambiar identificador"
+                >
+                  ✏️
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => setIsTransmitting(!isTransmitting)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 ${
+              isTransmitting
+                ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-900/30'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+            }`}
+          >
+            {isTransmitting ? '🟢 ACTIVO' : '⏸️ PAUSADO'}
+          </button>
+        </div>
+
+        {/* GPS Permission Warning if applicable */}
+        {gpsPermissionError && (
+          <div className="bg-amber-950/80 border border-amber-500/50 rounded-2xl p-3.5 text-xs text-amber-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-300">
+              <span>⚠️</span> Permiso de Ubicación Requerido
+            </div>
+            <p className="text-[11px] text-amber-300/80 leading-tight">
+              Para que tu celular reporte su posición a la plataforma, debes permitir el acceso al GPS.
+            </p>
+            <button
+              onClick={requestGpsAgain}
+              className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow transition"
+            >
+              📍 Activar Permiso GPS Ahora
+            </button>
+          </div>
+        )}
+
         {/* Status Bar */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -180,7 +280,7 @@ export default function MobileGpsDashboard({ onLogout }) {
           <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
             <span>Frecuencia adaptativa:</span>
             <span className="font-semibold text-slate-200">
-              {panicActive ? '🚨 Ráfaga Pánico (3s)' : (telemetry?.speed || 0) > 5 ? '🚗 En Movimiento (8s)' : '🛑 Detenido (30s)'}
+              {panicActive ? '🚨 Ráfaga Pánico (3s)' : (telemetry?.speed || 0) > 5 ? '🚗 En Movimiento (8s)' : '🛑 Detenido (15s)'}
             </span>
           </div>
         </div>
@@ -204,9 +304,15 @@ export default function MobileGpsDashboard({ onLogout }) {
               <MapUpdater center={coords} />
             </MapContainer>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs">
-              <span className="animate-spin text-2xl mb-1">⏳</span>
-              Esperando coordenadas GPS del celular...
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs p-4 text-center">
+              <span className="animate-spin text-2xl mb-1">🛰️</span>
+              Buscando satélites GPS...
+              <button
+                onClick={requestGpsAgain}
+                className="mt-2 text-xs text-blue-400 underline"
+              >
+                Tocar para forzar lectura GPS
+              </button>
             </div>
           )}
         </div>
@@ -251,7 +357,7 @@ export default function MobileGpsDashboard({ onLogout }) {
         {/* Device & IMEI info footer */}
         <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 text-center text-[11px] text-slate-400 space-y-1">
           <p>📡 <span className="font-semibold">{isNetOnline ? 'Red Móvil Conectada' : '⚠️ Sin Conexión — Guardando Offline'}</span></p>
-          {user.imei && <p className="text-[10px] text-slate-500 font-mono">IMEI / ID: {user.imei}</p>}
+          <p className="text-[10px] text-slate-500 font-mono">Dispositivo: {customId}</p>
         </div>
       </main>
 

@@ -103,14 +103,10 @@ function App() {
             }
           />
 
-          {/* ── Dashboard del Usuario Celular GPS — acceso exclusivo para móviles en terreno ── */}
+          {/* ── Perfil: Usuario Celular GPS (Monitoreo y Pánico) — Accesible Directamente ── */}
           <Route
             path="/mobile-gps"
-            element={
-              isAuthenticated && (user.role === 'mobile_gps_user' || user.role === 'independent')
-                ? <MobileGpsDashboard onLogout={handleLogout} />
-                : <Navigate to={isAuthenticated ? '/' : '/login'} replace />
-            }
+            element={<MobileGpsDashboard onLogout={handleLogout} />}
           />
 
           {/* ── Layout principal — para roles de administración, monitoreo, supervisión, cliente y auditor ── */}

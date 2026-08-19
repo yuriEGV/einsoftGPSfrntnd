@@ -98,14 +98,26 @@ class TelemetryClient {
       (pos) => this.handlePositionUpdate(pos),
       (err) => {
         console.warn('[TelemetryClient] GPS error:', err.message);
-        this.notifyListeners({ type: 'gps_error', error: err.message });
+        this.notifyListeners({ type: 'error', message: err.message });
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 3000,
-        timeout: 20000,
+        timeout: 10000,
+        maximumAge: 5000,
       }
     );
+
+    // Active Heartbeat Timer: Forces GPS read even when stationary
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = setInterval(() => {
+      if (this.isTransmitting && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => this.handlePositionUpdate(pos),
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+        );
+      }
+    }, 15000); // Heartbeat every 15 seconds
 
     // Initial immediate flush
     this.flushOfflineQueue();
@@ -116,6 +128,10 @@ class TelemetryClient {
     if (this.watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
+    }
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
     }
     this.isTransmitting = false;
     this.notifyListeners({ type: 'status', isTransmitting: false });
