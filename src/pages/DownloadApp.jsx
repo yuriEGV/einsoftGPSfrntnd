@@ -29,24 +29,33 @@ export default function DownloadApp() {
             </p>
             
             <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200 text-xs space-y-2">
-              <p className="font-bold text-slate-800">📋 Pasos para instalar en Android:</p>
+              <p className="font-bold text-slate-800">📋 Pasos para configurar en el teléfono:</p>
               <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px]">
-                <li>Descarga el archivo <code>.apk</code> en el teléfono.</li>
-                <li>Si el celular pregunta, pulsa <strong>"Permitir instalar aplicaciones de esta fuente"</strong>.</li>
-                <li>Abre la app y concede los permisos de <strong>"Ubicación: Permitir siempre"</strong>.</li>
-                <li>Ingresa el ID asignado y presiona <strong>"▶️ Iniciar Servicio"</strong>.</li>
+                <li>Descarga e instala el archivo <code>.apk</code> directo o desde Play Store.</li>
+                <li>Abre la app y concede permisos de <strong>"Ubicación: Permitir siempre"</strong>.</li>
+                <li>En <strong>URL del Servidor</strong> ingresa: <br/><code className="text-blue-600 font-bold bg-blue-50 px-1 rounded">https://einsoft-gp-sbcknd.vercel.app/api/telemetry</code></li>
+                <li>En <strong>Identificador de Dispositivo</strong> ingresa tu IMEI o ID asignado.</li>
+                <li>Activa el switch <strong>"Estado del servicio: Encendido"</strong>.</li>
               </ol>
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="space-y-2 pt-2">
             <a
-              href="https://github.com/yuriEGV/einsoftGPSbcknd/releases"
-              target="_blank"
-              rel="noreferrer"
+              href="https://github.com/traccar/traccar-client-android/releases/download/v8.1/traccar-client-release.apk"
+              download
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar Instalador APK (Android)
+              📥 Descarga Directa de Archivo .APK
+            </a>
+
+            <a
+              href="https://play.google.com/store/apps/details?id=org.traccar.client"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 border border-slate-700 transition-all text-xs"
+            >
+              🟢 Descargar desde Google Play Store
             </a>
           </div>
         </div>
@@ -57,7 +66,7 @@ export default function DownloadApp() {
             <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-2xl">
               🌐
             </div>
-            <h2 className="text-xl font-black text-slate-900">2. Instalación Directa (PWA / iPhone / Android)</h2>
+            <h2 className="text-xl font-black text-slate-900">2. Instalación PWA (iOS / Android)</h2>
             <p className="text-xs text-slate-600 leading-relaxed">
               Funciona al instante sin necesidad de descargas externas. Compatible con cualquier teléfono Android o iPhone.
             </p>
