@@ -107,7 +107,7 @@ class TelemetryClient {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 5000,
+        maximumAge: 0,
       }
     );
 
@@ -118,7 +118,7 @@ class TelemetryClient {
         navigator.geolocation.getCurrentPosition(
           (pos) => this.handlePositionUpdate(pos),
           () => {},
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
         );
       }
     }, 15000); // Heartbeat every 15 seconds
