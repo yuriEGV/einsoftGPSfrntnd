@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
 import MapComponent from '../components/MapComponent'
+import RoutePlaybackModal from '../components/RoutePlaybackModal'
 
 // Global singleton: only ONE vehicle can be live-tracked per browser session at a time.
 // Key = vehicleId, value = watchId from navigator.geolocation.watchPosition
@@ -12,6 +13,8 @@ export default function VehicleDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  const [showPlaybackModal, setShowPlaybackModal] = useState(false)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -560,6 +563,13 @@ export default function VehicleDetail() {
           </h2>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowPlaybackModal(true)}
+              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
+              title="Revivir recorrido histórico de este vehículo"
+            >
+              🎞️ Playback de Rutas
+            </button>
+            <button
               onClick={handleLocateOnMap}
               className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-xl flex items-center gap-1 transition shadow-sm"
             >
@@ -874,6 +884,15 @@ export default function VehicleDetail() {
           </form>
         </div>
       </div>
+
+      {/* Route Playback Modal */}
+      <RoutePlaybackModal
+        isOpen={showPlaybackModal}
+        onClose={() => setShowPlaybackModal(false)}
+        targetType="vehicle"
+        targetId={id}
+        targetName={`Vehículo ${vehicle.licensePlate} (${vehicle.make || ''} ${vehicle.model || ''})`}
+      />
     </div>
   )
 }
