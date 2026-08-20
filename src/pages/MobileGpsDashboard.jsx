@@ -26,7 +26,17 @@ const customIcon = L.icon({
 
 export default function MobileGpsDashboard({ onLogout }) {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
-  const [customId, setCustomId] = useState(() => localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || '71690939')
+  const [customId, setCustomId] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const paramId = params.get('id') || params.get('imei') || params.get('user');
+      if (paramId) {
+        localStorage.setItem('einsoft_mobile_id', paramId);
+        return paramId;
+      }
+    } catch (_) {}
+    return localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || '350673971668546';
+  })
   const [serverUrl, setServerUrl] = useState(() => localStorage.getItem('einsoft_telemetry_url') || 'https://einsoft-gp-sbcknd.vercel.app/api/telemetry')
   const [frequencySec, setFrequencySec] = useState(() => localStorage.getItem('einsoft_telemetry_freq') || '10')
   const [showSettings, setShowSettings] = useState(true)

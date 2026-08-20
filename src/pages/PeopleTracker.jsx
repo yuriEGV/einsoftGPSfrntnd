@@ -376,12 +376,13 @@ export default function PeopleTracker() {
                     </div>
 
                     {isPanic ? (
-                      <span className="px-3 py-1 bg-red-600 text-white text-xs font-extrabold rounded-full animate-bounce shadow">
+                      <span className="px-3 py-1.5 bg-red-600 text-white text-xs font-extrabold rounded-full animate-bounce shadow">
                         🚨 PÁNICO SOS
                       </span>
                     ) : (
                       (() => {
-                        const conn = getDeviceConnectionStatus(person.lastSeen || person.location?.timestamp || person.updatedAt)
+                        // Connection status based strictly on the GPS satellite location timestamp
+                        const conn = getDeviceConnectionStatus(person.location?.timestamp)
                         return (
                           <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full flex items-center gap-1 ${conn.badgeClass}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${conn.dotClass}`}></span>
@@ -427,9 +428,16 @@ export default function PeopleTracker() {
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-600 mb-3 truncate">
-                      📍 <span className="font-medium">{person.location?.address || 'Ubicación reportada'}</span>
-                    </p>
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-700 truncate">
+                        📍 <span className="font-semibold">{person.location?.address || 'Ubicación reportada'}</span>
+                      </p>
+                      {person.location?.timestamp && (
+                        <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          🕒 Reporte satelital: {new Date(person.location.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({new Date(person.location.timestamp).toLocaleDateString('es-CL')})
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {/* Action Buttons */}
@@ -444,6 +452,21 @@ export default function PeopleTracker() {
                       📱 Abrir en Celular / QR
                     </button>
 
+                    {person.phone && (
+                      <a
+                        href={`https://api.whatsapp.com/send?phone=${person.phone.replace(/\D/g, '')}&text=${encodeURIComponent(
+                          `👋 Hola ${person.name}, por favor toca este enlace para activar el GPS de tu celular en EINSoft GPS:\n${window.location.origin}/mobile-gps?id=${person.deviceId || person.trackerCode}`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-emerald-600/30 transition-all active:scale-95"
+                        title="Enviar enlace directo por WhatsApp para despertar el GPS del celular"
+                      >
+                        📲 Despertar GPS (WhatsApp)
+                      </a>
+                    )}
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -453,7 +476,15 @@ export default function PeopleTracker() {
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
                       title="Centrar en el mapa y solicitar posición GPS satelital inmediata"
                     >
-                      {pingingPersonId === person._id ? '⏳ Emitiendo...' : '📍 Localizar / Ping'}
+                      {pingingPersonId === person._id ? (
+                        <>
+                          <span className="animate-spin text-xs">⏳</span> Localizando...
+                        </>
+                      ) : (
+                        <>
+                          <span>📍</span> Localizar / Ping
+                        </>
+                      )}
                     </button>
 
                     {/* Panic Toggle button */}
