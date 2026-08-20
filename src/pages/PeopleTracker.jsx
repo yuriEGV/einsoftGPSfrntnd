@@ -107,6 +107,7 @@ export default function PeopleTracker() {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    deviceId: '',
     roleDescription: 'Familiar / Personal',
   })
   const alarmIntervalRef = useRef(null)
@@ -123,7 +124,8 @@ export default function PeopleTracker() {
   useEffect(() => {
     people.forEach(p => {
       const coords = p.location?.coordinates
-      if (p.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0)) {
+      const hasRealCoords = p.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0)
+      if (hasRealCoords) {
         const latLng = [coords[1], coords[0]]
         setTrails(prev => {
           const current = prev[p._id] || []
@@ -160,21 +162,22 @@ export default function PeopleTracker() {
   // Screenshot map capture
   const handleCaptureScreenshot = async () => {
     if (!mapContainerRef.current) return
-    setIsCapturing(true)
     try {
+      setIsCapturing(true)
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(mapContainerRef.current, {
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff',
+        scale: 2,
       })
-      const link = document.createElement('a')
-      link.download = `mapa-personas-einsoft-gps-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
+      const image = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = image
+      a.download = `einsoft-gps-mapa-${new Date().toISOString().slice(0, 10)}.png`
+      a.click()
     } catch (err) {
-      console.error('Error al capturar mapa de personas:', err)
-      alert('Error al generar screenshot: ' + err.message)
+      console.error('Error capturing map:', err)
+      alert('No se pudo generar la captura del mapa.')
     } finally {
       setIsCapturing(false)
     }
@@ -231,7 +234,7 @@ export default function PeopleTracker() {
     onSuccess: () => {
       queryClient.invalidateQueries('peopleTrackers')
       setShowAddModal(false)
-      setFormData({ name: '', phone: '', roleDescription: 'Familiar / Personal' })
+      setFormData({ name: '', phone: '', deviceId: '', roleDescription: 'Familiar / Personal' })
     }
   })
 
@@ -747,6 +750,20 @@ export default function PeopleTracker() {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  IMEI Real del Teléfono (15 dígitos — Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: 350673971668546 (Obtener marcando *#06#)"
+                  value={formData.deviceId || ''}
+                  onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Si lo conoces, ingrésalo para enlazar el hardware físico del teléfono.</p>
               </div>
 
               <div>
