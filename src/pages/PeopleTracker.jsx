@@ -25,22 +25,54 @@ function ChangeView({ center, zoom }) {
   return null
 }
 
-// Custom Person Markers
-function makePersonIcon(isPanic, isOffline) {
-  const size = isPanic ? 40 : 32;
-  const color = isPanic ? '#ef4444' : isOffline ? '#6b7280' : '#8b5cf6'; // Purple for normal, red for panic
-  const svg = encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36">
-      ${isPanic ? '<circle cx="18" cy="18" r="17" fill="#ef4444" opacity="0.3"><animate attributeName="r" values="14;18;14" dur="1s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.5;0.1;0.5" dur="1s" repeatCount="indefinite"/></circle>' : ''}
-      <circle cx="18" cy="12" r="7" fill="${color}" stroke="#ffffff" stroke-width="2"/>
-      <path d="M6 32c0-6.6 5.4-12 12-12s12 5.4 12 12" fill="${color}" stroke="#ffffff" stroke-width="2"/>
-    </svg>
-  `);
-  return L.icon({
-    iconUrl: `data:image/svg+xml,${svg}`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-    popupAnchor: [0, -size / 2],
+// Distance helper (Haversine formula in meters)
+function getDistanceMeters(p1, p2) {
+  if (!p1 || !p2) return 0;
+  const R = 6371e3;
+  const dLat = (p2[0] - p1[0]) * Math.PI / 180;
+  const dLng = (p2[1] - p1[1]) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(p1[0] * Math.PI / 180) * Math.cos(p2[0] * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Custom Rich Person Marker with Name Badge & Status Pulse
+function makePersonDivIcon(person, isSelected, isPanic, isOffline) {
+  const name = person.name || 'Persona';
+  const battery = person.batteryLevel != null ? `${person.batteryLevel}%` : '';
+  const bgColor = isPanic ? '#dc2626' : isSelected ? '#7c3aed' : isOffline ? '#475569' : '#9333ea';
+  const borderRing = isSelected ? 'ring-4 ring-purple-400 ring-offset-2 scale-110 shadow-2xl z-50' : 'shadow-lg';
+
+  const html = `
+    <div class="relative flex flex-col items-center group cursor-pointer transition-all duration-300 ${borderRing}" style="transform: translate(-50%, -100%);">
+      <!-- Floating Name Badge -->
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-white text-[11px] font-black shadow-md whitespace-nowrap mb-1" style="background-color: ${bgColor};">
+        ${isPanic ? '<span class="animate-ping w-2 h-2 rounded-full bg-white"></span>' : !isOffline ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>' : ''}
+        <span>👤 ${name}</span>
+        ${battery ? `<span class="opacity-90 font-mono text-[9px] bg-black/20 px-1 rounded">🔋${battery}</span>` : ''}
+      </div>
+
+      <!-- Marker Pin & Radar Glow -->
+      <div class="relative flex items-center justify-center">
+        ${!isOffline && !isPanic ? '<div class="absolute w-8 h-8 rounded-full bg-purple-400/30 animate-ping"></div>' : ''}
+        ${isPanic ? '<div class="absolute w-10 h-10 rounded-full bg-red-500/50 animate-ping"></div>' : ''}
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow" style="background-color: ${bgColor};">
+          ${isPanic ? '🚨' : isSelected ? '📍' : '👤'}
+        </div>
+      </div>
+      <!-- Pin Pointer Triangle -->
+      <div class="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px]" style="border-t-color: ${bgColor};"></div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'custom-person-marker-container',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -45],
   });
 }
 
@@ -51,7 +83,7 @@ function playPanicBeep() {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+    osc.frequency.setValueAtTime(880, audioCtx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
     gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
@@ -59,9 +91,7 @@ function playPanicBeep() {
     gain.connect(audioCtx.destination);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.3);
-  } catch (e) {
-    // Ignore audio autoplay restrictions
-  }
+  } catch (e) {}
 }
 
 export default function PeopleTracker() {
@@ -86,10 +116,10 @@ export default function PeopleTracker() {
     const res = await apiClient.get('/people-trackers')
     return res.data
   }, {
-    refetchInterval: 4000, // Poll every 4 seconds for live location & panic updates
+    refetchInterval: 4000,
   })
 
-  // Update breadcrumb movement trails
+  // Update breadcrumb movement trails with Jump/Glitch Filtering
   useEffect(() => {
     people.forEach(p => {
       const coords = p.location?.coordinates
@@ -97,11 +127,22 @@ export default function PeopleTracker() {
         const latLng = [coords[1], coords[0]]
         setTrails(prev => {
           const current = prev[p._id] || []
+          if (current.length === 0) {
+            return { ...prev, [p._id]: [latLng] }
+          }
           const last = current[current.length - 1]
-          if (!last || Math.abs(last[0] - latLng[0]) > 0.00005 || Math.abs(last[1] - latLng[1]) > 0.00005) {
+          const dist = getDistanceMeters(last, latLng)
+
+          // If jump > 800m (cold start fix or cellular tower jump), restart trail to avoid straight line through ocean
+          if (dist > 800) {
+            return { ...prev, [p._id]: [latLng] }
+          }
+
+          // If moved > 5m, append point
+          if (dist >= 5) {
             return {
               ...prev,
-              [p._id]: [...current, latLng].slice(-50)
+              [p._id]: [...current, latLng].slice(-100)
             }
           }
           return prev
@@ -510,40 +551,77 @@ export default function PeopleTracker() {
                 {Object.entries(trails).map(([personId, points]) => {
                   if (!points || points.length < 2) return null
                   const isSel = selectedPerson?._id === personId
+                  const personObj = people.find(p => p._id === personId)
+                  const startPoint = points[0]
+                  const endPoint = points[points.length - 1]
+
                   return (
-                    <Polyline
-                      key={`trail-${personId}`}
-                      positions={points}
-                      pathOptions={{
-                        color: isSel ? '#8b5cf6' : '#a855f7',
-                        weight: isSel ? 5 : 3,
-                        opacity: isSel ? 0.9 : 0.6,
-                        dashArray: '6, 8',
-                      }}
-                    />
+                    <React.Fragment key={`trail-frag-${personId}`}>
+                      {/* Trail Polyline */}
+                      <Polyline
+                        positions={points}
+                        pathOptions={{
+                          color: isSel ? '#7c3aed' : '#a855f7',
+                          weight: isSel ? 6 : 4,
+                          opacity: isSel ? 0.95 : 0.7,
+                          dashArray: isSel ? undefined : '6, 8',
+                          lineCap: 'round',
+                          lineJoin: 'round',
+                        }}
+                      />
+                      {/* Start Point Marker (🟢 Inicio) */}
+                      {isSel && (
+                        <Marker
+                          position={startPoint}
+                          icon={L.divIcon({
+                            html: '<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[9px] font-bold shadow-md border border-white whitespace-nowrap">🟢 Inicio Ruta</div>',
+                            className: '',
+                            iconSize: [0, 0],
+                            iconAnchor: [30, 10],
+                          })}
+                        />
+                      )}
+                    </React.Fragment>
                   )
                 })}
 
                 {people.map((person) => {
                   const coords = person.location?.coordinates;
                   const hasRealLocation = person.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0);
-                  if (!hasRealLocation) return null; // Do NOT render marker until phone transmits real GPS!
+                  if (!hasRealLocation) return null;
                   const isPanic = person.status === 'panic' || person.panicAlert?.active;
                   const isOffline = person.status === 'offline';
+                  const isSelected = selectedPerson?._id === person._id;
 
                   return (
                     <Marker
-                      key={person._id}
+                      key={`${person._id}-${isSelected}-${coords[1]}-${coords[0]}`}
                       position={[coords[1], coords[0]]}
-                      icon={makePersonIcon(isPanic, isOffline)}
+                      icon={makePersonDivIcon(person, isSelected, isPanic, isOffline)}
+                      eventHandlers={{
+                        click: () => setSelectedPerson(person),
+                      }}
+                      zIndexOffset={isPanic ? 3000 : isSelected ? 2000 : 1000}
                     >
-                      <Popup>
-                        <div className="p-1 space-y-1 text-xs">
-                          <p className="font-bold text-sm text-slate-900">{person.name}</p>
-                          <p className="text-slate-600">{person.roleDescription}</p>
-                          <p className="font-semibold text-purple-700">🔋 Batería: {person.batteryLevel}%</p>
+                      <Popup minWidth={240}>
+                        <div className="p-2 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between border-b pb-1">
+                            <p className="font-black text-sm text-slate-900">👤 {person.name}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isOffline ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'}`}>
+                              {isOffline ? '⚪ Desconectado' : '🟢 En línea'}
+                            </span>
+                          </div>
+                          <p className="text-slate-600 font-medium">{person.roleDescription}</p>
+                          <div className="grid grid-cols-2 gap-1 bg-slate-50 p-1.5 rounded-lg text-[11px]">
+                            <p className="font-semibold text-purple-700">🔋 Batería: {person.batteryLevel ?? 100}%</p>
+                            <p className="font-semibold text-slate-700">🏃 Vel: {Math.round(person.speed || 0)} km/h</p>
+                            <p className="font-semibold text-slate-700 col-span-2">🎯 Precisión: {person.gpsAccuracy ? `±${Math.round(person.gpsAccuracy)}m` : 'Alta'}</p>
+                          </div>
+                          <p className="text-[11px] text-slate-500 pt-0.5">
+                            📍 {person.location?.address || `${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}`}
+                          </p>
                           {isPanic && (
-                            <p className="font-extrabold text-red-600 bg-red-50 p-1 rounded">
+                            <p className="font-extrabold text-red-600 bg-red-50 p-1.5 rounded-lg text-center animate-pulse">
                               🚨 ¡ALERTA PÁNICO ACTIVADA!
                             </p>
                           )}
@@ -553,7 +631,7 @@ export default function PeopleTracker() {
                             )}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-block mt-2 px-2 py-1 bg-emerald-600 text-white font-bold rounded text-[11px]"
+                            className="block text-center mt-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow"
                           >
                             📲 Compartir WhatsApp SOS
                           </a>
