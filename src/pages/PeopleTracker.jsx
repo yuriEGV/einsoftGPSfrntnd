@@ -447,25 +447,10 @@ export default function PeopleTracker() {
                         e.stopPropagation()
                         setActiveLinkModal(person)
                       }}
-                      className="px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-bold flex items-center gap-1"
+                      className="px-3 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                     >
                       📱 Abrir en Celular / QR
                     </button>
-
-                    {person.phone && (
-                      <a
-                        href={`https://api.whatsapp.com/send?phone=${person.phone.replace(/\D/g, '')}&text=${encodeURIComponent(
-                          `👋 Hola ${person.name}, por favor toca este enlace para activar el GPS de tu celular en EINSoft GPS:\n${window.location.origin}/mobile-gps?id=${person.deviceId || person.trackerCode}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-emerald-600/30 transition-all active:scale-95"
-                        title="Enviar enlace directo por WhatsApp para despertar el GPS del celular"
-                      >
-                        📲 Despertar GPS (WhatsApp)
-                      </a>
-                    )}
 
                     <button
                       onClick={(e) => {
@@ -473,12 +458,12 @@ export default function PeopleTracker() {
                         handlePing(person)
                       }}
                       disabled={pingingPersonId === person._id}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow shadow-blue-600/30 transition-all active:scale-95 disabled:opacity-50"
-                      title="Centrar en el mapa y solicitar posición GPS satelital inmediata"
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+                      title="Emitir comando remoto de despertar y forzar lectura satelital inmediata en el celular"
                     >
                       {pingingPersonId === person._id ? (
                         <>
-                          <span className="animate-spin text-xs">⏳</span> Localizando...
+                          <span className="animate-spin text-sm">📡</span> Despertando GPS...
                         </>
                       ) : (
                         <>
