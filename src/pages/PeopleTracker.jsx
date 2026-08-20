@@ -254,6 +254,16 @@ export default function PeopleTracker() {
     }
   })
 
+  // Reset stale location to [0,0]
+  const resetLocationMutation = useMutation(async (id) => {
+    return await apiClient.post(`/people-trackers/${id}/reset-location`)
+  }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('peopleTrackers')
+      refetch()
+    }
+  })
+
   const handleSubmitAdd = (e) => {
     e.preventDefault()
     if (!formData.name.trim()) return alert('Por favor ingresa un nombre.')
@@ -487,6 +497,21 @@ export default function PeopleTracker() {
                       {isPanic ? '✅ Cancelar Alarma' : '🚨 Probar Pánico'}
                     </button>
 
+                    {hasRealCoords && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (window.confirm(`¿Deseas limpiar la ubicación antigua registrada de ${person.name}?`)) {
+                            resetLocationMutation.mutate(person._id)
+                          }
+                        }}
+                        className="text-slate-400 hover:text-amber-600 p-1 text-xs"
+                        title="Limpiar ubicación antigua del mapa y esperar conexión en vivo"
+                      >
+                        🧹
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
@@ -608,6 +633,7 @@ export default function PeopleTracker() {
                   const isPanic = person.status === 'panic' || person.panicAlert?.active;
                   const isOffline = person.status === 'offline';
                   const isSelected = selectedPerson?._id === person._id;
+                  const conn = getDeviceConnectionStatus(person.location?.timestamp);
 
                   return (
                     <Marker
@@ -623,8 +649,8 @@ export default function PeopleTracker() {
                         <div className="p-2 space-y-1.5 text-xs">
                           <div className="flex items-center justify-between border-b pb-1">
                             <p className="font-black text-sm text-slate-900">👤 {person.name}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isOffline ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'}`}>
-                              {isOffline ? '⚪ Desconectado' : '🟢 En línea'}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conn.badgeClass}`}>
+                              {conn.label}
                             </span>
                           </div>
                           <p className="text-slate-600 font-medium">{person.roleDescription}</p>
@@ -636,21 +662,38 @@ export default function PeopleTracker() {
                           <p className="text-[11px] text-slate-500 pt-0.5">
                             📍 {person.location?.address || `${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}`}
                           </p>
+                          {person.location?.timestamp && (
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              🕒 Satélite: {new Date(person.location.timestamp).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} ({new Date(person.location.timestamp).toLocaleDateString('es-CL')})
+                            </p>
+                          )}
                           {isPanic && (
                             <p className="font-extrabold text-red-600 bg-red-50 p-1.5 rounded-lg text-center animate-pulse">
                               🚨 ¡ALERTA PÁNICO ACTIVADA!
                             </p>
                           )}
-                          <a
-                            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                              `🚨 Ubicación SOS de ${person.name}: https://maps.google.com/?q=${coords[1]},${coords[0]}`
-                            )}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block text-center mt-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow"
-                          >
-                            📲 Compartir WhatsApp SOS
-                          </a>
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`¿Deseas limpiar la ubicación antigua registrada de ${person.name}?`)) {
+                                  resetLocationMutation.mutate(person._id);
+                                }
+                              }}
+                              className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] text-center border border-slate-200"
+                            >
+                              🧹 Limpiar Posición
+                            </button>
+                            <a
+                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                `🚨 Ubicación SOS de ${person.name}: https://maps.google.com/?q=${coords[1]},${coords[0]}`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex-1 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] text-center shadow"
+                            >
+                              📲 SOS
+                            </a>
+                          </div>
                         </div>
                       </Popup>
                     </Marker>
