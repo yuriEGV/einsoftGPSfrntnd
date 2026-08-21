@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { getRoadSnappedRoute } from '../services/routingService'
 
 // Fix Leaflet default icon issue with Vite/Webpack
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
@@ -123,7 +124,7 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
     return null
   }
 
-  // Update trails when new positions arrive
+  // Update trails when new positions arrive with road snapping
   useEffect(() => {
     vehicles.forEach(v => {
       const pos = getEffectivePosition(v)
@@ -131,10 +132,25 @@ export default function MapComponent({ vehicles = [], selectedVehicle, onVehicle
         setTrails(prev => {
           const current = prev[v._id] || []
           const last = current[current.length - 1]
-          if (!last || Math.abs(last[0] - pos[0]) > 0.00005 || Math.abs(last[1] - pos[1]) > 0.00005) {
+          if (!last) {
+            return { ...prev, [v._id]: [pos] }
+          }
+          if (Math.abs(last[0] - pos[0]) > 0.00005 || Math.abs(last[1] - pos[1]) > 0.00005) {
+            // Asynchronously snap to road geometry if distance is significant (> 100m)
+            const dist = Math.hypot(last[0] - pos[0], last[1] - pos[1])
+            if (dist > 0.001) {
+              getRoadSnappedRoute([last, pos]).then(snapped => {
+                if (snapped && snapped.length > 2) {
+                  setTrails(currentTrails => ({
+                    ...currentTrails,
+                    [v._id]: [...(currentTrails[v._id] || []).slice(0, -1), ...snapped].slice(-200)
+                  }))
+                }
+              }).catch(() => {})
+            }
             return {
               ...prev,
-              [v._id]: [...current, pos].slice(-50) // keep last 50 points
+              [v._id]: [...current, pos].slice(-200) // keep last 200 points
             }
           }
           return prev

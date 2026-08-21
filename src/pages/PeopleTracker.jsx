@@ -5,6 +5,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
+import { getRoadSnappedRoute } from '../services/routingService'
 
 // Helper component to smoothly center Leaflet map on target person
 function ChangeView({ center, zoom }) {
@@ -120,7 +121,7 @@ export default function PeopleTracker() {
     refetchInterval: 4000,
   })
 
-  // Update breadcrumb movement trails with Jump/Glitch Filtering
+  // Update breadcrumb movement trails with Jump/Glitch Filtering and Road Snapping
   useEffect(() => {
     people.forEach(p => {
       const coords = p.location?.coordinates
@@ -135,16 +136,26 @@ export default function PeopleTracker() {
           const last = current[current.length - 1]
           const dist = getDistanceMeters(last, latLng)
 
-          // If jump > 800m (cold start fix or cellular tower jump), restart trail to avoid straight line through ocean
-          if (dist > 800) {
+          // If jump > 30km (outlier / wrong region), restart trail
+          if (dist > 30000) {
             return { ...prev, [p._id]: [latLng] }
           }
 
-          // If moved > 5m, append point
-          if (dist >= 5) {
+          // If moved > 8m, append point and snap to roads
+          if (dist >= 8) {
+            if (dist > 80) {
+              getRoadSnappedRoute([last, latLng]).then(snapped => {
+                if (snapped && snapped.length > 2) {
+                  setTrails(currentTrails => ({
+                    ...currentTrails,
+                    [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-200)
+                  }))
+                }
+              }).catch(() => {})
+            }
             return {
               ...prev,
-              [p._id]: [...current, latLng].slice(-100)
+              [p._id]: [...current, latLng].slice(-200)
             }
           }
           return prev
