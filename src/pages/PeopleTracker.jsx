@@ -111,6 +111,13 @@ export default function PeopleTracker() {
     deviceId: '',
     roleDescription: 'Familiar / Personal',
   })
+  const [editModalPerson, setEditModalPerson] = useState(null)
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    phone: '',
+    deviceId: '',
+    roleDescription: 'Familiar / Personal',
+  })
   const alarmIntervalRef = useRef(null)
 
   // Fetch tracked people from API
@@ -246,6 +253,20 @@ export default function PeopleTracker() {
       queryClient.invalidateQueries('peopleTrackers')
       setShowAddModal(false)
       setFormData({ name: '', phone: '', deviceId: '', roleDescription: 'Familiar / Personal' })
+    }
+  })
+
+  // Update existing Person & IMEI
+  const updateMutation = useMutation(async ({ id, data }) => {
+    return await apiClient.put(`/people-trackers/${id}`, data)
+  }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries('peopleTrackers')
+      setEditModalPerson(null)
+      alert('✅ Datos y número IMEI actualizados correctamente.')
+    },
+    onError: (err) => {
+      alert('❌ Error al actualizar: ' + (err.response?.data?.error || err.message))
     }
   })
 
@@ -441,6 +462,16 @@ export default function PeopleTracker() {
                     </div>
                   </div>
 
+                  {/* IMEI & Hardware Tag */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 mb-3 flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-700 font-bold">
+                      📱 IMEI: <span className="text-purple-700 font-black">{person.deviceId || 'Sin IMEI asignado'}</span>
+                    </span>
+                    <span className="text-slate-400 text-[10px]">
+                      🔑 {person.trackerCode}
+                    </span>
+                  </div>
+
                   {/* Location string or Initial Warning */}
                   {!hasRealCoords ? (
                     <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 mb-3 text-xs space-y-1.5">
@@ -494,6 +525,24 @@ export default function PeopleTracker() {
                           <span>📍</span> Localizar / Ping
                         </>
                       )}
+                    </button>
+
+                    {/* Edit button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditModalPerson(person)
+                        setEditFormData({
+                          name: person.name || '',
+                          phone: person.phone || '',
+                          deviceId: person.deviceId || '',
+                          roleDescription: person.roleDescription || 'Familiar / Personal',
+                        })
+                      }}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                      title="Editar datos e IMEI de esta persona"
+                    >
+                      ✏️ Editar
                     </button>
 
                     {/* Panic Toggle button */}
@@ -808,6 +857,108 @@ export default function PeopleTracker() {
                   className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow-lg shadow-purple-600/30 text-sm"
                 >
                   {createMutation.isLoading ? 'Guardando...' : 'Generar Rastreador'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Editar Persona & IMEI ── */}
+      {editModalPerson && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                ✏️ Modificar Persona & IMEI
+              </h3>
+              <button
+                onClick={() => setEditModalPerson(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                updateMutation.mutate({ id: editModalPerson._id, data: editFormData })
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Nombre Completo
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Teléfono Móvil
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: +56912345678"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  📱 IMEI del Teléfono Celular (15 dígitos)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: 358251526515967 (Marcar *#06# en el celular)"
+                  value={editFormData.deviceId}
+                  onChange={(e) => setEditFormData({ ...editFormData, deviceId: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-purple-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono font-bold text-purple-900 bg-purple-50/40"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Este es el identificador único físico con el que la APK del celular transmite a la plataforma.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Rol o Relación
+                </label>
+                <select
+                  value={editFormData.roleDescription}
+                  onChange={(e) => setEditFormData({ ...editFormData, roleDescription: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                >
+                  <option value="Familiar / Personal">Familiar / Personal</option>
+                  <option value="Hijo / Estudiante">Hijo / Estudiante</option>
+                  <option value="Adulto Mayor">Adulto Mayor</option>
+                  <option value="Trabajador de Campo / Guardia">Trabajador de Campo / Guardia</option>
+                  <option value="Repartidor / Ejecutivo">Repartidor / Ejecutivo</option>
+                  <option value="Conductor / Chofer">Conductor / Chofer</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditModalPerson(null)}
+                  className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={updateMutation.isLoading}
+                  className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl transition shadow-lg shadow-purple-600/30 text-sm"
+                >
+                  {updateMutation.isLoading ? 'Guardando...' : '💾 Guardar Cambios'}
                 </button>
               </div>
             </form>
