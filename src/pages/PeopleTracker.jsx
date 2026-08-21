@@ -157,7 +157,7 @@ export default function PeopleTracker() {
     staleTime: 30000,
   })
 
-  // Pre-populate trails from historical data
+  // Pre-populate trails from historical data with road snapping
   useEffect(() => {
     if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
       const initialTrails = {}
@@ -167,7 +167,10 @@ export default function PeopleTracker() {
         const lng = pt.gps?.longitude || pt.location?.coordinates?.[0]
         if (lat && lng && (lat !== 0 || lng !== 0)) {
           if (!initialTrails[pId]) initialTrails[pId] = []
-          initialTrails[pId].push([lat, lng])
+          const last = initialTrails[pId][initialTrails[pId].length - 1]
+          if (!last || getDistanceMeters(last, [lat, lng]) >= 15) {
+            initialTrails[pId].push([lat, lng])
+          }
         }
       })
 
@@ -180,6 +183,17 @@ export default function PeopleTracker() {
               .map(pt => [pt.gps?.latitude || pt.location?.coordinates?.[1], pt.gps?.longitude || pt.location?.coordinates?.[0]])
               .filter(ll => ll[0] && ll[1])
           }
+        }
+      })
+
+      // Snap raw segments to street roads
+      Object.entries(initialTrails).forEach(([id, rawPts]) => {
+        if (rawPts && rawPts.length >= 2) {
+          getRoadSnappedRoute(rawPts).then(snapped => {
+            if (snapped && snapped.length > 2) {
+              setTrails(prev => ({ ...prev, [id]: snapped }))
+            }
+          }).catch(() => {})
         }
       })
 
@@ -209,21 +223,20 @@ export default function PeopleTracker() {
             return { ...prev, [p._id]: [latLng] }
           }
 
-          // If moved > 8m, append point and snap to roads
-          if (dist >= 8) {
-            if (dist > 80) {
-              getRoadSnappedRoute([last, latLng]).then(snapped => {
-                if (snapped && snapped.length > 2) {
-                  setTrails(currentTrails => ({
-                    ...currentTrails,
-                    [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-300)
-                  }))
-                }
-              }).catch(() => {})
-            }
+          // If moved >= 10m, append point and snap to real roads
+          if (dist >= 10) {
+            getRoadSnappedRoute([last, latLng]).then(snapped => {
+              if (snapped && snapped.length > 2) {
+                setTrails(currentTrails => ({
+                  ...currentTrails,
+                  [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-400)
+                }))
+              }
+            }).catch(() => {})
+
             return {
               ...prev,
-              [p._id]: [...current, latLng].slice(-300)
+              [p._id]: [...current, latLng].slice(-400)
             }
           }
           return prev
