@@ -777,26 +777,24 @@ export default function PeopleTracker() {
                   )
                 })}
 
-                {/* Render Markers for ALL Registered People */}
+                {/* Render Markers for People with Real GPS Location */}
                 {people.map((person, pIdx) => {
                   const coords = person.location?.coordinates;
                   const hasRealLocation = person.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0);
+                  if (!hasRealLocation) return null;
+
                   const isPanic = person.status === 'panic' || person.panicAlert?.active;
                   const isOffline = person.status === 'offline';
                   const isSelected = selectedPerson?._id === person._id;
                   const conn = getDeviceConnectionStatus(person.location?.timestamp);
                   const colorObj = getPersonColor(person.name, pIdx);
-
-                  // Position: real GPS if reported, or distributed regional center
-                  const pos = hasRealLocation
-                    ? [coords[1], coords[0]]
-                    : [-33.024 + (pIdx * 0.009), -71.552 + (pIdx * 0.009)];
+                  const pos = [coords[1], coords[0]];
 
                   return (
                     <Marker
                       key={`${person._id}-${isSelected}-${pos[0]}-${pos[1]}`}
                       position={pos}
-                      icon={makePersonDivIcon(person, isSelected, isPanic, isOffline || !hasRealLocation, pIdx)}
+                      icon={makePersonDivIcon(person, isSelected, isPanic, isOffline, pIdx)}
                       eventHandlers={{
                         click: () => setSelectedPerson(person),
                       }}
@@ -809,8 +807,8 @@ export default function PeopleTracker() {
                               <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: colorObj.stroke }}></span>
                               👤 {person.name}
                             </p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${hasRealLocation ? conn.badgeClass : 'bg-amber-100 text-amber-800'}`}>
-                              {hasRealLocation ? conn.label : '📡 Esperando satélites'}
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conn.badgeClass}`}>
+                              {conn.label}
                             </span>
                           </div>
                           <p className="text-slate-600 font-medium">{person.roleDescription}</p>
@@ -820,7 +818,7 @@ export default function PeopleTracker() {
                             <p className="font-semibold text-slate-700 col-span-2">🎯 Precisión: {person.gpsAccuracy ? `±${Math.round(person.gpsAccuracy)}m` : 'Alta'}</p>
                           </div>
                           <p className="text-[11px] text-slate-500 pt-0.5">
-                            📍 {hasRealLocation ? (person.location?.address || `${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`) : 'Esperando primer reporte GPS del teléfono'}
+                            📍 {person.location?.address || `${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`}
                           </p>
                           {person.location?.timestamp && (
                             <p className="text-[10px] text-slate-400 font-mono">
