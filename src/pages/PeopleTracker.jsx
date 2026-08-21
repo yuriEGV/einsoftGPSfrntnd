@@ -353,6 +353,20 @@ export default function PeopleTracker() {
     }
   })
 
+  // Resolve / Silence All Panics at once
+  const resolveAllPanicsMutation = useMutation(async () => {
+    return await apiClient.post('/people-trackers/panic/resolve-all')
+  }, {
+    onSuccess: () => {
+      if (alarmIntervalRef.current) {
+        clearInterval(alarmIntervalRef.current)
+        alarmIntervalRef.current = null
+      }
+      queryClient.invalidateQueries('peopleTrackers')
+      refetch()
+    }
+  })
+
   // Delete Person
   const deleteMutation = useMutation(async (id) => {
     if (!window.confirm('¿Seguro que deseas eliminar a esta persona de la lista de rastreo?')) return;
@@ -418,14 +432,24 @@ export default function PeopleTracker() {
 
         {/* Banner de alerta si hay alguien en pánico */}
         {panicCount > 0 && (
-          <div className="mt-4 p-4 bg-red-600/90 border border-red-400 text-white rounded-2xl flex items-center justify-between animate-pulse shadow-lg">
+          <div className="mt-4 p-4 bg-gradient-to-r from-red-600 to-rose-700 border-2 border-white/40 text-white rounded-2xl flex flex-wrap items-center justify-between gap-3 animate-pulse shadow-2xl">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🚨</span>
+              <span className="text-3xl animate-bounce">🚨</span>
               <div>
-                <p className="font-extrabold text-sm uppercase">¡ALERTA DE EMERGENCIA ACTIVADA!</p>
-                <p className="text-xs opacity-90">Hay {panicCount} persona(s) solicitando auxilio inmediato con el Botón de Pánico.</p>
+                <p className="font-black text-sm uppercase tracking-wide">¡ALERTA DE EMERGENCIA ACTIVADA EN TIEMPO REAL!</p>
+                <p className="text-xs text-red-100 font-medium">Hay {panicCount} persona(s) solicitando auxilio inmediato con el Botón de Pánico SOS.</p>
               </div>
             </div>
+
+            <button
+              onClick={() => resolveAllPanicsMutation.mutate()}
+              disabled={resolveAllPanicsMutation.isLoading}
+              className="px-4 py-2.5 bg-white hover:bg-red-50 text-red-700 font-black rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all active:scale-95 flex items-center gap-2 hover:shadow-xl"
+              title="Apagar sirena acústica y resolver todas las alertas de pánico activas"
+            >
+              <span>🔕</span>
+              <span>{resolveAllPanicsMutation.isLoading ? 'Apagando...' : 'Apagar y Silenciar Alarma'}</span>
+            </button>
           </div>
         )}
       </div>
