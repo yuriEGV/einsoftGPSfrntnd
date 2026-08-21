@@ -860,13 +860,6 @@ export default function PeopleTracker() {
                       </Popup>
                     </Marker>
                   );
-                })}           📲 SOS
-                            </a>
-                          </div>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  )
                 })}
               </MapContainer>
             </div>
