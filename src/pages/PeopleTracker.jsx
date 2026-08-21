@@ -39,11 +39,28 @@ function getDistanceMeters(p1, p2) {
   return R * c;
 }
 
-// Custom Rich Person Marker with Name Badge & Status Pulse
-function makePersonDivIcon(person, isSelected, isPanic, isOffline) {
+// Distinct Vibrant Color Palette per Person & Trip
+export const PERSON_PALETTE = {
+  yuri: { stroke: '#6366f1', fill: '#818cf8', bg: '#4f46e5', badge: 'bg-indigo-600 text-white', name: 'Índigo Neón' },
+  manuel: { stroke: '#10b981', fill: '#34d399', bg: '#059669', badge: 'bg-emerald-600 text-white', name: 'Esmeralda' },
+  gloria: { stroke: '#f43f5e', fill: '#fb7185', bg: '#e11d48', badge: 'bg-rose-600 text-white', name: 'Rosa Carmesí' },
+  sarem: { stroke: '#f59e0b', fill: '#fbbf24', bg: '#d97706', badge: 'bg-amber-500 text-white', name: 'Ámbar Oro' },
+  veronica: { stroke: '#06b6d4', fill: '#22d3ee', bg: '#0891b2', badge: 'bg-cyan-600 text-white', name: 'Cian' },
+};
+
+export function getPersonColor(personName, index = 0) {
+  const key = (personName || '').toLowerCase().trim();
+  if (PERSON_PALETTE[key]) return PERSON_PALETTE[key];
+  const list = Object.values(PERSON_PALETTE);
+  return list[index % list.length];
+}
+
+// Custom Rich Person Marker with Name Badge, Status Pulse & Custom Color
+function makePersonDivIcon(person, isSelected, isPanic, isOffline, index = 0) {
   const name = person.name || 'Persona';
   const battery = person.batteryLevel != null ? `${person.batteryLevel}%` : '';
-  const bgColor = isPanic ? '#dc2626' : isSelected ? '#7c3aed' : isOffline ? '#475569' : '#9333ea';
+  const colorObj = getPersonColor(name, index);
+  const bgColor = isPanic ? '#dc2626' : isSelected ? '#7c3aed' : isOffline ? '#475569' : colorObj.bg;
   const borderRing = isSelected ? 'ring-4 ring-purple-400 ring-offset-2 scale-110 shadow-2xl z-50' : 'shadow-lg';
 
   const html = `
@@ -57,7 +74,7 @@ function makePersonDivIcon(person, isSelected, isPanic, isOffline) {
 
       <!-- Marker Pin & Radar Glow -->
       <div class="relative flex items-center justify-center">
-        ${!isOffline && !isPanic ? '<div class="absolute w-8 h-8 rounded-full bg-purple-400/30 animate-ping"></div>' : ''}
+        ${!isOffline && !isPanic ? `<div class="absolute w-8 h-8 rounded-full animate-ping" style="background-color: ${colorObj.fill}40;"></div>` : ''}
         ${isPanic ? '<div class="absolute w-10 h-10 rounded-full bg-red-500/50 animate-ping"></div>' : ''}
         <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow" style="background-color: ${bgColor};">
           ${isPanic ? '🚨' : isSelected ? '📍' : '👤'}
@@ -128,6 +145,50 @@ export default function PeopleTracker() {
     refetchInterval: 4000,
   })
 
+  // Load historical GPS points for all people
+  const { data: historyPoints = [] } = useQuery('peopleHistoryAll', async () => {
+    try {
+      const res = await apiClient.get('/people-trackers/history/all')
+      return res.data || []
+    } catch (_) {
+      return []
+    }
+  }, {
+    staleTime: 30000,
+  })
+
+  // Pre-populate trails from historical data
+  useEffect(() => {
+    if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
+      const initialTrails = {}
+      historyPoints.forEach(pt => {
+        const pId = pt.personTracker
+        const lat = pt.gps?.latitude || pt.location?.coordinates?.[1]
+        const lng = pt.gps?.longitude || pt.location?.coordinates?.[0]
+        if (lat && lng && (lat !== 0 || lng !== 0)) {
+          if (!initialTrails[pId]) initialTrails[pId] = []
+          initialTrails[pId].push([lat, lng])
+        }
+      })
+
+      // Also map by deviceIMEI if personTracker id wasn't set
+      people.forEach(p => {
+        if ((!initialTrails[p._id] || initialTrails[p._id].length === 0) && p.deviceId) {
+          const matchPoints = historyPoints.filter(pt => pt.deviceIMEI === p.deviceId)
+          if (matchPoints.length > 0) {
+            initialTrails[p._id] = matchPoints
+              .map(pt => [pt.gps?.latitude || pt.location?.coordinates?.[1], pt.gps?.longitude || pt.location?.coordinates?.[0]])
+              .filter(ll => ll[0] && ll[1])
+          }
+        }
+      })
+
+      if (Object.keys(initialTrails).length > 0) {
+        setTrails(prev => ({ ...initialTrails, ...prev }))
+      }
+    }
+  }, [historyPoints, people])
+
   // Update breadcrumb movement trails with Jump/Glitch Filtering and Road Snapping
   useEffect(() => {
     people.forEach(p => {
@@ -155,14 +216,14 @@ export default function PeopleTracker() {
                 if (snapped && snapped.length > 2) {
                   setTrails(currentTrails => ({
                     ...currentTrails,
-                    [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-200)
+                    [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-300)
                   }))
                 }
               }).catch(() => {})
             }
             return {
               ...prev,
-              [p._id]: [...current, latLng].slice(-200)
+              [p._id]: [...current, latLng].slice(-300)
             }
           }
           return prev
@@ -631,6 +692,34 @@ export default function PeopleTracker() {
               </div>
             </div>
 
+            {/* Color Legend Bar per Person & Trail */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 text-xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 mr-1 flex items-center gap-1">
+                <span>🎨</span> Rutas:
+              </span>
+              {people.map((p, idx) => {
+                const color = getPersonColor(p.name, idx);
+                const isSelected = selectedPerson?._id === p._id;
+                return (
+                  <button
+                    key={p._id}
+                    onClick={() => setSelectedPerson(p)}
+                    className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                      isSelected ? 'ring-2 ring-purple-500 scale-105' : 'opacity-85 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor: `${color.stroke}15`,
+                      borderColor: color.stroke,
+                      color: color.bg,
+                    }}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: color.stroke }}></span>
+                    <span className="capitalize">{p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="flex-1 rounded-xl overflow-hidden relative border border-slate-100">
               <MapContainer
                 center={defaultCenter}
@@ -651,13 +740,13 @@ export default function PeopleTracker() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
-                {/* Render Trajectory Polyline Trails for People */}
-                {Object.entries(trails).map(([personId, points]) => {
+                {/* Render Distinct Multi-Color Trajectory Polyline Trails per Person */}
+                {Object.entries(trails).map(([personId, points], trailIdx) => {
                   if (!points || points.length < 2) return null
                   const isSel = selectedPerson?._id === personId
                   const personObj = people.find(p => p._id === personId)
+                  const colorObj = getPersonColor(personObj?.name, trailIdx)
                   const startPoint = points[0]
-                  const endPoint = points[points.length - 1]
 
                   return (
                     <React.Fragment key={`trail-frag-${personId}`}>
@@ -665,10 +754,9 @@ export default function PeopleTracker() {
                       <Polyline
                         positions={points}
                         pathOptions={{
-                          color: isSel ? '#7c3aed' : '#a855f7',
-                          weight: isSel ? 6 : 4,
-                          opacity: isSel ? 0.95 : 0.7,
-                          dashArray: isSel ? undefined : '6, 8',
+                          color: colorObj.stroke,
+                          weight: isSel ? 7 : 5,
+                          opacity: isSel ? 1 : 0.85,
                           lineCap: 'round',
                           lineJoin: 'round',
                         }}
@@ -678,7 +766,7 @@ export default function PeopleTracker() {
                         <Marker
                           position={startPoint}
                           icon={L.divIcon({
-                            html: '<div class="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[9px] font-bold shadow-md border border-white whitespace-nowrap">🟢 Inicio Ruta</div>',
+                            html: `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[9px] font-extrabold shadow-md border border-white whitespace-nowrap" style="background-color: ${colorObj.bg}">🟢 Inicio ${personObj?.name || ''}</div>`,
                             className: '',
                             iconSize: [0, 0],
                             iconAnchor: [30, 10],
@@ -689,20 +777,26 @@ export default function PeopleTracker() {
                   )
                 })}
 
-                {people.map((person) => {
+                {/* Render Markers for ALL Registered People */}
+                {people.map((person, pIdx) => {
                   const coords = person.location?.coordinates;
                   const hasRealLocation = person.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0);
-                  if (!hasRealLocation) return null;
                   const isPanic = person.status === 'panic' || person.panicAlert?.active;
                   const isOffline = person.status === 'offline';
                   const isSelected = selectedPerson?._id === person._id;
                   const conn = getDeviceConnectionStatus(person.location?.timestamp);
+                  const colorObj = getPersonColor(person.name, pIdx);
+
+                  // Position: real GPS if reported, or distributed regional center
+                  const pos = hasRealLocation
+                    ? [coords[1], coords[0]]
+                    : [-33.024 + (pIdx * 0.009), -71.552 + (pIdx * 0.009)];
 
                   return (
                     <Marker
-                      key={`${person._id}-${isSelected}-${coords[1]}-${coords[0]}`}
-                      position={[coords[1], coords[0]]}
-                      icon={makePersonDivIcon(person, isSelected, isPanic, isOffline)}
+                      key={`${person._id}-${isSelected}-${pos[0]}-${pos[1]}`}
+                      position={pos}
+                      icon={makePersonDivIcon(person, isSelected, isPanic, isOffline || !hasRealLocation, pIdx)}
                       eventHandlers={{
                         click: () => setSelectedPerson(person),
                       }}
@@ -711,9 +805,12 @@ export default function PeopleTracker() {
                       <Popup minWidth={240}>
                         <div className="p-2 space-y-1.5 text-xs">
                           <div className="flex items-center justify-between border-b pb-1">
-                            <p className="font-black text-sm text-slate-900">👤 {person.name}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conn.badgeClass}`}>
-                              {conn.label}
+                            <p className="font-black text-sm text-slate-900 flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: colorObj.stroke }}></span>
+                              👤 {person.name}
+                            </p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${hasRealLocation ? conn.badgeClass : 'bg-amber-100 text-amber-800'}`}>
+                              {hasRealLocation ? conn.label : '📡 Esperando satélites'}
                             </span>
                           </div>
                           <p className="text-slate-600 font-medium">{person.roleDescription}</p>
@@ -723,7 +820,7 @@ export default function PeopleTracker() {
                             <p className="font-semibold text-slate-700 col-span-2">🎯 Precisión: {person.gpsAccuracy ? `±${Math.round(person.gpsAccuracy)}m` : 'Alta'}</p>
                           </div>
                           <p className="text-[11px] text-slate-500 pt-0.5">
-                            📍 {person.location?.address || `${coords[1].toFixed(5)}, ${coords[0].toFixed(5)}`}
+                            📍 {hasRealLocation ? (person.location?.address || `${pos[0].toFixed(5)}, ${pos[1].toFixed(5)}`) : 'Esperando primer reporte GPS del teléfono'}
                           </p>
                           {person.location?.timestamp && (
                             <p className="text-[10px] text-slate-400 font-mono">
@@ -736,25 +833,34 @@ export default function PeopleTracker() {
                             </p>
                           )}
                           <div className="flex gap-1.5 pt-1">
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`¿Deseas limpiar la ubicación antigua registrada de ${person.name}?`)) {
-                                  resetLocationMutation.mutate(person._id);
-                                }
-                              }}
-                              className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] text-center border border-slate-200"
-                            >
-                              🧹 Limpiar Posición
-                            </button>
+                            {hasRealLocation && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`¿Deseas limpiar la ubicación antigua registrada de ${person.name}?`)) {
+                                    resetLocationMutation.mutate(person._id);
+                                  }
+                                }}
+                                className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] text-center border border-slate-200"
+                              >
+                                🧹 Limpiar Posición
+                              </button>
+                            )}
                             <a
                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                `🚨 Ubicación SOS de ${person.name}: https://maps.google.com/?q=${coords[1]},${coords[0]}`
+                                `🚨 Ubicación GPS de ${person.name} en EINSoft GPS: https://einsoft-gp-sfrntnd.vercel.app/people-tracker`
                               )}`}
                               target="_blank"
                               rel="noreferrer"
                               className="flex-1 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] text-center shadow"
                             >
-                              📲 SOS
+                              📲 Compartir
+                            </a>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}           📲 SOS
                             </a>
                           </div>
                         </div>
