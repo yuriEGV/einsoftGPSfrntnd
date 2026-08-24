@@ -254,7 +254,9 @@ export default function MobileGpsDashboard() {
     return () => clearTimeout(countdownTimer.current)
   }, [panicCountdown, customId, telemetry])
 
-  const mapCenter = telemetry?.latitude && telemetry?.longitude ? [telemetry.latitude, telemetry.longitude] : [-33.045, -71.615]
+  const mapCenter = telemetry?.latitude && telemetry?.longitude
+    ? [telemetry.latitude, telemetry.longitude]
+    : [-33.02957, -71.63435]
 
   return (
     <div className="min-h-screen bg-[#050811] text-slate-100 font-sans flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
