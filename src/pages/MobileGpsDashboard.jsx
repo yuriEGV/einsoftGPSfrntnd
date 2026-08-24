@@ -3,10 +3,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
-import { telemetryClient } from '../services/telemetryClient'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
 
-// Simple flyTo helper for Leaflet
+// FlyTo Map Updater
 function MapUpdater({ center }) {
   const map = useMap()
   useEffect(() => {
@@ -17,15 +16,25 @@ function MapUpdater({ center }) {
   return null
 }
 
-const customIcon = L.icon({
-  iconUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb" width="36px" height="36px"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
-  iconSize: [36, 36],
-  iconAnchor: [18, 36],
-  popupAnchor: [0, -36],
+const tacticalIcon = L.divIcon({
+  html: `
+    <div class="relative flex items-center justify-center">
+      <div class="absolute w-10 h-10 rounded-full bg-cyan-500/30 animate-ping"></div>
+      <div class="w-8 h-8 rounded-full bg-slate-950 border-2 border-cyan-400 flex items-center justify-center text-white text-xs font-black shadow-[0_0_15px_rgba(6,182,212,0.6)]">
+        🛰️
+      </div>
+    </div>
+  `,
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -20],
 })
 
-export default function MobileGpsDashboard({ onLogout }) {
+export default function MobileGpsDashboard() {
   const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}')
+  
+  // Custom ID selection
   const [customId, setCustomId] = useState(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -35,119 +44,193 @@ export default function MobileGpsDashboard({ onLogout }) {
         return paramId;
       }
     } catch (_) {}
-    return localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || '350673971668546';
+    return localStorage.getItem('einsoft_mobile_id') || user.imei || user.deviceId || user.phone || 'MOVIL-3550';
   })
+
   const [serverUrl, setServerUrl] = useState(() => localStorage.getItem('einsoft_telemetry_url') || 'https://einsoft-gp-sbcknd.vercel.app/api/telemetry')
-  const [frequencySec, setFrequencySec] = useState(() => localStorage.getItem('einsoft_telemetry_freq') || '10')
-  const [showSettings, setShowSettings] = useState(true)
-  const [pingTestStatus, setPingTestStatus] = useState(null)
   const [isTransmitting, setIsTransmitting] = useState(true)
+  const [sentinelActive, setSentinelActive] = useState(false)
+  const [activeTab, setActiveTab] = useState('sensors') // 'sensors', 'map', 'events'
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Telemetry & Motion State
   const [telemetry, setTelemetry] = useState(null)
-  const [lastPacketTime, setLastPacketTime] = useState(null)
-  const [offlineCount, setOfflineCount] = useState(0)
-  const [isNetOnline, setIsNetOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
+  const [motion, setMotion] = useState({
+    ax: 0, ay: 0, az: 0,
+    gx: 0, gy: 0, gz: 0,
+    gForce: 1.0,
+    peakGForce: 1.0,
+    roll: 0,
+    pitch: 0,
+  })
+  const [driverScore, setDriverScore] = useState(98)
+  const [eventLog, setEventLog] = useState([
+    { id: '1', type: 'INIT', message: 'EYE-NODE 360 inicializado con éxito.', severity: 'info', timestamp: new Date().toISOString() }
+  ])
+  const [blackboxCount, setBlackboxCount] = useState(0)
   const [packetsSentTotal, setPacketsSentTotal] = useState(0)
-  const [gpsPermissionError, setGpsPermissionError] = useState(null)
-  
-  // Panic Alert state & countdown
+  const [lastPacketTime, setLastPacketTime] = useState(null)
+  const [isNetOnline, setIsNetOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const [panicCountdown, setPanicCountdown] = useState(null)
   const [panicActive, setPanicActive] = useState(false)
-  const [panicMessage, setPanicMessage] = useState('')
   const countdownTimer = useRef(null)
+  const transmissionTimer = useRef(null)
 
-  // Start/restart Telemetry Client whenever parameters change
+  // Presets
+  const PRESET_PEOPLE = [
+    { label: 'manuel', id: 'MOVIL-3550' },
+    { label: 'yuri', id: 'PER-139F17' },
+    { label: 'gloria', id: 'PER-FC9B50' },
+    { label: 'sarem', id: '350673971668546' },
+    { label: 'veronica', id: 'PER-5CA27E' },
+  ]
+
+  // Start Device Motion & Orientation Listeners
   useEffect(() => {
-    if (!isTransmitting) {
-      telemetryClient.stop()
-      return
+    if (typeof window === 'undefined') return
+
+    const handleMotion = (e) => {
+      const acc = e.accelerationIncludingGravity || e.acceleration || {}
+      const ax = acc.x || 0
+      const ay = acc.y || 0
+      const az = acc.z || 0
+      const gCalc = Math.sqrt(ax * ax + ay * ay + az * az) / 9.81
+      const gForce = isNaN(gCalc) || gCalc < 0.05 ? 1.0 : Number(gCalc.toFixed(2))
+
+      setMotion(prev => ({
+        ax: Number(ax.toFixed(2)),
+        ay: Number(ay.toFixed(2)),
+        az: Number(az.toFixed(2)),
+        gx: Number(((e.rotationRate?.alpha) || 0).toFixed(1)),
+        gy: Number(((e.rotationRate?.beta) || 0).toFixed(1)),
+        gz: Number(((e.rotationRate?.gamma) || 0).toFixed(1)),
+        gForce,
+        peakGForce: Math.max(prev.peakGForce, gForce),
+        roll: prev.roll,
+        pitch: prev.pitch,
+      }))
     }
 
-    telemetryClient.start({
-      deviceId: customId,
-      userId: user.id || null,
-      trackerCode: customId,
-      serverUrl: serverUrl,
-      intervalSeconds: Number(frequencySec),
-    })
+    const handleOrientation = (e) => {
+      setMotion(prev => ({
+        ...prev,
+        roll: Number((e.gamma || 0).toFixed(1)),
+        pitch: Number((e.beta || 0).toFixed(1)),
+      }))
+    }
 
-    const unsubscribe = telemetryClient.subscribe((event) => {
-      if (event.type === 'telemetry_sample') {
-        setTelemetry(event.sample)
-        setGpsPermissionError(null)
-      } else if (event.type === 'packet_sent') {
-        setLastPacketTime(new Date())
-        setPacketsSentTotal(prev => prev + 1)
-        setOfflineCount(telemetryClient.getOfflineQueueCount())
-      } else if (event.type === 'offline_queue_updated') {
-        setOfflineCount(event.count)
-      } else if (event.type === 'network_status') {
-        setIsNetOnline(event.isOnline)
-      } else if (event.type === 'sync_completed') {
-        setOfflineCount(0)
-        setLastPacketTime(new Date())
-      } else if (event.type === 'error') {
-        setGpsPermissionError(event.message)
-      }
-    })
+    if (window.DeviceMotionEvent) window.addEventListener('devicemotion', handleMotion, { passive: true })
+    if (window.DeviceOrientationEvent) window.addEventListener('deviceorientation', handleOrientation, { passive: true })
 
     return () => {
-      unsubscribe()
-      telemetryClient.stop()
+      if (window.DeviceMotionEvent) window.removeEventListener('devicemotion', handleMotion)
+      if (window.DeviceOrientationEvent) window.removeEventListener('deviceorientation', handleOrientation)
     }
-  }, [customId, serverUrl, frequencySec, isTransmitting, user.id])
+  }, [])
 
-  const handleSaveSettings = (e) => {
-    e?.preventDefault()
-    localStorage.setItem('einsoft_mobile_id', customId)
-    localStorage.setItem('einsoft_telemetry_url', serverUrl)
-    localStorage.setItem('einsoft_telemetry_freq', frequencySec)
-    telemetryClient.configure({
-      deviceId: customId,
-      trackerCode: customId,
-      serverUrl,
-      intervalSeconds: Number(frequencySec),
-    })
-    setPingTestStatus('💾 Ajustes guardados correctamente')
-    setTimeout(() => setPingTestStatus(null), 3000)
-  }
+  // Geolocation & Transmission Loop
+  useEffect(() => {
+    if (!isTransmitting) return
 
-  // Trigger Immediate Ping Test
-  const handleTestPing = async () => {
-    setPingTestStatus('⏳ Enviando señal de prueba...')
-    const t0 = Date.now()
-    try {
-      const point = await telemetryClient.forceImmediateLocation()
-      const lat = point?.latitude || -33.0456
-      const lng = point?.longitude || -71.6189
-      
-      const res = await apiClient.post('/telemetry/report', {
-        deviceId: customId,
-        latitude: lat,
-        longitude: lng,
-        accuracy: point?.accuracy || 10,
-        speed: point?.speed || 0,
-        battery: point?.battery || 100,
-        timestamp: new Date().toISOString(),
-      })
-
-      const elapsed = Date.now() - t0
-      setPingTestStatus(`🟢 ¡Ping Exitoso! Respuesta del Servidor: 200 OK (${elapsed}ms)`)
-      setLastPacketTime(new Date())
-      setPacketsSentTotal(c => c + 1)
-    } catch (err) {
-      setPingTestStatus(`⚠️ Error en Ping: ${err.response?.data?.error || err.message}`)
+    let watchId = null
+    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy, altitude, speed, heading } = pos.coords
+          const speedKmh = speed != null && !isNaN(speed) ? Math.round(speed * 3.6) : 0
+          setTelemetry({
+            latitude,
+            longitude,
+            accuracy: Math.round(accuracy || 0),
+            altitude: Math.round(altitude || 0),
+            speed: speedKmh,
+            heading: Math.round(heading || 0),
+            timestamp: pos.timestamp || Date.now(),
+          })
+        },
+        (err) => console.log('[GNSS] Watch error:', err.message),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      )
     }
-  }
 
-  // Periodic check of connection state
-  const connStatus = getDeviceConnectionStatus(lastPacketTime)
+    const sendTelemetryTick = async () => {
+      if (!isTransmitting) return
 
-  // Trigger Panic with accidental cancel window (5 seconds)
+      let lat = telemetry?.latitude
+      let lng = telemetry?.longitude
+
+      if (!lat || !lng) {
+        if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition((p) => {
+            lat = p.coords.latitude
+            lng = p.coords.longitude
+          }, () => {})
+        }
+      }
+
+      if (lat && lng) {
+        const payload = {
+          deviceId: customId,
+          trackerCode: customId,
+          latitude: lat,
+          longitude: lng,
+          accuracy: telemetry?.accuracy || 10,
+          altitude: telemetry?.altitude || 0,
+          speed: telemetry?.speed || 0,
+          heading: telemetry?.heading || 0,
+          battery: 100,
+          isPanic: panicActive,
+          sentinelActive,
+          driverScore,
+          imu: {
+            ax: motion.ax,
+            ay: motion.ay,
+            az: motion.az,
+            gx: motion.gx,
+            gy: motion.gy,
+            gz: motion.gz,
+            gForce: motion.gForce,
+            peakGForce: motion.peakGForce,
+            roll: motion.roll,
+            pitch: motion.pitch,
+            eventType: panicActive ? 'PANIC_SOS' : motion.gForce > 2.8 ? 'CRASH_IMPACT' : 'NORMAL',
+          },
+          timestamp: new Date().toISOString(),
+        }
+
+        try {
+          const res = await fetch(`${serverUrl.replace(/\/$/, '')}/report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          })
+          if (res.ok) {
+            setLastPacketTime(new Date())
+            setPacketsSentTotal(c => c + 1)
+          }
+        } catch (_) {
+          setBlackboxCount(c => c + 1)
+        }
+      }
+
+      const delay = panicActive ? 3000 : sentinelActive ? 15000 : 8000
+      transmissionTimer.current = setTimeout(sendTelemetryTick, delay)
+    }
+
+    transmissionTimer.current = setTimeout(sendTelemetryTick, 2000)
+
+    return () => {
+      if (watchId !== null && typeof navigator !== 'undefined') navigator.geolocation.clearWatch(watchId)
+      if (transmissionTimer.current) clearTimeout(transmissionTimer.current)
+    }
+  }, [isTransmitting, customId, serverUrl, panicActive, sentinelActive, telemetry?.latitude, telemetry?.longitude, motion.gForce, driverScore])
+
+  // Panic Handlers
   const initiatePanic = () => {
     if (window.navigator?.vibrate) {
       window.navigator.vibrate([200, 100, 200, 100, 400])
     }
-    setPanicCountdown(5)
+    setPanicCountdown(4)
   }
 
   useEffect(() => {
@@ -157,333 +240,390 @@ export default function MobileGpsDashboard({ onLogout }) {
         setPanicCountdown(panicCountdown - 1)
       }, 1000)
     } else if (panicCountdown === 0) {
-      sendPanicAlert()
+      setPanicActive(true)
       setPanicCountdown(null)
+      // Send alert
+      apiClient.post('/alerts/panic', {
+        deviceId: customId,
+        latitude: telemetry?.latitude,
+        longitude: telemetry?.longitude,
+        address: 'Alerta SOS desde EYE-NODE 360',
+      }).catch(() => {})
     }
     return () => clearTimeout(countdownTimer.current)
-  }, [panicCountdown])
+  }, [panicCountdown, customId, telemetry])
 
-  const cancelPanic = () => {
-    clearTimeout(countdownTimer.current)
-    setPanicCountdown(null)
-    telemetryClient.setEmergencyMode(false)
-    setPanicActive(false)
-    setPanicMessage('Alerta cancelada')
-    setTimeout(() => setPanicMessage(''), 4000)
-  }
-
-  const sendPanicAlert = async () => {
-    try {
-      setPanicActive(true)
-      telemetryClient.setEmergencyMode(true)
-      await apiClient.post('/alerts/panic', {
-        deviceId: customId,
-        latitude: telemetry ? telemetry.latitude : null,
-        longitude: telemetry ? telemetry.longitude : null,
-        address: 'Emergencia enviada desde Celular GPS',
-      })
-      setPanicMessage('🚨 ALERTA SOS ENVIADA A TELEGRAM Y DASHBOARD — MODO RÁFAGA 3s')
-    } catch (err) {
-      setPanicMessage('⚠️ Alerta enviada: ' + (err.response?.data?.error || err.message))
-    }
-  }
-
-  const requestGpsAgain = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setGpsPermissionError(null)
-          telemetryClient.forceImmediateLocation()
-        },
-        (err) => setGpsPermissionError(err.message),
-        { enableHighAccuracy: true }
-      )
-    }
-  }
-
-  const coords = telemetry ? [telemetry.latitude, telemetry.longitude] : null
+  const mapCenter = telemetry?.latitude && telemetry?.longitude ? [telemetry.latitude, telemetry.longitude] : [-33.045, -71.615]
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between">
-      {/* ── Top Header ── */}
-      <header className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+    <div className="min-h-screen bg-[#050811] text-slate-100 font-sans flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+      {/* ── Top Tactical HUD Header ── */}
+      <header className="bg-slate-950/90 border-b border-cyan-950/80 px-4 py-3 sticky top-0 z-40 backdrop-blur-md flex items-center justify-between shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xl">
-            📱
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-600 to-blue-900 border border-cyan-400/40 flex items-center justify-center text-xl shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+            🎯
           </div>
           <div>
-            <h1 className="text-base font-bold text-white leading-tight">Usuario Celular GPS</h1>
-            <p className="text-xs text-slate-400">{user.name || user.email}</p>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-sm font-black tracking-wider text-white">EYE-NODE</h1>
+              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-cyan-950 border border-cyan-500/50 text-cyan-300 rounded font-bold">
+                TRACKER 360
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+              <span>ID:</span>
+              <span className="text-cyan-400 font-bold">{customId}</span>
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={onLogout}
-          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-colors"
-        >
-          Salir 🚪
-        </button>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+            sentinelActive
+              ? 'bg-amber-950/70 border-amber-500/50 text-amber-300 animate-pulse'
+              : 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
+          }`}>
+            {sentinelActive ? '🛡️ CENTINELA' : '🛰️ ACTIVO 360'}
+          </span>
+
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 transition"
+          >
+            ⚙️
+          </button>
+        </div>
       </header>
 
-      {/* ── Main Panel ── */}
-      <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col gap-4">
-        {/* Device Status & Quick Switch */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">📡</span>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Identificador Activo</span>
-              <span className="text-sm font-black text-blue-400 font-mono">{customId}</span>
+      {/* ── Main Tactical Content ── */}
+      <main className="p-4 flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">
+        {/* Profile Selector */}
+        <div className="bg-slate-950/80 border border-cyan-950 rounded-2xl p-3 shadow-xl space-y-2">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <span>👤</span> Asignar Activo / Perfil:
+            </span>
+            <span className="text-[10px] font-mono text-cyan-400 font-bold">{customId}</span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {PRESET_PEOPLE.map((p) => {
+              const isSelected = customId === p.id || customId === p.label;
+              return (
+                <button
+                  key={p.label}
+                  onClick={() => {
+                    setCustomId(p.id)
+                    localStorage.setItem('einsoft_mobile_id', p.id)
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition capitalize flex items-center gap-1 border ${
+                    isSelected
+                      ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)] scale-105'
+                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800'
+                  }`}
+                >
+                  {isSelected ? '✓ ' : ''}👤 {p.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Primary Controls */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 shadow-xl flex flex-col justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado del Nodo</span>
+            <div className="flex items-center justify-between pt-2">
+              <span className={`text-xs font-black flex items-center gap-1.5 ${isTransmitting ? 'text-emerald-400' : 'text-slate-500'}`}>
+                <span className={`w-2 h-2 rounded-full ${isTransmitting ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'}`}></span>
+                {isTransmitting ? 'EN LÍNEA' : 'PAUSADO'}
+              </span>
+              <button
+                onClick={() => setIsTransmitting(!isTransmitting)}
+                className="px-3 py-1.5 rounded-xl font-black text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 active:scale-95 transition"
+              >
+                {isTransmitting ? '⏹️ Pausar' : '▶️ Iniciar'}
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold transition"
-              title="Ajustes de Servidor e IMEI"
-            >
-              ⚙️ Ajustes
-            </button>
-
-            <button
-              onClick={() => setIsTransmitting(!isTransmitting)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-md active:scale-95 ${
-                isTransmitting
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-900/30'
-                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-              }`}
-            >
-              {isTransmitting ? '🟢 ACTIVO' : '⏸️ PAUSADO'}
-            </button>
+          <div className={`border rounded-2xl p-3 shadow-xl flex flex-col justify-between transition-all ${
+            sentinelActive
+              ? 'bg-amber-950/40 border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+              : 'bg-slate-950/80 border-slate-800'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">🛡️ Centinela</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${sentinelActive ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400'}`}>
+                {sentinelActive ? 'ARMADO' : 'DESARMADO'}
+              </span>
+            </div>
+            <div className="pt-2 flex items-center justify-between">
+              <p className="text-[10px] text-slate-400 leading-tight">Anti-Manipulación</p>
+              <button
+                onClick={() => setSentinelActive(!sentinelActive)}
+                className={`px-3 py-1.5 rounded-xl font-black text-[11px] transition-all shadow-md active:scale-95 ${
+                  sentinelActive
+                    ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 font-extrabold'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                }`}
+              >
+                {sentinelActive ? '✓ Armado' : 'Armar'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Telemetry Parameters & Configuration Box */}
-        {showSettings && (
-          <form onSubmit={handleSaveSettings} className="bg-slate-900/95 border-2 border-blue-900/40 rounded-2xl p-4 space-y-3 shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-black text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
-                ⚙️ Configuración del Servidor y Telemetría
+        {/* Tabs */}
+        <div className="flex bg-slate-950 border border-slate-800 rounded-xl p-1 text-xs">
+          <button
+            onClick={() => setActiveTab('sensors')}
+            className={`flex-1 py-1.5 rounded-lg font-bold transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'sensors' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🧭</span> Sensores 360
+          </button>
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`flex-1 py-1.5 rounded-lg font-bold transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'map' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🗺️</span> Mapa Táctico
+          </button>
+        </div>
+
+        {/* Tab 1: Sensors */}
+        {activeTab === 'sensors' && (
+          <div className="space-y-3 animate-in fade-in duration-200">
+            {/* Driver Score & G-Force */}
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-cyan-900/40 rounded-2xl p-4 shadow-xl flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  🧠 AI Comportamiento del Conductor
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-emerald-400">
+                    {driverScore}<span className="text-sm font-bold text-slate-500">/100</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-950/60 border-emerald-500/40 text-emerald-300">
+                    ✓ Excelente
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono pt-1">
+                  <span>✓ Velocidad y frenado controlados</span>
+                </div>
+              </div>
+
+              <div className="text-right border-l border-slate-800 pl-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fuerza G</span>
+                <span className={`text-2xl font-black font-mono ${
+                  motion.gForce > 2.0 ? 'text-red-400 animate-pulse' : motion.gForce > 1.3 ? 'text-amber-400' : 'text-cyan-400'
+                }`}>
+                  {motion.gForce.toFixed(2)}G
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono block">Pico: {motion.peakGForce.toFixed(2)}G</span>
+              </div>
+            </div>
+
+            {/* 6 Sensors Grid */}
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">🛰️</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">GNSS 4-Band</span>
+                <span className="font-extrabold text-cyan-400 text-xs mt-0.5 block">
+                  {telemetry?.accuracy ? `±${telemetry.accuracy}m` : 'Fijando...'}
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">RTK Multi-Band</span>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">🏃</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Velocidad</span>
+                <span className="font-extrabold text-white text-base mt-0.5 block font-mono">
+                  {telemetry?.speed || 0}
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">km/h</span>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">📐</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Inclinación</span>
+                <span className="font-extrabold text-indigo-300 text-xs mt-0.5 block font-mono">
+                  {motion.roll}° / {motion.pitch}°
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">Roll / Pitch</span>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">🔋</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Energía</span>
+                <span className="font-extrabold text-emerald-400 text-xs mt-0.5 block font-mono">
+                  100%
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">En Línea</span>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">📦</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Caja Negra</span>
+                <span className="font-extrabold text-xs mt-0.5 block font-mono">
+                  {blackboxCount} pts
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">En Memoria</span>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 shadow">
+                <span className="text-lg block">📶</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase block">Enlace IoT</span>
+                <span className="font-extrabold text-xs mt-0.5 block text-emerald-400">
+                  Conectado
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono">{packetsSentTotal} envíos</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-[11px] font-mono">
+              <span className="text-slate-400">
+                📍 {telemetry?.latitude ? `${telemetry.latitude.toFixed(5)}, ${telemetry.longitude.toFixed(5)}` : 'Buscando satélites GNSS...'}
               </span>
+              <span className="text-cyan-400 font-bold">
+                Alt: {telemetry?.altitude || 0}m | Rumbo: {telemetry?.heading || 0}°
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Map */}
+        {activeTab === 'map' && (
+          <div className="h-64 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative animate-in fade-in duration-200">
+            <MapContainer
+              center={mapCenter}
+              zoom={15}
+              className="h-full w-full"
+            >
+              <MapUpdater center={mapCenter} />
+              <TileLayer
+                attribution='&copy; OpenStreetMap'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={mapCenter} icon={tacticalIcon}>
+                <Popup>
+                  <div className="p-1 text-xs">
+                    <p className="font-bold text-slate-900">🛰️ {customId}</p>
+                    <p className="text-slate-600">Vel: {telemetry?.speed || 0} km/h</p>
+                    <p className="text-slate-600 font-mono text-[10px]">G-Force: {motion.gForce}G</p>
+                  </div>
+                </Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+        )}
+
+        {/* Panic Button */}
+        {panicCountdown !== null && (
+          <div className="p-4 bg-red-600 rounded-2xl text-center space-y-2 animate-bounce shadow-2xl">
+            <p className="text-sm font-black uppercase tracking-wider">
+              🚨 TRANSMITIENDO PÁNICO EN {panicCountdown}s...
+            </p>
+            <button
+              onClick={() => setPanicCountdown(null)}
+              className="px-4 py-1.5 bg-black text-white rounded-xl text-xs font-bold"
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {panicActive && (
+          <div className="p-4 bg-gradient-to-r from-red-600 to-rose-700 border-2 border-white rounded-2xl flex items-center justify-between text-white shadow-2xl animate-pulse">
+            <div>
+              <p className="font-black text-xs uppercase tracking-wide">🚨 MODO PÁNICO SOS ACTIVO</p>
+              <p className="text-[10px] text-red-100">Transmitiendo ráfagas continuas de auxilio.</p>
+            </div>
+            <button
+              onClick={() => setPanicActive(false)}
+              className="px-3 py-1.5 bg-black hover:bg-slate-900 text-red-300 font-bold rounded-xl text-xs"
+            >
+              ✓ Finalizar
+            </button>
+          </div>
+        )}
+
+        {panicCountdown === null && !panicActive && (
+          <div className="flex justify-center py-2">
+            <button
+              onClick={initiatePanic}
+              className="w-36 h-36 rounded-full bg-gradient-to-br from-red-500 via-red-600 to-red-800 text-white font-black text-lg tracking-wider shadow-[0_0_40px_rgba(239,68,68,0.5)] active:scale-95 transition-all flex flex-col items-center justify-center border-4 border-red-400 hover:shadow-[0_0_60px_rgba(239,68,68,0.8)]"
+            >
+              <span className="text-3xl mb-0.5">🆘</span>
+              <span>PÁNICO</span>
+              <span className="text-[9px] font-normal opacity-80">Presiona en emergencia</span>
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-4">
+          <div className="bg-slate-950 border border-cyan-950 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h2 className="text-base font-black text-white flex items-center gap-2">
+                ⚙️ Configuración EYE-NODE 360
+              </h2>
               <button
-                type="button"
                 onClick={() => setShowSettings(false)}
-                className="text-xs text-slate-500 hover:text-slate-300"
+                className="text-slate-400 hover:text-white text-lg font-bold"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 block">
-                📱 Identificador / IMEI del Celular:
-              </label>
-              <input
-                type="text"
-                value={customId}
-                onChange={(e) => setCustomId(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono font-bold focus:border-blue-500 outline-none"
-                placeholder="Ej: 71690939 o yuri o 949808788"
-                required
-              />
-            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">
+                  Identificador del Dispositivo
+                </label>
+                <input
+                  type="text"
+                  value={customId}
+                  onChange={(e) => setCustomId(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold text-cyan-300"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 block">
-                🌐 URL del Servidor de Telemetría:
-              </label>
-              <input
-                type="url"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-blue-300 font-mono font-bold focus:border-blue-500 outline-none"
-                placeholder="https://einsoft-gp-sbcknd.vercel.app/api/telemetry"
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-slate-400 font-bold mb-1 uppercase text-[10px]">
+                  URL Servidor de Telemetría
+                </label>
+                <input
+                  type="text"
+                  value={serverUrl}
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-300 block">
-                ⏱️ Frecuencia de Envío (Segundos):
-              </label>
-              <select
-                value={frequencySec}
-                onChange={(e) => setFrequencySec(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-emerald-400 font-bold focus:border-blue-500 outline-none"
-              >
-                <option value="5">Cada 5 Segundos (Tiempo Real Máximo)</option>
-                <option value="10">Cada 10 Segundos (Recomendado)</option>
-                <option value="15">Cada 15 Segundos</option>
-                <option value="30">Cada 30 Segundos (Ahorro de Batería)</option>
-                <option value="60">Cada 1 Minuto</option>
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
-                type="submit"
-                className="py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl text-xs shadow-md transition active:scale-95"
+                onClick={() => {
+                  localStorage.setItem('einsoft_mobile_id', customId)
+                  localStorage.setItem('einsoft_telemetry_url', serverUrl)
+                  setShowSettings(false)
+                }}
+                className="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-xl shadow-lg mt-2"
               >
                 💾 Guardar Ajustes
               </button>
-
-              <button
-                type="button"
-                onClick={handleTestPing}
-                className="py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black rounded-xl text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1"
-              >
-                📡 Probar Ping
-              </button>
             </div>
-
-            {pingTestStatus && (
-              <div className="p-2.5 bg-slate-800 rounded-xl border border-slate-700 text-center text-[11px] font-bold text-slate-200 animate-in fade-in">
-                {pingTestStatus}
-              </div>
-            )}
-          </form>
-        )}
-
-        {/* GPS Permission Warning if applicable */}
-        {gpsPermissionError && (
-          <div className="bg-amber-950/80 border border-amber-500/50 rounded-2xl p-3.5 text-xs text-amber-200 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-amber-300">
-              <span>⚠️</span> Permiso de Ubicación Requerido
-            </div>
-            <p className="text-[11px] text-amber-300/80 leading-tight">
-              Para que tu celular reporte su posición a la plataforma, debes permitir el acceso al GPS.
-            </p>
-            <button
-              onClick={requestGpsAgain}
-              className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs shadow transition"
-            >
-              📍 Activar Permiso GPS Ahora
-            </button>
-          </div>
-        )}
-
-        {/* Status Bar */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <span className={`text-xs px-2.5 py-1 rounded-full ${connStatus.badgeClass} flex items-center gap-1.5`}>
-              <span className={`w-2 h-2 rounded-full ${connStatus.dotClass}`}></span>
-              {connStatus.label}
-            </span>
-            {offlineCount > 0 ? (
-              <span className="text-[10px] bg-amber-900/40 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-bold animate-pulse">
-                📦 {offlineCount} en cola offline
-              </span>
-            ) : (
-              <span className="text-[10px] text-emerald-400 font-medium">
-                ✓ Sincronizado ({packetsSentTotal} paq.)
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="bg-slate-800/60 rounded-xl p-2.5">
-              <span className="text-[10px] text-slate-400 block uppercase font-bold">Precisión</span>
-              <span className="text-sm font-black text-blue-400">{telemetry?.accuracy != null ? `±${telemetry.accuracy}m` : '--'}</span>
-            </div>
-            <div className="bg-slate-800/60 rounded-xl p-2.5">
-              <span className="text-[10px] text-slate-400 block uppercase font-bold">Velocidad</span>
-              <span className="text-sm font-black text-emerald-400">{telemetry?.speed != null ? `${telemetry.speed} km/h` : '0 km/h'}</span>
-            </div>
-            <div className="bg-slate-800/60 rounded-xl p-2.5">
-              <span className="text-[10px] text-slate-400 block uppercase font-bold">Batería</span>
-              <span className="text-sm font-black text-amber-400">{telemetry?.battery != null ? `${telemetry.battery}%` : 'N/A'}</span>
-            </div>
-          </div>
-
-          {/* Adaptive Frequency Indicator */}
-          <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Frecuencia adaptativa:</span>
-            <span className="font-semibold text-slate-200">
-              {panicActive ? '🚨 Ráfaga Pánico (3s)' : (telemetry?.speed || 0) > 5 ? '🚗 En Movimiento (8s)' : '🛑 Detenido (15s)'}
-            </span>
           </div>
         </div>
+      )}
 
-        {/* Map Preview */}
-        <div className="h-44 w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 relative shadow-inner">
-          {coords ? (
-            <MapContainer
-              center={coords}
-              zoom={16}
-              scrollWheelZoom={false}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap'
-              />
-              <Marker position={coords} icon={customIcon}>
-                <Popup>📍 Mi ubicación actual</Popup>
-              </Marker>
-              <MapUpdater center={coords} />
-            </MapContainer>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 text-xs p-4 text-center">
-              <span className="animate-spin text-2xl mb-1">🛰️</span>
-              Buscando satélites GPS...
-              <button
-                onClick={requestGpsAgain}
-                className="mt-2 text-xs text-blue-400 underline"
-              >
-                Tocar para forzar lectura GPS
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* SOS Countdown Modal / Overlay */}
-        {panicCountdown !== null && (
-          <div className="bg-red-950/90 border-2 border-red-500 rounded-2xl p-4 text-center animate-pulse shadow-2xl">
-            <p className="text-sm font-black text-red-300 uppercase tracking-wide">
-              Transmitiendo Alerta SOS en
-            </p>
-            <div className="text-5xl font-black text-red-500 my-2">{panicCountdown}s</div>
-            <button
-              onClick={cancelPanic}
-              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-600 text-sm shadow-md"
-            >
-              ✋ Cancelar (Fue un error)
-            </button>
-          </div>
-        )}
-
-        {/* Feedback message */}
-        {panicMessage && (
-          <div className="p-3 bg-red-900/40 border border-red-500/50 rounded-xl text-center text-xs font-bold text-red-200">
-            {panicMessage}
-          </div>
-        )}
-
-        {/* Giant Panic Button */}
-        {panicCountdown === null && (
-          <div className="flex-1 flex flex-col items-center justify-center py-4">
-            <button
-              onClick={initiatePanic}
-              className="w-48 h-48 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white font-black text-2xl tracking-wider shadow-[0_0_50px_rgba(239,68,68,0.5)] active:scale-95 transition-all flex flex-col items-center justify-center border-4 border-red-400 hover:shadow-[0_0_70px_rgba(239,68,68,0.8)]"
-            >
-              <span className="text-4xl mb-1">🆘</span>
-              <span>PÁNICO</span>
-              <span className="text-[10px] tracking-normal font-normal opacity-80 mt-1">Presiona en emergencia</span>
-            </button>
-          </div>
-        )}
-
-        {/* Device & IMEI info footer */}
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3 text-center text-[11px] text-slate-400 space-y-1">
-          <p>📡 <span className="font-semibold">{isNetOnline ? 'Red Móvil Conectada' : '⚠️ Sin Conexión — Guardando Offline'}</span></p>
-          <p className="text-[10px] text-slate-500 font-mono">Dispositivo: {customId}</p>
-        </div>
-      </main>
-
-      {/* ── Footer ── */}
-      <footer className="p-3 text-center text-[10px] text-slate-600 border-t border-slate-900">
-        EINSoft GPS • Rastreo Personal y Monitoreo de Seguridad
+      {/* Footer */}
+      <footer className="p-3 text-center text-[10px] text-slate-600 border-t border-slate-950 font-mono">
+        EYE-NODE 360 • Plataforma de Telemetría Táctica e Inteligencia Móvil
       </footer>
     </div>
   )

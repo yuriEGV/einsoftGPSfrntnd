@@ -2,39 +2,78 @@ import React from 'react'
 
 export default function DownloadApp() {
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 space-y-2">
-          <span className="px-3 py-1 bg-blue-500/30 border border-blue-400/40 rounded-full text-xs font-black uppercase tracking-wider text-blue-200">
-            📱 Aplicación Móvil Oficial de Telemetría Satelital
-          </span>
-          <h1 className="text-3xl font-black tracking-tight">EINSoft GPS Tracker (Móvil)</h1>
-          <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-            Convierte cualquier smartphone (Android o iPhone) en un potente dispositivo GPS de alta precisión con botón de pánico SOS instantáneo y reporte en tiempo real directo a tu plataforma.
+    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Header Táctico EYE-NODE */}
+      <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-2xl relative overflow-hidden border border-cyan-500/20">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+        <div className="relative z-10 space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider">
+            ⚡ EYE-NODE // TRACKER 360 • Nodo de Inteligencia Móvil
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
+            EYE-NODE / TRACKER 360 (APK Táctica)
+          </h1>
+          <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
+            Más que un simple GPS: un <strong>Nodo de Inteligencia Táctica</strong> que monitorea en 360° la posición multi-constelación (GNSS 4-Band), física de movimiento (IMU 6-Ejes, Fuerza G, Choque/Impacto, Vuelco), comportamiento del conductor con IA, Centinela anti-manipulación y Caja Negra offline.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card 1: App Oficial EINSoft GPS */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-blue-100 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-2xl">
-              📱
+      {/* Sensor Architecture Diagram */}
+      <div className="bg-slate-950 rounded-3xl p-6 border border-cyan-900/40 text-slate-200 shadow-xl space-y-4">
+        <h2 className="text-sm font-black text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+          <span>📐</span> Arquitectura de Sensores Fusión 360°
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center gap-2 text-cyan-300 font-extrabold text-sm">
+              <span>🛰️</span> 1. GNSS 4-Band + A-GNSS
             </div>
-            <h2 className="text-xl font-black text-slate-900">1. App Celular EINSoft GPS</h2>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              GPS, Galileo, GLONASS y BeiDou con respaldo inteligente por WiFi y Cell ID en túneles o subterráneos.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center gap-2 text-indigo-300 font-extrabold text-sm">
+              <span>🏎️</span> 2. IMU 6/9-Ejes & Física G
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Acelerómetro y Giroscopio para detección instantánea de frenadas bruscas, aceleración, curvas, choques y vuelco.
+            </p>
+          </div>
+
+          <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+            <div className="flex items-center gap-2 text-amber-300 font-extrabold text-sm">
+              <span>🛡️</span> 3. Centinela Anti-Tamper
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Vigilancia de manipulación en reposo. Alerta inmediata si el activo es movido o tocado sin autorización.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card 1: Descarga de APK */}
+        <div className="bg-white rounded-3xl p-6 border-2 border-cyan-100 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-2xl">
+              📲
+            </div>
+            <h2 className="text-xl font-black text-slate-900">1. Descargar APK EYE-NODE 360</h2>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Diseñada para conductores, supervisores y usuarios en terreno. Incluye medidor de velocidad en vivo, porcentaje de batería real, buffer offline contra pérdida de señal y botón gigante de pánico SOS.
+              Instalador nativo para Android. Incluye telemetría táctica en segundo plano, soporte de caja negra offline y sincronización automática.
             </p>
             
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2.5">
-              <p className="font-bold text-slate-800">📋 Cómo activarla en el celular (1 toque):</p>
+              <p className="font-bold text-slate-800">📋 Activación en 1 toque:</p>
               <ol className="list-decimal list-inside space-y-1.5 text-slate-600 text-[11px]">
-                <li>Abre el enlace directo en tu teléfono.</li>
-                <li>Presiona <strong>"Permitir"</strong> cuando solicite acceso a la ubicación GPS.</li>
-                <li>Escribe tu número o nombre en el campo Identificador (ej: <code>949808788</code>).</li>
-                <li>Verás el estado en <strong>🟢 ACTIVO</strong> transmitiendo cada 8-15s.</li>
+                <li>Descarga e instala el archivo <code>.apk</code> en el teléfono.</li>
+                <li>Abre la app y selecciona el perfil (ej: <strong>Manuel</strong>, <strong>Yuri</strong>, <strong>Gloria</strong>, <strong>Sarem</strong>).</li>
+                <li>Concede los permisos de Ubicación y Sensores.</li>
+                <li>Verás la pantalla táctica en <strong>🟢 EN LÍNEA</strong> transmitiendo telemetría 360.</li>
               </ol>
             </div>
           </div>
@@ -42,42 +81,42 @@ export default function DownloadApp() {
           <div className="space-y-2 pt-2">
             <a
               href="/einsoft-gps.apk"
-              download="einsoft-gps.apk"
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm"
+              download="eyenode-tracker360.apk"
+              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar Archivo APK Nativo (.apk)
+              📥 Descargar APK EYE-NODE 360 (.apk)
             </a>
 
             <a
               href="/mobile-gps"
               target="_blank"
               rel="noreferrer"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow"
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-slate-800"
             >
-              🚀 O Abrir en Navegador Móvil
+              🚀 O Probar Nodo Web en Navegador Móvil
             </a>
           </div>
         </div>
 
-        {/* Card 2: Rastreo Personal Directo */}
+        {/* Card 2: Monitoreo en Consola Central */}
         <div className="bg-white rounded-3xl p-6 border-2 border-purple-100 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md transition-all">
           <div className="space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-2xl">
-              👤
+              🗺️
             </div>
-            <h2 className="text-xl font-black text-slate-900">2. Rastreo Personal por QR o WhatsApp</h2>
+            <h2 className="text-xl font-black text-slate-900">2. Consola de Monitoreo Central</h2>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Para monitorear a familiares, adultos mayores o personal específico sin necesidad de contraseñas. Cada persona tiene su propio enlace protegido.
+              Visualiza en tiempo real en el mapa la ubicación satelital calzada a calles, trazas históricas multi-color, estado de pánico y eventos telemétricos.
             </p>
 
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2.5">
-              <p className="font-bold text-slate-800">📋 Pasos para enviar el enlace:</p>
-              <ol className="list-decimal list-inside space-y-1.5 text-slate-600 text-[11px]">
-                <li>Entra a la sección <strong>Rastreo Personal</strong> en el menú lateral.</li>
-                <li>Pulsa el botón <strong>"📱 Abrir en Celular / QR"</strong> de la persona.</li>
-                <li>Envía el link directo por WhatsApp al smartphone de la persona.</li>
-                <li>El celular empezará a mostrar su punto satelital en el mapa.</li>
-              </ol>
+              <p className="font-bold text-slate-800">📊 Capacidades del Centro de Comando:</p>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-600 text-[11px]">
+                <li>Rastreo Multi-Color por cada persona/móvil registrado.</li>
+                <li>Enrutamiento OSRM calzado a autopistas y calles reales.</li>
+                <li>Notificaciones SOS inmediatas con botón de silenciado general.</li>
+                <li>Recepción de alertas de choque e impactos detectados por los nodos.</li>
+              </ul>
             </div>
           </div>
 
@@ -86,25 +125,25 @@ export default function DownloadApp() {
               href="/people-tracker"
               className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-purple-900/25 transition-all active:scale-95 text-sm"
             >
-              👥 Ir a Rastreo Personal
+              👥 Abrir Panel de Rastreo en Vivo
             </a>
           </div>
         </div>
       </div>
 
-      {/* Connection Info */}
-      <div className="bg-slate-900 text-slate-200 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-3">
+      {/* Connection Endpoint Banner */}
+      <div className="bg-slate-950 text-slate-200 rounded-3xl p-6 border border-slate-800 shadow-xl space-y-3">
         <h3 className="text-base font-black text-white flex items-center gap-2">
-          🛰️ Servidor Oficial de Telemetría EINSoft GPS
+          🛰️ Servidor Oficial de Telemetría Táctica
         </h3>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Toda la información viaja encriptada directamente hacia tu servidor central de EINSoft GPS en tiempo real:
+          Los nodos EYE-NODE 360 transmiten sus paquetes de telemetría directamente con protocolo de baja latencia:
         </p>
 
-        <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700/60 flex items-center justify-between flex-wrap gap-2 text-xs">
+        <div className="bg-slate-900 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
           <div>
             <span className="text-slate-400 block text-[10px] uppercase font-bold">Punto de Enlace API</span>
-            <code className="text-blue-400 font-mono font-bold select-all block mt-0.5">
+            <code className="text-cyan-400 font-mono font-bold select-all block mt-0.5">
               https://einsoft-gp-sbcknd.vercel.app/api/telemetry
             </code>
           </div>
