@@ -80,11 +80,11 @@ export default function DownloadApp() {
 
           <div className="space-y-2 pt-2">
             <a
-              href="/einsoft-gps.apk"
-              download="eyenode-tracker360.apk"
+              href="/eyenode.apk"
+              download="eyenode.apk"
               className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar APK EYE-NODE 360 (.apk)
+              📥 Descargar eyenode.apk Oficial (Nativo Android)
             </a>
 
             <a
