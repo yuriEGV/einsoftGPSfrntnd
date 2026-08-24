@@ -22,27 +22,30 @@ export async function getRoadSnappedRoute(points) {
     if (dist < 0.0002) return points;
   }
 
+  // Limitar número de puntos de entrada para no sobrecargar OSRM (máx 25 puntos clave)
+  const sampledPoints = samplePoints(points, 25);
+
   // Generar clave de caché para no repetir llamadas
-  const cacheKey = points.map(p => `${p[0].toFixed(5)},${p[1].toFixed(5)}`).join(';');
+  const cacheKey = sampledPoints.map(p => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join(';');
   if (routeCache.has(cacheKey)) {
     return routeCache.get(cacheKey);
   }
 
   try {
     // Formato OSRM: lng,lat;lng,lat
-    const coordsString = points.map(p => `${p[1]},${p[0]}`).join(';');
+    const coordsString = sampledPoints.map(p => `${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(';');
     const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson&steps=false`;
 
-    const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!response.ok) throw new Error('OSRM request failed');
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) throw new Error(`OSRM HTTP ${response.status}`);
 
     const data = await response.json();
     if (data.code === 'Ok' && data.routes && data.routes[0]?.geometry?.coordinates) {
       // OSRM retorna [lng, lat], convertir a Leaflet [lat, lng]
       const roadCoordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
       
-      // Guardar en caché (limitar tamaño a 200 entradas)
-      if (routeCache.size > 200) {
+      // Guardar en caché (limitar tamaño a 300 entradas)
+      if (routeCache.size > 300) {
         const firstKey = routeCache.keys().next().value;
         routeCache.delete(firstKey);
       }
@@ -51,9 +54,20 @@ export async function getRoadSnappedRoute(points) {
       return roadCoordinates;
     }
   } catch (err) {
-    console.warn('[RoutingService] No se pudo obtener ruta ajustada a calles (usando fallback directo):', err.message);
+    // Fallback silencioso sin spam de consola
   }
 
-  // Fallback: retornar puntos originales si OSRM no responde
+  // Fallback: retornar puntos originales
   return points;
+}
+
+function samplePoints(pts, max) {
+  if (!pts || pts.length <= max) return pts;
+  const result = [pts[0]];
+  const step = (pts.length - 1) / (max - 1);
+  for (let i = 1; i < max - 1; i++) {
+    result.push(pts[Math.floor(i * step)]);
+  }
+  result.push(pts[pts.length - 1]);
+  return result;
 }
