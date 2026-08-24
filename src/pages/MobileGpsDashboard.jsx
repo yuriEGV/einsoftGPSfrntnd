@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
+import UpdateNotificationModal from '../components/UpdateNotificationModal'
 
 // FlyTo Map Updater
 function MapUpdater({ center }) {
@@ -294,6 +295,9 @@ export default function MobileGpsDashboard() {
           </button>
         </div>
       </header>
+
+      {/* OTA In-App Update Banner */}
+      <UpdateNotificationModal serverUrl={serverUrl} />
 
       {/* ── Main Tactical Content ── */}
       <main className="p-4 flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">

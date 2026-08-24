@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { apiClient } from '../services/api'
 import { telemetryClient } from '../services/telemetryClient'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
+import UpdateNotificationModal from '../components/UpdateNotificationModal'
 
 export default function PublicPersonTracker() {
   const { code } = useParams()
@@ -118,6 +119,8 @@ export default function PublicPersonTracker() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col justify-between p-4 max-w-md mx-auto relative overflow-hidden">
+      <UpdateNotificationModal />
+
       {/* Background glow when in Panic */}
       {isPanicActive && (
         <div className="absolute inset-0 bg-red-600/30 animate-pulse pointer-events-none z-0" />
