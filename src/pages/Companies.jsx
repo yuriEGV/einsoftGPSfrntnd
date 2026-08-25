@@ -44,14 +44,28 @@ export default function Companies() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Clientes / Empresas</h1>
-        <p className="text-sm text-gray-500">
-          Total: {companies.length} empresas
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">🏢 Clientes & Empresas</h1>
+          <p className="text-xs text-gray-500 mt-1">Cuentas corporativas, empresas clientes y entidades familiares</p>
+        </div>
+        <p className="text-sm font-bold text-gray-600 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200 shadow-xs">
+          Total: {companies.length} Clientes / Empresas
         </p>
       </div>
 
+      {/* Normalization Explanatory Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-blue-900 text-xs shadow-xs">
+        <span className="text-2xl">💡</span>
+        <div className="space-y-1">
+          <p className="font-bold text-blue-950 text-sm">¿Qué representa un Cliente / Empresa en EINSoft GPS?</p>
+          <p className="text-blue-800 leading-relaxed">
+            Es la <strong>cuenta matriz u organización</strong> (ej. <em>Constructora del Mar S.A.</em>, <em>Transportes Gómez</em> o <em>Familia Valenzuela</em>) a la que pertenecen los vehículos de flota y los dispositivos móviles de rastreo. Los <strong>Usuarios</strong> son las personas que acceden con contraseña a administrar o consultar esta empresa.
+          </p>
+        </div>
+      </div>
+
       <div className="card">
-        <h2 className="card-header">Crear nueva empresa</h2>
+        <h2 className="card-header">🏢 Registrar Nuevo Cliente / Empresa</h2>
         <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <label className="block text-gray-700 mb-1">Nombre</label>

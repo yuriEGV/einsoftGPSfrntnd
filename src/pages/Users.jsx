@@ -193,12 +193,24 @@ export default function Users() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Gestión de Usuarios</h1>
-          <p className="text-xs text-gray-500 mt-1">Control de acceso y perfiles de EINSoft GPS</p>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">👥 Cuentas de Usuarios del Sistema</h1>
+          <p className="text-xs text-gray-500 mt-1">Cuentas con credenciales de acceso (login) y roles de permisos asignados a cada Empresa/Cliente</p>
         </div>
-        <p className="text-sm text-gray-500">
-          Total: <span className="font-bold">{users.length}</span> usuarios
+        <p className="text-sm font-bold text-gray-600 bg-white px-3.5 py-1.5 rounded-xl border border-gray-200 shadow-xs">
+          Total: <span className="text-blue-600">{users.length}</span> usuarios
         </p>
+      </div>
+
+      {/* Normalization Explanatory Banner */}
+      <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 flex items-start gap-3 text-purple-950 text-xs shadow-xs">
+        <span className="text-2xl">👤</span>
+        <div className="space-y-1">
+          <p className="font-bold text-purple-950 text-sm">Diferencia entre Usuarios y Clientes:</p>
+          <p className="text-purple-800 leading-relaxed">
+            • <strong>Cliente / Empresa:</strong> Es la cuenta corporativa titular (ej. <em>Transportes Gómez</em>).<br/>
+            • <strong>Usuario:</strong> Es la persona física que inicia sesión con su correo y contraseña, asignada a una Empresa con su respectivo <strong>Rol de Permisos</strong> (<em>Administrador</em>, <em>Operador GPS</em>, <em>Cliente Consulta</em> o <em>Conductor</em>).
+          </p>
+        </div>
       </div>
 
       {/* Auditor Read-only banner */}

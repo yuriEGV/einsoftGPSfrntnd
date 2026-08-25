@@ -24,7 +24,6 @@ export default function Dashboard() {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
-  const canManageFleet = user.role === 'admin' || user.role === 'fleet_manager'
 
   // 1. Fetch Vehicles
   const { data: vehicles = [], isLoading: loadingVehicles } = useQuery('vehicles', async () => {
@@ -50,7 +49,7 @@ export default function Dashboard() {
 
   // 4. Fetch Alerts
   const { data: alerts = [] } = useQuery('alerts', async () => {
-    const response = await apiClient.get('/alerts', { params: { limit: 10 } })
+    const response = await apiClient.get('/alerts', { params: { limit: 30 } })
     return response.data
   }, {
     refetchInterval: 5000,
@@ -67,6 +66,21 @@ export default function Dashboard() {
         ...prev,
         [data.vehicleId]: data
       }))
+      queryClient.invalidateQueries('vehicles')
+    })
+
+    newSocket.on('person_location_update', () => {
+      queryClient.invalidateQueries('peopleTrackers')
+    })
+
+    newSocket.on('person_panic_alert', () => {
+      queryClient.invalidateQueries('peopleTrackers')
+      queryClient.invalidateQueries('alerts')
+    })
+
+    newSocket.on('alerts_acknowledged', () => {
+      queryClient.invalidateQueries('alerts')
+      queryClient.invalidateQueries('peopleTrackers')
       queryClient.invalidateQueries('vehicles')
     })
 
@@ -117,14 +131,15 @@ export default function Dashboard() {
   const activePeopleCount = people.filter(p => p.hasReportedLocation && p.status !== 'offline').length
   const totalPanicCount = people.filter(p => p.status === 'panic' || p.panicAlert?.active).length +
                           vehicles.filter(v => v.status === 'alert').length
+  const unacknowledgedAlertsCount = alerts.filter(a => !a.acknowledged).length
 
   const handleSelectAsset = (type, item) => {
     if (type === 'vehicle') {
       setSelectedPerson(null)
-      setSelectedVehicle(selectedVehicle?._id === item._id ? null : item)
+      setSelectedVehicle(selectedVehicle?._id === item?._id ? null : item)
     } else if (type === 'person') {
       setSelectedVehicle(null)
-      setSelectedPerson(selectedPerson?._id === item._id ? null : item)
+      setSelectedPerson(selectedPerson?._id === item?._id ? null : item)
     }
   }
 
@@ -147,7 +162,7 @@ export default function Dashboard() {
               Centro de Mando Unificado
             </h1>
             <span className="text-[10px] font-mono px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">
-              FLOTAS & PERSONAL
+              FLOTAS & PERSONAL 360
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -158,13 +173,13 @@ export default function Dashboard() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/people-tracker')}
-            className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-xs"
           >
             <span>📱</span> Gestión de Móviles / SOS
           </button>
           <button
             onClick={() => navigate('/download-app')}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm"
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-xs"
           >
             <span>📥</span> EYE-NODE APK
           </button>
@@ -219,7 +234,7 @@ export default function Dashboard() {
 
         {/* SOS Emergency Alerts KPI */}
         <div className={`p-4 rounded-2xl border shadow-sm flex items-center gap-3 ${
-          totalPanicCount > 0
+          totalPanicCount > 0 || unacknowledgedAlertsCount > 0
             ? 'bg-rose-50 border-rose-300 text-rose-900 animate-pulse'
             : 'bg-white border-slate-200'
         }`}>
@@ -229,13 +244,13 @@ export default function Dashboard() {
             🚨
           </div>
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Alertas & Pánicos</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Alertas Pendientes</p>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-2xl font-black ${totalPanicCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                {totalPanicCount}
+                {unacknowledgedAlertsCount}
               </span>
               <span className="text-[11px] text-slate-500">
-                {totalPanicCount > 0 ? '¡Atención Requerida!' : 'Todo Normal'}
+                {totalPanicCount > 0 ? '¡PÁNICO ACTIVO!' : unacknowledgedAlertsCount > 0 ? 'Por atender' : 'Todo al día'}
               </span>
             </div>
           </div>
@@ -246,37 +261,40 @@ export default function Dashboard() {
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">Ver Tipo:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase">VER TIPO:</span>
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => { setAssetTypeFilter('all'); setSelectedVehicle(null); setSelectedPerson(null); }}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
                   assetTypeFilter === 'all' && !selectedVehicle && !selectedPerson
-                    ? 'bg-slate-900 text-white shadow'
+                    ? 'bg-slate-900 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🌐 Todos ({vehicles.length + people.length})
+                <span>🌐</span>
+                <span>Todos ({vehicles.length + people.length})</span>
               </button>
               <button
-                onClick={() => { setAssetTypeFilter('vehicles'); setSelectedPerson(null); }}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
-                  assetTypeFilter === 'vehicles'
-                    ? 'bg-blue-600 text-white shadow'
+                onClick={() => { setAssetTypeFilter('vehicles'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
+                  assetTypeFilter === 'vehicles' && !selectedPerson
+                    ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🚗 Vehículos ({vehicles.length})
+                <span>🚗</span>
+                <span>Vehículos ({vehicles.length})</span>
               </button>
               <button
-                onClick={() => { setAssetTypeFilter('people'); setSelectedVehicle(null); }}
-                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
-                  assetTypeFilter === 'people'
-                    ? 'bg-purple-600 text-white shadow'
+                onClick={() => { setAssetTypeFilter('people'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
+                  assetTypeFilter === 'people' && !selectedVehicle
+                    ? 'bg-purple-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                📱 Móviles / Personas ({people.length})
+                <span>📱</span>
+                <span>Móviles / Personas ({people.length})</span>
               </button>
             </div>
           </div>
@@ -291,15 +309,15 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Individual Asset Pill Buttons for 1-Click Map Isolation */}
+        {/* Individual Asset Pill Buttons (Filtered by active Asset Type) */}
         <div className="space-y-1.5 pt-1">
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-            🎯 Filtro Individual de Activos (Haz clic para aislar en el mapa):
+            🎯 FILTRO INDIVIDUAL DE ACTIVOS (HAZ CLIC PARA AISLAR EN EL MAPA):
           </p>
-          <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => { setSelectedVehicle(null); setSelectedPerson(null); }}
-              className={`px-2.5 py-1 rounded-xl text-xs font-black transition border shadow-xs ${
+              className={`px-3 py-1 rounded-xl text-xs font-black transition border shadow-xs ${
                 !selectedVehicle && !selectedPerson
                   ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-blue-500 scale-105'
                   : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
@@ -308,51 +326,53 @@ export default function Dashboard() {
               🌐 Ver Todos Juntos
             </button>
 
-            {/* Vehicle Pills */}
-            {vehicles.map(v => {
-              const isSel = selectedVehicle?._id === v._id
-              return (
-                <button
-                  key={v._id}
-                  onClick={() => handleSelectAsset('vehicle', v)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
-                    isSel
-                      ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-400 scale-105'
-                      : 'bg-blue-50/80 text-blue-900 border-blue-200 hover:bg-blue-100'
-                  }`}
-                >
-                  <span>🚗</span>
-                  <span>{v.licensePlate}</span>
-                  <span className="text-[10px] opacity-75 font-normal">({v.make})</span>
-                </button>
-              )
-            })}
+            {/* Vehicle Pills (Shown only if 'all' or 'vehicles' is active) */}
+            {(assetTypeFilter === 'all' || assetTypeFilter === 'vehicles') &&
+              vehicles.map(v => {
+                const isSel = selectedVehicle?._id === v._id
+                return (
+                  <button
+                    key={v._id}
+                    onClick={() => handleSelectAsset('vehicle', v)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                      isSel
+                        ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-400 scale-105'
+                        : 'bg-blue-50/80 text-blue-900 border-blue-200 hover:bg-blue-100'
+                    }`}
+                  >
+                    <span>🚗</span>
+                    <span>{v.licensePlate}</span>
+                    <span className="text-[10px] opacity-75 font-normal">({v.make})</span>
+                  </button>
+                )
+              })}
 
-            {/* People Pills */}
-            {people.map((p, idx) => {
-              const isSel = selectedPerson?._id === p._id
-              const colorObj = getPersonColor(p.name, idx)
-              return (
-                <button
-                  key={p._id}
-                  onClick={() => handleSelectAsset('person', p)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
-                    isSel
-                      ? 'ring-2 ring-purple-500 scale-105 text-white font-black'
-                      : 'opacity-85 hover:opacity-100'
-                  }`}
-                  style={{
-                    backgroundColor: isSel ? colorObj.bg : `${colorObj.stroke}15`,
-                    borderColor: colorObj.stroke,
-                    color: isSel ? '#ffffff' : colorObj.bg,
-                  }}
-                >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSel ? '#ffffff' : colorObj.stroke }}></span>
-                  <span className="capitalize">{p.name}</span>
-                  <span className="text-[10px] font-mono opacity-80">({p.deviceId || p.trackerCode})</span>
-                </button>
-              )
-            })}
+            {/* People Pills (Shown only if 'all' or 'people' is active) */}
+            {(assetTypeFilter === 'all' || assetTypeFilter === 'people') &&
+              people.map((p, idx) => {
+                const isSel = selectedPerson?._id === p._id
+                const colorObj = getPersonColor(p.name, idx)
+                return (
+                  <button
+                    key={p._id}
+                    onClick={() => handleSelectAsset('person', p)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                      isSel
+                        ? 'ring-2 ring-purple-500 scale-105 text-white font-black'
+                        : 'opacity-85 hover:opacity-100'
+                    }`}
+                    style={{
+                      backgroundColor: isSel ? colorObj.bg : `${colorObj.stroke}15`,
+                      borderColor: colorObj.stroke,
+                      color: isSel ? '#ffffff' : colorObj.bg,
+                    }}
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSel ? '#ffffff' : colorObj.stroke }}></span>
+                    <span className="capitalize">{p.name}</span>
+                    <span className="text-[10px] font-mono opacity-80">({p.deviceId || p.trackerCode})</span>
+                  </button>
+                )
+              })}
           </div>
         </div>
       </div>
@@ -363,13 +383,17 @@ export default function Dashboard() {
         <div className="lg:col-span-2 min-h-[550px]">
           <MapComponent
             vehicles={filteredVehicles}
+            people={filteredPeople}
             selectedVehicle={selectedVehicle}
+            selectedPerson={selectedPerson}
             onVehicleSelect={(v) => handleSelectAsset('vehicle', v)}
+            onPersonSelect={(p) => handleSelectAsset('person', p)}
             realTimeData={realTimeData}
+            assetTypeFilter={assetTypeFilter}
           />
         </div>
 
-        {/* Right Sidebar: Fleet & People List */}
+        {/* Right Sidebar: Fleet & Alerts Panel */}
         <div className="space-y-6">
           <VehicleList
             vehicles={filteredVehicles}
