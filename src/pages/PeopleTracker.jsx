@@ -390,15 +390,6 @@ export default function PeopleTracker() {
     }
   })
 
-  // Reset stale location to [0,0]
-  const resetLocationMutation = useMutation(async (id) => {
-    return await apiClient.post(`/people-trackers/${id}/reset-location`)
-  }, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('peopleTrackers')
-      refetch()
-    }
-  })
 
   const handleSubmitAdd = (e) => {
     e.preventDefault()
