@@ -303,35 +303,31 @@ export default function MobileGpsDashboard() {
 
       {/* ── Main Tactical Content ── */}
       <main className="p-4 flex-1 flex flex-col gap-4 max-w-lg mx-auto w-full">
-        {/* Profile Selector */}
-        <div className="bg-slate-950/80 border border-cyan-950 rounded-2xl p-3 shadow-xl space-y-2">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <span>👤</span> Asignar Activo / Perfil:
+        {/* 1. Dedicated Hardware/Beacon Identity Card */}
+        <div className="bg-slate-950/90 border border-cyan-900/60 rounded-2xl p-3.5 shadow-xl space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+              NODO GPS PROFESIONAL DEDICADO
             </span>
-            <span className="text-[10px] font-mono text-cyan-400 font-bold">{customId}</span>
+            <span className="text-xs font-mono font-black text-cyan-300 bg-cyan-950/80 px-2.5 py-0.5 rounded-lg border border-cyan-500/40">
+              {customId || 'MOVIL-AUTO'}
+            </span>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {PRESET_PEOPLE.map((p) => {
-              const isSelected = customId === p.id || customId === p.label;
-              return (
-                <button
-                  key={p.label}
-                  onClick={() => {
-                    setCustomId(p.id)
-                    localStorage.setItem('einsoft_mobile_id', p.id)
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition capitalize flex items-center gap-1 border ${
-                    isSelected
-                      ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)] scale-105'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800'
-                  }`}
-                >
-                  {isSelected ? '✓ ' : ''}👤 {p.label}
-                </button>
-              );
-            })}
+          <div className="flex items-center justify-between text-[11px] text-slate-300 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📡</span>
+              <span>
+                Enlace Central:{' '}
+                <b className="text-emerald-400 font-mono">
+                  {isTransmitting ? 'TRANSMISIÓN EN VIVO ACTIVA' : 'MODO EN ESPERA'}
+                </b>
+              </span>
+            </div>
+            <span className="text-[10px] text-cyan-400 font-mono">
+              {telemetry?.speed ? `${Math.round(telemetry.speed)} km/h` : '0 km/h'}
+            </span>
           </div>
         </div>
 

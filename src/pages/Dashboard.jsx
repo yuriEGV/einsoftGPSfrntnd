@@ -1,53 +1,54 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from 'react-query'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../services/api'
 import MapComponent from '../components/MapComponent'
 import VehicleList from '../components/VehicleList'
 import AlertsPanel from '../components/AlertsPanel'
-import StatsDashboard from '../components/StatsDashboard'
 import { setupSocketConnection } from '../services/socket'
+import { getPersonColor } from './PeopleTracker'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedVehicle, setSelectedVehicle] = useState(null)
+  const [selectedPerson, setSelectedPerson] = useState(null)
+  const [assetTypeFilter, setAssetTypeFilter] = useState('all') // 'all' | 'vehicles' | 'people'
   const [socket, setSocket] = useState(null)
   const [realTimeData, setRealTimeData] = useState({})
 
   // Filter States
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
-  const [selectedDriverId, setSelectedDriverId] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'active', 'offline', 'alert'
+  const [statusFilter, setStatusFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
-  const isFleetManager = user.role === 'fleet_manager'
-  const isIndependent = user.role === 'independent'
-  const canManageFleet = isAdmin || isFleetManager
+  const canManageFleet = user.role === 'admin' || user.role === 'fleet_manager'
 
-  // Fetch vehicles with polling fallback for Vercel
-  const { data: vehicles = [], isLoading } = useQuery('vehicles', async () => {
+  // 1. Fetch Vehicles
+  const { data: vehicles = [], isLoading: loadingVehicles } = useQuery('vehicles', async () => {
     const response = await apiClient.get('/vehicles')
     return response.data
   }, {
     refetchInterval: 5000,
   })
 
-  // Fetch companies — solo admin
+  // 2. Fetch People Trackers
+  const { data: people = [], isLoading: loadingPeople } = useQuery('peopleTrackers', async () => {
+    const response = await apiClient.get('/people-trackers')
+    return response.data
+  }, {
+    refetchInterval: 5000,
+  })
+
+  // 3. Fetch Companies (Admin)
   const { data: companies = [] } = useQuery('companies', async () => {
     const response = await apiClient.get('/companies')
     return response.data
   }, { enabled: isAdmin })
 
-  // Fetch users/conductores — solo admin y fleet_manager (no independiente)
-  const { data: usersList = [] } = useQuery('users', async () => {
-    const response = await apiClient.get('/users')
-    return response.data
-  }, { enabled: canManageFleet })
-
-  // Fetch alerts — por scope del rol (el backend filtra)
+  // 4. Fetch Alerts
   const { data: alerts = [] } = useQuery('alerts', async () => {
     const response = await apiClient.get('/alerts', { params: { limit: 10 } })
     return response.data
@@ -55,7 +56,7 @@ export default function Dashboard() {
     refetchInterval: 5000,
   })
 
-  // Setup WebSocket — also invalidate vehicles query when real-time data arrives
+  // Setup WebSocket
   useEffect(() => {
     const newSocket = setupSocketConnection()
     if (!newSocket) return
@@ -66,230 +67,318 @@ export default function Dashboard() {
         ...prev,
         [data.vehicleId]: data
       }))
-      // Also invalidate vehicles cache so the vehicle list refreshes with new position
       queryClient.invalidateQueries('vehicles')
     })
 
-    if (selectedVehicle) {
-      newSocket.emit('subscribe_vehicle', selectedVehicle._id)
-    }
-
     return () => {
-      if (selectedVehicle) {
-        newSocket.emit('unsubscribe_vehicle', selectedVehicle._id)
-      }
+      if (newSocket) newSocket.disconnect()
     }
-  }, [selectedVehicle])
+  }, [queryClient])
 
-  // Filter Vehicles Logic
+  // Filtered Vehicles
   const filteredVehicles = useMemo(() => {
+    if (assetTypeFilter === 'people') return []
     return vehicles.filter(v => {
-      // Company filter
-      if (selectedCompanyId && (v.company?._id !== selectedCompanyId && v.company !== selectedCompanyId)) {
-        return false
-      }
-      // Driver / User filter
-      if (selectedDriverId && (v.driver?._id !== selectedDriverId && v.driver !== selectedDriverId)) {
-        return false
-      }
-      // Status filter
-      if (statusFilter !== 'all' && v.status !== statusFilter) {
-        return false
-      }
-      // Search query (Plate, Make, Model, IMEI, Driver Name)
+      if (selectedCompanyId && (v.company?._id !== selectedCompanyId && v.company !== selectedCompanyId)) return false
+      if (statusFilter !== 'all' && v.status !== statusFilter) return false
+      if (selectedVehicle && selectedVehicle._id !== v._id) return false
+      if (selectedPerson) return false // Hide vehicles if a single person is selected
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
-        const plateMatch = v.licensePlate?.toLowerCase().includes(q)
-        const makeMatch = v.make?.toLowerCase().includes(q)
-        const modelMatch = v.model?.toLowerCase().includes(q)
-        const imeiMatch = v.deviceIMEI?.toLowerCase().includes(q)
-        const driverName = v.driver?.name || v.assignedDriver || ''
-        const driverMatch = driverName.toLowerCase().includes(q)
-
-        if (!plateMatch && !makeMatch && !modelMatch && !imeiMatch && !driverMatch) {
-          return false
-        }
+        const match = v.licensePlate?.toLowerCase().includes(q) ||
+                      v.make?.toLowerCase().includes(q) ||
+                      v.model?.toLowerCase().includes(q) ||
+                      v.deviceIMEI?.toLowerCase().includes(q)
+        if (!match) return false
       }
       return true
     })
-  }, [vehicles, selectedCompanyId, selectedDriverId, statusFilter, searchQuery])
+  }, [vehicles, assetTypeFilter, selectedCompanyId, statusFilter, selectedVehicle, selectedPerson, searchQuery])
+
+  // Filtered People
+  const filteredPeople = useMemo(() => {
+    if (assetTypeFilter === 'vehicles') return []
+    return people.filter(p => {
+      if (selectedVehicle) return false // Hide people if a single vehicle is selected
+      if (selectedPerson && selectedPerson._id !== p._id) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const match = p.name?.toLowerCase().includes(q) ||
+                      p.deviceId?.toLowerCase().includes(q) ||
+                      p.trackerCode?.toLowerCase().includes(q)
+        if (!match) return false
+      }
+      return true
+    })
+  }, [people, assetTypeFilter, selectedVehicle, selectedPerson, searchQuery])
+
+  // KPI Calculations
+  const activeVehiclesCount = vehicles.filter(v => v.status === 'active').length
+  const activePeopleCount = people.filter(p => p.hasReportedLocation && p.status !== 'offline').length
+  const totalPanicCount = people.filter(p => p.status === 'panic' || p.panicAlert?.active).length +
+                          vehicles.filter(v => v.status === 'alert').length
+
+  const handleSelectAsset = (type, item) => {
+    if (type === 'vehicle') {
+      setSelectedPerson(null)
+      setSelectedVehicle(selectedVehicle?._id === item._id ? null : item)
+    } else if (type === 'person') {
+      setSelectedVehicle(null)
+      setSelectedPerson(selectedPerson?._id === item._id ? null : item)
+    }
+  }
+
+  const handleResetFilters = () => {
+    setSelectedVehicle(null)
+    setSelectedPerson(null)
+    setAssetTypeFilter('all')
+    setSelectedCompanyId('')
+    setStatusFilter('all')
+    setSearchQuery('')
+  }
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
+      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-            {canManageFleet ? 'Control de Gestión de Viajes & Flota' : 'Mis Vehículos'}
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">
-            {canManageFleet
-              ? 'Monitoreo interactivo en tiempo real por Empresa, Conductor y Dispositivo GPS.'
-              : 'Monitoreo en tiempo real de tus vehículos registrados.'}
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              Centro de Mando Unificado
+            </h1>
+            <span className="text-[10px] font-mono px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">
+              FLOTAS & PERSONAL
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Monitoreo en tiempo real de vehículos de la empresa y dispositivos móviles familiares/personal de campo.
           </p>
         </div>
-        <div className="text-sm font-semibold text-gray-600 bg-white px-4 py-2 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
-          <span>🚗 <strong className="text-blue-600">{filteredVehicles.length}</strong> / {vehicles.length} Monitoreados</span>
-          <span className="text-gray-300">|</span>
-          <span>🚨 <strong className="text-amber-600">{alerts.length}</strong> Alertas</span>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/people-tracker')}
+            className="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+          >
+            <span>📱</span> Gestión de Móviles / SOS
+          </button>
+          <button
+            onClick={() => navigate('/download-app')}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm"
+          >
+            <span>📥</span> EYE-NODE APK
+          </button>
         </div>
       </div>
 
-      {/* Resumen Estadístico */}
-      <StatsDashboard vehicles={filteredVehicles} alerts={alerts} />
-
-      {/* ===== BARRA DE FILTROS & CONTROL DE GESTIÓN ===== */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-            🎛️ Filtros de Monitoreo & Control de Viajes
-          </h2>
-          {(selectedCompanyId || selectedDriverId || statusFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSelectedCompanyId('')
-                setSelectedDriverId('')
-                setStatusFilter('all')
-                setSearchQuery('')
-              }}
-              className="text-xs text-blue-600 hover:text-blue-800 font-bold transition-all"
-            >
-              ✕ Limpiar Filtros
-            </button>
-          )}
+      {/* ── Top Unified KPI Stats ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Vehicles KPI */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-black">
+            🚗
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Vehículos Flota</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900">{vehicles.length}</span>
+              <span className="text-[11px] text-emerald-600 font-bold">({activeVehiclesCount} en ruta)</span>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-          {/* Filtro Empresa */}
-          {isAdmin && (
-            <div>
-              <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">Empresa / Cliente</label>
-              <select
-                value={selectedCompanyId}
-                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 transition-all font-medium text-xs"
+        {/* People / Mobile Trackers KPI */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl font-black">
+            📱
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personal / Móviles</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900">{people.length}</span>
+              <span className="text-[11px] text-purple-600 font-bold">({activePeopleCount} en línea)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Online Total */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl font-black">
+            🟢
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total En Línea</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-black text-slate-900">
+                {activeVehiclesCount + activePeopleCount}
+              </span>
+              <span className="text-[11px] text-slate-400 font-mono">/ {vehicles.length + people.length} activos</span>
+            </div>
+          </div>
+        </div>
+
+        {/* SOS Emergency Alerts KPI */}
+        <div className={`p-4 rounded-2xl border shadow-sm flex items-center gap-3 ${
+          totalPanicCount > 0
+            ? 'bg-rose-50 border-rose-300 text-rose-900 animate-pulse'
+            : 'bg-white border-slate-200'
+        }`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-black ${
+            totalPanicCount > 0 ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500'
+          }`}>
+            🚨
+          </div>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Alertas & Pánicos</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-2xl font-black ${totalPanicCount > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                {totalPanicCount}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {totalPanicCount > 0 ? '¡Atención Requerida!' : 'Todo Normal'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Interactive Asset Switcher & Filter Bar ── */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase">Ver Tipo:</span>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => { setAssetTypeFilter('all'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
+                  assetTypeFilter === 'all' && !selectedVehicle && !selectedPerson
+                    ? 'bg-slate-900 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <option value="">🏢 Todas las Empresas</option>
-                {companies.map(c => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
-              </select>
+                🌐 Todos ({vehicles.length + people.length})
+              </button>
+              <button
+                onClick={() => { setAssetTypeFilter('vehicles'); setSelectedPerson(null); }}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
+                  assetTypeFilter === 'vehicles'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🚗 Vehículos ({vehicles.length})
+              </button>
+              <button
+                onClick={() => { setAssetTypeFilter('people'); setSelectedVehicle(null); }}
+                className={`px-3 py-1 rounded-lg text-xs font-black transition ${
+                  assetTypeFilter === 'people'
+                    ? 'bg-purple-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                📱 Móviles / Personas ({people.length})
+              </button>
             </div>
-          )}
-
-          {/* Filtro Conductor / Usuario — solo admin y fleet_manager */}
-          {canManageFleet && (
-          <div>
-            <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">Conductor / Usuario</label>
-            <select
-              value={selectedDriverId}
-              onChange={(e) => setSelectedDriverId(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 transition-all font-medium text-xs"
-            >
-              <option value="">👤 Todos los Conductores / Usuarios</option>
-              {usersList.map(u => (
-                <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-              ))}
-            </select>
-          </div>
-          )}
-
-          {/* Filtro Estado */}
-          <div>
-            <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">Estado de Conexión</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 transition-all font-medium text-xs"
-            >
-              <option value="all">⚡ Todos los Estados</option>
-              <option value="active">🟢 En Movimiento / Activo</option>
-              <option value="offline">⚪ Detenido / Sin conexión</option>
-              <option value="alert">🔴 En Alerta</option>
-            </select>
           </div>
 
-          {/* Buscador general */}
-          <div>
-            <label className="block text-[11px] font-bold text-gray-600 uppercase mb-1">Buscar Vehículo o IMEI</label>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Patente, Marca, IMEI..."
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs"
-            />
+          {(selectedVehicle || selectedPerson || searchQuery || selectedCompanyId) && (
+            <button
+              onClick={handleResetFilters}
+              className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+            >
+              ✕ Restablecer Filtros
+            </button>
+          )}
+        </div>
+
+        {/* Individual Asset Pill Buttons for 1-Click Map Isolation */}
+        <div className="space-y-1.5 pt-1">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+            🎯 Filtro Individual de Activos (Haz clic para aislar en el mapa):
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto">
+            <button
+              onClick={() => { setSelectedVehicle(null); setSelectedPerson(null); }}
+              className={`px-2.5 py-1 rounded-xl text-xs font-black transition border shadow-xs ${
+                !selectedVehicle && !selectedPerson
+                  ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-blue-500 scale-105'
+                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+              }`}
+            >
+              🌐 Ver Todos Juntos
+            </button>
+
+            {/* Vehicle Pills */}
+            {vehicles.map(v => {
+              const isSel = selectedVehicle?._id === v._id
+              return (
+                <button
+                  key={v._id}
+                  onClick={() => handleSelectAsset('vehicle', v)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                    isSel
+                      ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-400 scale-105'
+                      : 'bg-blue-50/80 text-blue-900 border-blue-200 hover:bg-blue-100'
+                  }`}
+                >
+                  <span>🚗</span>
+                  <span>{v.licensePlate}</span>
+                  <span className="text-[10px] opacity-75 font-normal">({v.make})</span>
+                </button>
+              )
+            })}
+
+            {/* People Pills */}
+            {people.map((p, idx) => {
+              const isSel = selectedPerson?._id === p._id
+              const colorObj = getPersonColor(p.name, idx)
+              return (
+                <button
+                  key={p._id}
+                  onClick={() => handleSelectAsset('person', p)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                    isSel
+                      ? 'ring-2 ring-purple-500 scale-105 text-white font-black'
+                      : 'opacity-85 hover:opacity-100'
+                  }`}
+                  style={{
+                    backgroundColor: isSel ? colorObj.bg : `${colorObj.stroke}15`,
+                    borderColor: colorObj.stroke,
+                    color: isSel ? '#ffffff' : colorObj.bg,
+                  }}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSel ? '#ffffff' : colorObj.stroke }}></span>
+                  <span className="capitalize">{p.name}</span>
+                  <span className="text-[10px] font-mono opacity-80">({p.deviceId || p.trackerCode})</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      {/* ===== PANEL DE CONTROL DEL VEHÍCULO SELECCIONADO ===== */}
-      {selectedVehicle && (
-        <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-xl border border-blue-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-600/30 p-3.5 rounded-2xl border border-blue-400/30 text-3xl">
-              🚗
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-white tracking-wide">{selectedVehicle.licensePlate}</h3>
-                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${
-                  selectedVehicle.status === 'active'
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : 'bg-gray-500/20 text-gray-300 border-gray-500/30'
-                }`}>
-                  {selectedVehicle.status === 'active' ? '● En Ruta / En Movimiento' : '● Detenido'}
-                </span>
-              </div>
-              <p className="text-xs text-blue-200/80 mt-0.5">
-                {selectedVehicle.make} {selectedVehicle.model} • Conductor: <strong className="text-white">{selectedVehicle.assignedDriver || selectedVehicle.driver?.name || 'Sin asignar'}</strong>
-              </p>
-              <p className="text-[11px] text-blue-300/70 mt-1 font-mono">
-                📍 {selectedVehicle.location?.address || 'Ubicación activa en mapa'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs text-right">
-              <span className="text-gray-400 block text-[9px] uppercase font-bold">Velocidad</span>
-              <span className="text-emerald-400 font-bold text-sm">{selectedVehicle.speed || 0} km/h</span>
-            </div>
-
-            <button
-              onClick={() => navigate(`/vehicles/${selectedVehicle._id}`)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-900/30 flex items-center gap-1.5"
-            >
-              🔍 Ver Ficha Completa & Rastreo BLE
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Map */}
-        <div className="lg:col-span-2">
+      {/* ── Main Interactive Map & Sidebar Layout ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Central Map (2 Cols) */}
+        <div className="lg:col-span-2 min-h-[550px]">
           <MapComponent
             vehicles={filteredVehicles}
             selectedVehicle={selectedVehicle}
-            onVehicleSelect={setSelectedVehicle}
+            onVehicleSelect={(v) => handleSelectAsset('vehicle', v)}
             realTimeData={realTimeData}
           />
         </div>
 
-        {/* Sidebar */}
+        {/* Right Sidebar: Fleet & People List */}
         <div className="space-y-6">
-          {/* Vehicle List */}
           <VehicleList
             vehicles={filteredVehicles}
             selectedVehicle={selectedVehicle}
-            onSelectVehicle={setSelectedVehicle}
-            isLoading={isLoading}
+            onVehicleSelect={(v) => handleSelectAsset('vehicle', v)}
+            isLoading={loadingVehicles}
           />
 
-          {/* Alerts */}
-          <AlertsPanel alerts={alerts.slice(0, 5)} />
+          <AlertsPanel alerts={alerts} />
         </div>
       </div>
     </div>

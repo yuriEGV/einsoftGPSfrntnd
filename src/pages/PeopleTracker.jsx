@@ -732,25 +732,37 @@ export default function PeopleTracker() {
             {/* Color Legend Bar per Person & Trail */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 text-xs">
               <span className="text-[10px] font-black uppercase text-slate-400 mr-1 flex items-center gap-1">
-                <span>🎨</span> Rutas:
+                <span>🎨</span> Filtro:
               </span>
+              <button
+                onClick={() => setSelectedPerson(null)}
+                className={`px-3 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
+                  !selectedPerson
+                    ? 'bg-slate-900 text-white border-slate-900 ring-2 ring-purple-500 scale-105'
+                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                }`}
+              >
+                <span>🌐</span>
+                <span>Ver Todos ({people.length})</span>
+              </button>
+
               {people.map((p, idx) => {
                 const color = getPersonColor(p.name, idx);
                 const isSelected = selectedPerson?._id === p._id;
                 return (
                   <button
                     key={p._id}
-                    onClick={() => setSelectedPerson(p)}
+                    onClick={() => setSelectedPerson(isSelected ? null : p)}
                     className={`px-2.5 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1.5 transition border shadow-xs ${
-                      isSelected ? 'ring-2 ring-purple-500 scale-105' : 'opacity-85 hover:opacity-100'
+                      isSelected ? 'ring-2 ring-purple-500 scale-105 font-black' : 'opacity-85 hover:opacity-100'
                     }`}
                     style={{
-                      backgroundColor: `${color.stroke}15`,
+                      backgroundColor: isSelected ? color.bg : `${color.stroke}15`,
                       borderColor: color.stroke,
-                      color: color.bg,
+                      color: isSelected ? '#ffffff' : color.bg,
                     }}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: color.stroke }}></span>
+                    <span className="w-2.5 h-2.5 rounded-full shadow-xs" style={{ backgroundColor: isSelected ? '#ffffff' : color.stroke }}></span>
                     <span className="capitalize">{p.name}</span>
                   </button>
                 );
@@ -780,6 +792,7 @@ export default function PeopleTracker() {
                 {/* Render Distinct Multi-Color Trajectory Polyline Trails per Person */}
                 {Object.entries(trails).map(([personId, points], trailIdx) => {
                   if (!points || points.length < 2) return null
+                  if (selectedPerson && selectedPerson._id !== personId) return null // Hide other trails when single person is selected
                   const isSel = selectedPerson?._id === personId
                   const personObj = people.find(p => p._id === personId)
                   const colorObj = getPersonColor(personObj?.name, trailIdx)
@@ -814,8 +827,8 @@ export default function PeopleTracker() {
                   )
                 })}
 
-                {/* Render Markers for People with Real GPS Location */}
-                {people.map((person, pIdx) => {
+                {/* Render Markers for People with Real GPS Location (Isolate if single person selected) */}
+                {(selectedPerson ? [selectedPerson] : people).map((person, pIdx) => {
                   const coords = person.location?.coordinates;
                   const hasRealLocation = person.hasReportedLocation && coords && (coords[0] !== 0 || coords[1] !== 0);
                   if (!hasRealLocation) return null;
@@ -921,59 +934,71 @@ export default function PeopleTracker() {
             <form onSubmit={handleSubmitAdd} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Nombre Completo
+                  Nombre Completo del Titular
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: Juan Pérez / Abuela María"
+                  placeholder="Ej: Manuel Valenzuela / Guardia Central"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Teléfono Móvil
+                  Teléfono Móvil de Contacto
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: +56912345678"
+                  placeholder="Ej: +56989998916"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  IMEI Real del Teléfono (15 dígitos — Opcional)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase">
+                    📱 Identificador del Móvil / Tracker
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, deviceId: `MOVIL-${Math.floor(1000 + Math.random() * 9000)}` })}
+                    className="text-[10px] text-purple-700 font-bold bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-lg transition"
+                  >
+                    🎲 Generar ID MOVIL
+                  </button>
+                </div>
                 <input
                   type="text"
-                  placeholder="Ej: 350673971668546 (Obtener marcando *#06#)"
+                  placeholder="Ej: MOVIL-3550 o IMEI de 15 dígitos"
                   value={formData.deviceId || ''}
                   onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono font-bold text-slate-900 bg-slate-50/50"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Si lo conoces, ingrésalo para enlazar el hardware físico del teléfono.</p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Identificador asignado al teléfono para enlazar y recibir su telemetría en tiempo real.
+                </p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Rol o Relación
+                  Rol / Tipo de Asignación
                 </label>
                 <select
                   value={formData.roleDescription}
                   onChange={(e) => setFormData({ ...formData, roleDescription: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-medium text-slate-800"
                 >
-                  <option value="Familiar / Personal">Familiar / Personal</option>
-                  <option value="Hijo / Estudiante">Hijo / Estudiante</option>
-                  <option value="Adulto Mayor">Adulto Mayor</option>
+                  <option value="Empresa / Conductor de Flota">Empresa / Conductor de Flota</option>
                   <option value="Trabajador de Campo / Guardia">Trabajador de Campo / Guardia</option>
                   <option value="Repartidor / Ejecutivo">Repartidor / Ejecutivo</option>
+                  <option value="Familiar / Personal">Familiar / Personal</option>
+                  <option value="Adulto Mayor">Adulto Mayor</option>
+                  <option value="Hijo / Estudiante">Hijo / Estudiante</option>
                 </select>
               </div>
 
@@ -988,9 +1013,9 @@ export default function PeopleTracker() {
                 <button
                   type="submit"
                   disabled={createMutation.isLoading}
-                  className="flex-1 py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 transition shadow-lg shadow-purple-600/30 text-sm"
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition shadow-lg shadow-purple-600/30 text-sm"
                 >
-                  {createMutation.isLoading ? 'Guardando...' : 'Generar Rastreador'}
+                  {createMutation.isLoading ? 'Guardando...' : 'Generar Móvil'}
                 </button>
               </div>
             </form>
@@ -998,13 +1023,13 @@ export default function PeopleTracker() {
         </div>
       )}
 
-      {/* ── Modal: Editar Persona & IMEI ── */}
+      {/* ── Modal: Editar Persona & Identificador ── */}
       {editModalPerson && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                ✏️ Modificar Persona & IMEI
+                ✏️ Modificar Ficha del Móvil
               </h3>
               <button
                 onClick={() => setEditModalPerson(null)}
@@ -1023,59 +1048,70 @@ export default function PeopleTracker() {
             >
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Nombre Completo
+                  Nombre Completo del Titular
                 </label>
                 <input
                   type="text"
                   value={editFormData.name}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Teléfono Móvil
+                  Teléfono Móvil de Contacto
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: +56912345678"
+                  placeholder="Ej: +56989998916"
                   value={editFormData.phone}
                   onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  📱 IMEI del Teléfono Celular (15 dígitos)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 uppercase">
+                    📱 Identificador del Móvil / Tracker
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditFormData({ ...editFormData, deviceId: `MOVIL-${Math.floor(1000 + Math.random() * 9000)}` })}
+                    className="text-[10px] text-purple-700 font-bold bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-lg transition"
+                  >
+                    🎲 Generar ID MOVIL
+                  </button>
+                </div>
                 <input
                   type="text"
-                  placeholder="Ej: 358251526515967 (Marcar *#06# en el celular)"
+                  placeholder="Ej: MOVIL-3550 o IMEI de 15 dígitos"
                   value={editFormData.deviceId}
                   onChange={(e) => setEditFormData({ ...editFormData, deviceId: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-purple-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono font-bold text-purple-900 bg-purple-50/40"
+                  className="w-full px-4 py-2.5 rounded-xl border border-purple-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono font-bold text-purple-900 bg-purple-50/40"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">Este es el identificador único físico con el que la APK del celular transmite a la plataforma.</p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Identificador con el que la APK del celular transmite a la plataforma central.
+                </p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                  Rol o Relación
+                  Rol / Tipo de Asignación
                 </label>
                 <select
                   value={editFormData.roleDescription}
                   onChange={(e) => setEditFormData({ ...editFormData, roleDescription: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-medium text-slate-800"
                 >
-                  <option value="Familiar / Personal">Familiar / Personal</option>
-                  <option value="Hijo / Estudiante">Hijo / Estudiante</option>
-                  <option value="Adulto Mayor">Adulto Mayor</option>
+                  <option value="Empresa / Conductor de Flota">Empresa / Conductor de Flota</option>
                   <option value="Trabajador de Campo / Guardia">Trabajador de Campo / Guardia</option>
                   <option value="Repartidor / Ejecutivo">Repartidor / Ejecutivo</option>
-                  <option value="Conductor / Chofer">Conductor / Chofer</option>
+                  <option value="Familiar / Personal">Familiar / Personal</option>
+                  <option value="Adulto Mayor">Adulto Mayor</option>
+                  <option value="Hijo / Estudiante">Hijo / Estudiante</option>
                 </select>
               </div>
 
