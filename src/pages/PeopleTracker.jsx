@@ -157,12 +157,18 @@ export default function PeopleTracker() {
     staleTime: 30000,
   })
 
-  // Pre-populate trails from historical data with road snapping
+  // Pre-populate trails ONLY for currently active sessions (within last 4 hours)
   useEffect(() => {
     if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
       const initialTrails = {}
+      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000)
+
       historyPoints.forEach(pt => {
         const pId = pt.personTracker
+        const ptTime = pt.timestamp ? new Date(pt.timestamp) : null
+        // Skip stale points older than 4 hours for live map breadcrumbs
+        if (ptTime && ptTime < fourHoursAgo) return
+
         const lat = pt.gps?.latitude || pt.location?.coordinates?.[1]
         const lng = pt.gps?.longitude || pt.location?.coordinates?.[0]
         if (lat && lng && (lat !== 0 || lng !== 0)) {
@@ -170,18 +176,6 @@ export default function PeopleTracker() {
           const last = initialTrails[pId][initialTrails[pId].length - 1]
           if (!last || getDistanceMeters(last, [lat, lng]) >= 15) {
             initialTrails[pId].push([lat, lng])
-          }
-        }
-      })
-
-      // Also map by deviceIMEI if personTracker id wasn't set
-      people.forEach(p => {
-        if ((!initialTrails[p._id] || initialTrails[p._id].length === 0) && p.deviceId) {
-          const matchPoints = historyPoints.filter(pt => pt.deviceIMEI === p.deviceId)
-          if (matchPoints.length > 0) {
-            initialTrails[p._id] = matchPoints
-              .map(pt => [pt.gps?.latitude || pt.location?.coordinates?.[1], pt.gps?.longitude || pt.location?.coordinates?.[0]])
-              .filter(ll => ll[0] && ll[1])
           }
         }
       })
@@ -245,10 +239,29 @@ export default function PeopleTracker() {
     })
   }, [people])
 
-  // Clear movement trails
-  const handleClearTrails = () => {
+  // Mutations
+  const resetLocationMutation = useMutation(
+    async (personId) => {
+      const res = await apiClient.post(`/people-trackers/${personId}/reset-location`)
+      return res.data
+    },
+    {
+      onSuccess: () => {
+        setTrails({})
+        queryClient.invalidateQueries('peopleTrackers')
+        queryClient.invalidateQueries('peopleHistoryAll')
+      },
+    }
+  )
+
+  // Clear movement trails permanently from database and UI
+  const handleClearTrails = async () => {
+    try {
+      await apiClient.delete('/people-trackers/history/all')
+    } catch (_) {}
     setTrails({})
-    refetch()
+    queryClient.invalidateQueries('peopleHistoryAll')
+    queryClient.invalidateQueries('peopleTrackers')
   }
 
   // Screenshot map capture
@@ -662,14 +675,15 @@ export default function PeopleTracker() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (window.confirm(`¿Deseas limpiar la ubicación antigua registrada de ${person.name}?`)) {
+                          if (window.confirm(`¿Deseas limpiar la ubicación y ruta antigua de ${person.name}?`)) {
                             resetLocationMutation.mutate(person._id)
                           }
                         }}
-                        className="text-slate-400 hover:text-amber-600 p-1 text-xs"
-                        title="Limpiar ubicación antigua del mapa y esperar conexión en vivo"
+                        disabled={resetLocationMutation.isLoading}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1 transition shadow-xs"
+                        title="Limpiar ubicación y traza antigua del mapa y esperar señal nueva en vivo"
                       >
-                        🧹
+                        <span>🧹</span> Limpiar Ruta
                       </button>
                     )}
 
@@ -679,7 +693,7 @@ export default function PeopleTracker() {
                         deleteMutation.mutate(person._id)
                       }}
                       className="text-slate-400 hover:text-red-600 p-1 text-xs"
-                      title="Eliminar"
+                      title="Eliminar registro"
                     >
                       🗑️
                     </button>
