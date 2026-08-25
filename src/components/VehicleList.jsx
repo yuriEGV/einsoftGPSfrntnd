@@ -2,13 +2,22 @@ import React, { useState } from 'react'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
 import { apiClient } from '../services/api'
 
-export default function VehicleList({ vehicles, selectedVehicle, onSelectVehicle, onDeleteVehicle, isLoading }) {
+export default function VehicleList({
+  vehicles = [],
+  selectedVehicle,
+  onSelectVehicle,
+  onVehicleSelect,
+  onDeleteVehicle,
+  isLoading,
+}) {
   const [pingingId, setPingingId] = useState(null)
   const [pingMessage, setPingMessage] = useState('')
 
+  const handleSelect = onSelectVehicle || onVehicleSelect || (() => {})
+
   const handlePingLocation = async (e, vehicle) => {
     e.stopPropagation()
-    if (onSelectVehicle) onSelectVehicle(vehicle)
+    handleSelect(vehicle)
     try {
       setPingingId(vehicle._id)
       const deviceId = vehicle.deviceIMEI || vehicle.licensePlate || vehicle._id
@@ -53,7 +62,7 @@ export default function VehicleList({ vehicles, selectedVehicle, onSelectVehicle
           return (
             <div
               key={vehicle._id}
-              onClick={() => onSelectVehicle(vehicle)}
+              onClick={() => handleSelect(vehicle)}
               className={`p-3 rounded-xl cursor-pointer border-2 transition-all group relative ${isAlert
                 ? 'border-red-500 bg-red-50/60 shadow-md shadow-red-900/10'
                 : selectedVehicle?._id === vehicle._id
