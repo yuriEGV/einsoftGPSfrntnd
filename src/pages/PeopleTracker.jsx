@@ -408,12 +408,15 @@ export default function PeopleTracker() {
   }
 
   // Calculate default map center (Default to Valparaíso if no valid reported positions)
-  const validLocations = people.filter(p =>
-    p.hasReportedLocation &&
-    p.location?.coordinates &&
-    Array.isArray(p.location.coordinates) &&
-    (p.location.coordinates[0] !== 0 || p.location.coordinates[1] !== 0)
-  )
+  const validLocations = people.filter(p => {
+    const coords = p.location?.coordinates;
+    if (!p.hasReportedLocation || !coords || !Array.isArray(coords)) return false;
+    const lng = coords[0], lat = coords[1];
+    return (lat !== 0 || lng !== 0) &&
+      lat >= -90 && lat <= 90 &&
+      lng >= -180 && lng <= 180 &&
+      lng > -76; // Not in the Pacific Ocean west of Chile
+  });
   const defaultCenter = validLocations.length > 0
     ? [validLocations[0].location.coordinates[1], validLocations[0].location.coordinates[0]]
     : [-33.045, -71.615] // Default Valparaíso, Chile
@@ -500,12 +503,21 @@ export default function PeopleTracker() {
               const coords = person.location?.coordinates || [0, 0];
               const lat = coords[1];
               const lng = coords[0];
+              // Strict validation: must have location, hasReportedLocation, non-zero coords,
+              // and coords must be within reasonable bounds (not in the ocean or default values)
               const hasRealCoords = Boolean(
                 person.hasReportedLocation &&
+                person.location?.coordinates &&
                 lat && lng &&
                 (lat !== 0 || lng !== 0) &&
-                !(Math.abs(lat - (-33.45694)) < 0.001 && Math.abs(lng - (-70.64827)) < 0.001)
+                lat >= -90 && lat <= 90 &&
+                lng >= -180 && lng <= 180 &&
+                // Reject Santiago default coords (common fallback)
+                !(Math.abs(lat - (-33.45694)) < 0.001 && Math.abs(lng - (-70.64827)) < 0.001) &&
+                // Reject Pacific Ocean coords (west of Chilean coast lon < -76)
+                lng > -76
               );
+
               const publicUrl = `${window.location.origin}/person-track/${person.trackerCode}`;
 
               return (
