@@ -86,16 +86,22 @@ export default function VehicleDetail() {
           deviceIMEI: v.deviceIMEI || '',
           simCardNumber: v.simCardNumber || '',
           deviceModel: v.deviceModel || '',
-          driverId: v.driver?._id || ''
+          driverId: v.driver?._id || '',
+          personTrackerId: v.assignedPerson?._id || '',
         })
         deviceFormInitialized.current = true
       }
     },
   })
 
-  const { data: drivers = [] } = useQuery('drivers', async () => {
+  const { data: allUsers = [] } = useQuery('allUsers', async () => {
     const response = await apiClient.get('/users')
-    return response.data.filter(u => u.role === 'driver')
+    return response.data || []
+  })
+
+  const { data: allPeople = [] } = useQuery('allPeople', async () => {
+    const response = await apiClient.get('/people-trackers')
+    return response.data || []
   })
 
   // ─── Stop any existing tracker for a different vehicle ──────────────────────
@@ -857,25 +863,88 @@ export default function VehicleDetail() {
                 type="text"
                 value={deviceForm.deviceModel}
                 onChange={(e) => setDeviceForm({ ...deviceForm, deviceModel: e.target.value })}
-                placeholder="Modelo (GT06, TK103, etc)"
+                placeholder="Modelo (GT06, TK103, XTAG11, Celular, etc)"
                 className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
               />
-              <select
-                value={deviceForm.driverId}
-                onChange={(e) => setDeviceForm({ ...deviceForm, driverId: e.target.value })}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="">Asignar conductor (opcional)</option>
-                {drivers.map(d => (
-                  <option key={d._id} value={d._id}>{d.name} ({d.email})</option>
-                ))}
-              </select>
+              <div className="md:col-span-2 space-y-1">
+                <label className="text-xs font-semibold text-gray-700 block">
+                  Asignar a Conductor, Usuario o Familiar (EYE-NODE):
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={
+                      deviceForm.personTrackerId
+                        ? `person:${deviceForm.personTrackerId}`
+                        : deviceForm.driverId
+                        ? `user:${deviceForm.driverId}`
+                        : ''
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (!val) {
+                        setDeviceForm(prev => ({ ...prev, driverId: '', personTrackerId: '' }))
+                      } else if (val.startsWith('person:')) {
+                        const pId = val.replace('person:', '')
+                        const foundPerson = allPeople.find(p => p._id === pId)
+                        setDeviceForm(prev => ({
+                          ...prev,
+                          personTrackerId: pId,
+                          driverId: '',
+                          deviceIMEI: prev.deviceIMEI || foundPerson?.deviceId || foundPerson?.trackerCode || '',
+                        }))
+                      } else if (val.startsWith('user:')) {
+                        const uId = val.replace('user:', '')
+                        setDeviceForm(prev => ({
+                          ...prev,
+                          driverId: uId,
+                          personTrackerId: '',
+                        }))
+                      }
+                    }}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-xs bg-white"
+                  >
+                    <option value="">-- Sin asignar (Vehículo libre / compartido) --</option>
+                    <optgroup label="👤 Usuarios del Sistema / Conductores">
+                      {allUsers.map(u => (
+                        <option key={u._id} value={`user:${u._id}`}>
+                          {u.name} ({u.role ? u.role.toUpperCase() : 'Usuario'}) - {u.email}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="📱 Personas y Familiares (App EYE-NODE / Móviles)">
+                      {allPeople.map(p => (
+                        <option key={p._id} value={`person:${p._id}`}>
+                          👤 {p.name} ({p.roleDescription || 'Familiar'}) - ID: {p.deviceId || p.trackerCode}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+
+                  {deviceForm.personTrackerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const foundPerson = allPeople.find(p => p._id === deviceForm.personTrackerId)
+                        if (foundPerson) {
+                          const imeiToUse = foundPerson.deviceId || foundPerson.trackerCode
+                          setDeviceForm(prev => ({ ...prev, deviceIMEI: imeiToUse }))
+                          alert(`✅ IMEI completado con el código del celular de ${foundPerson.name}: ${imeiToUse}`)
+                        }
+                      }}
+                      className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg transition"
+                      title="Usar el IMEI o código de la app EYE-NODE de esta persona"
+                    >
+                      📱 Usar ID Móvil
+                    </button>
+                  )}
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={linkDeviceMutation.isLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium px-4 py-2 disabled:bg-blue-300 md:col-span-2 transition-all"
               >
-                {linkDeviceMutation.isLoading ? 'Vinculando...' : '🔗 Vincular Dispositivo'}
+                {linkDeviceMutation.isLoading ? 'Vinculando...' : '🔗 Vincular Dispositivo y Asignación'}
               </button>
               {linkDeviceMutation.isSuccess && (
                 <p className="col-span-2 text-emerald-600 text-xs font-bold">✓ Dispositivo vinculado correctamente</p>

@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
 import { getRoadSnappedRoute } from '../services/routingService'
+import RoutePlaybackModal from '../components/RoutePlaybackModal'
 
 // Helper component to smoothly center Leaflet map on target person
 function ChangeView({ center, zoom }) {
@@ -118,6 +119,7 @@ export default function PeopleTracker() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [activeLinkModal, setActiveLinkModal] = useState(null)
+  const [playbackPerson, setPlaybackPerson] = useState(null)
   const [trails, setTrails] = useState({})
   const [isCapturing, setIsCapturing] = useState(false)
   const [pingNotification, setPingNotification] = useState(null)
@@ -127,6 +129,7 @@ export default function PeopleTracker() {
     phone: '',
     deviceId: '',
     roleDescription: 'Familiar / Personal',
+    assignedVehicle: '',
   })
   const [editModalPerson, setEditModalPerson] = useState(null)
   const [editFormData, setEditFormData] = useState({
@@ -134,8 +137,15 @@ export default function PeopleTracker() {
     phone: '',
     deviceId: '',
     roleDescription: 'Familiar / Personal',
+    assignedVehicle: '',
   })
   const alarmIntervalRef = useRef(null)
+
+  // Fetch vehicles for assignment
+  const { data: vehicles = [] } = useQuery('vehiclesList', async () => {
+    const res = await apiClient.get('/vehicles')
+    return res.data || []
+  })
 
   // Fetch tracked people from API
   const { data: people = [], isLoading, refetch } = useQuery('peopleTrackers', async () => {
@@ -564,14 +574,20 @@ export default function PeopleTracker() {
                     </div>
                   </div>
 
-                  {/* IMEI & Hardware Tag */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 mb-3 flex items-center justify-between text-[11px] font-mono">
+                  {/* IMEI & Hardware Tag & Assigned Vehicle */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 mb-3 flex items-center justify-between text-[11px] font-mono flex-wrap gap-1">
                     <span className="text-slate-700 font-bold">
                       📱 IMEI: <span className="text-purple-700 font-black">{person.deviceId || 'Sin IMEI asignado'}</span>
                     </span>
-                    <span className="text-slate-400 text-[10px]">
-                      🔑 {person.trackerCode}
-                    </span>
+                    {person.assignedVehicle ? (
+                      <span className="bg-blue-100 text-blue-800 font-sans font-bold text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        🚗 {typeof person.assignedVehicle === 'object' ? `${person.assignedVehicle.licensePlate} (${person.assignedVehicle.make || ''})` : 'Auto Asignado'}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 text-[10px]">
+                        🔑 {person.trackerCode}
+                      </span>
+                    )}
                   </div>
 
                   {/* Location string or Initial Warning */}
@@ -615,8 +631,8 @@ export default function PeopleTracker() {
                         handlePing(person)
                       }}
                       disabled={pingingPersonId === person._id}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
-                      title="Emitir comando remoto de despertar y forzar lectura satelital inmediata en el celular"
+                      className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                      title="Forzar actualización GPS del dispositivo"
                     >
                       {pingingPersonId === person._id ? (
                         <>
@@ -629,6 +645,18 @@ export default function PeopleTracker() {
                       )}
                     </button>
 
+                    {/* Playback GPS Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPlaybackPerson(person)
+                      }}
+                      className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold flex items-center gap-1 transition border border-indigo-200 shadow-xs"
+                      title="Reproducir recorrido histórico y ver ruta en el mapa (Playback GPS)"
+                    >
+                      <span>🎬</span> Recorrido
+                    </button>
+
                     {/* Edit button */}
                     <button
                       onClick={(e) => {
@@ -639,6 +667,7 @@ export default function PeopleTracker() {
                           phone: person.phone || '',
                           deviceId: person.deviceId || '',
                           roleDescription: person.roleDescription || 'Familiar / Personal',
+                          assignedVehicle: person.assignedVehicle?._id || person.assignedVehicle || '',
                         })
                       }}
                       className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition"
@@ -895,7 +924,7 @@ export default function PeopleTracker() {
                                 }}
                                 className="flex-1 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px] text-center border border-slate-200"
                               >
-                                🧹 Limpiar Posición
+                                🧹 Limpiar
                               </button>
                             )}
                             <a
@@ -909,6 +938,12 @@ export default function PeopleTracker() {
                               📲 Compartir
                             </a>
                           </div>
+                          <button
+                            onClick={() => setPlaybackPerson(person)}
+                            className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] text-center shadow flex items-center justify-center gap-1 mt-1"
+                          >
+                            🎬 Ver Recorrido Histórico (Playback)
+                          </button>
                         </div>
                       </Popup>
                     </Marker>
@@ -1005,6 +1040,27 @@ export default function PeopleTracker() {
                   <option value="Adulto Mayor">Adulto Mayor</option>
                   <option value="Hijo / Estudiante">Hijo / Estudiante</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  🚗 Vehículo Asignado (Opcional)
+                </label>
+                <select
+                  value={formData.assignedVehicle || ''}
+                  onChange={(e) => setFormData({ ...formData, assignedVehicle: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-medium text-slate-800"
+                >
+                  <option value="">-- Sin vehículo asignado (Solo celular) --</option>
+                  {vehicles.map(v => (
+                    <option key={v._id} value={v._id}>
+                      🚗 {v.licensePlate} ({v.make || ''} {v.model || ''})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Al vincular un auto, los reportes GPS de este celular también moverán el vehículo en el mapa.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-3">
@@ -1120,6 +1176,24 @@ export default function PeopleTracker() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  🚗 Vehículo Asignado (Opcional)
+                </label>
+                <select
+                  value={editFormData.assignedVehicle || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, assignedVehicle: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-purple-300 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none bg-white font-medium text-slate-800"
+                >
+                  <option value="">-- Sin vehículo asignado (Solo celular) --</option>
+                  {vehicles.map(v => (
+                    <option key={v._id} value={v._id}>
+                      🚗 {v.licensePlate} ({v.make || ''} {v.model || ''})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex gap-3 pt-3">
                 <button
                   type="button"
@@ -1204,6 +1278,17 @@ export default function PeopleTracker() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Modal: Reproductor de Recorrido Histórico (Playback GPS) ── */}
+      {playbackPerson && (
+        <RoutePlaybackModal
+          isOpen={!!playbackPerson}
+          onClose={() => setPlaybackPerson(null)}
+          targetType="person"
+          targetId={playbackPerson._id}
+          targetName={`👤 ${playbackPerson.name} (${playbackPerson.deviceId || playbackPerson.trackerCode})`}
+        />
       )}
     </div>
   )
