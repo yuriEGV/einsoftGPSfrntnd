@@ -123,8 +123,41 @@ class TelemetryClient {
       }
     }, 15000); // Heartbeat every 15 seconds
 
+    // Active Command Polling: Listens for remote wake-up (LOCATE_NOW / PING) every 3.5s
+    this.startCommandPolling();
+
     // Initial immediate flush
     this.flushOfflineQueue();
+  }
+
+  // ─── Command Polling Listener ────────────────────────────────────────────────
+  startCommandPolling() {
+    if (this.commandPollTimer) clearInterval(this.commandPollTimer);
+    this.commandPollTimer = setInterval(async () => {
+      if (this.isTransmitting && navigator.onLine) {
+        await this.pollPendingCommands();
+      }
+    }, 3500);
+
+    setTimeout(() => this.pollPendingCommands(), 1000);
+  }
+
+  stopCommandPolling() {
+    if (this.commandPollTimer) {
+      clearInterval(this.commandPollTimer);
+      this.commandPollTimer = null;
+    }
+  }
+
+  async pollPendingCommands() {
+    try {
+      const devId = encodeURIComponent(this.deviceConfig.deviceId || '');
+      const code = encodeURIComponent(this.deviceConfig.trackerCode || '');
+      const res = await apiClient.get(`/telemetry/commands/pending?deviceId=${devId}&trackerCode=${code}`);
+      if (Array.isArray(res.data?.commands) && res.data.commands.length > 0) {
+        await this.executeRemoteCommands(res.data.commands);
+      }
+    } catch (_) {}
   }
 
   // ─── Detener transmisión ─────────────────────────────────────────────────────
@@ -137,6 +170,7 @@ class TelemetryClient {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
+    this.stopCommandPolling();
     this.isTransmitting = false;
     this.notifyListeners({ type: 'status', isTransmitting: false });
   }

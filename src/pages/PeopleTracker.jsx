@@ -298,24 +298,55 @@ export default function PeopleTracker() {
     }
   }
 
-  // Ping handler
+  // Ping handler: Dispara comando de despertar remoto y espera respuesta satelital en tiempo real
   const handlePing = async (person) => {
     setPingingPersonId(person._id)
     setSelectedPerson(person)
     try {
+      setPingNotification(`📡 Emitiendo comando de despertar satelital (LOCATE_NOW) a ${person.name}...`)
       await apiClient.post(`/people-trackers/${person._id}/ping`)
       await apiClient.post('/telemetry/command', {
         deviceId: person.deviceId || person.trackerCode || person.code || person._id,
         command: 'LOCATE_NOW',
         targetType: 'person',
       }).catch(() => {})
-      setPingNotification(`📡 Solicitud de ping y localización emitida a ${person.name}. Solicitando reporte satelital...`)
-      setTimeout(() => setPingNotification(null), 6000)
-      refetch()
+
+      // Polling inteligente para detectar el reporte GPS inmediato del teléfono
+      let attempts = 0
+      const initialTimestamp = person.location?.timestamp
+      const pollInterval = setInterval(async () => {
+        attempts++
+        try {
+          const res = await refetch()
+          const updatedPeople = res.data || []
+          const updated = updatedPeople.find(p => p._id === person._id)
+          const hasNewCoords = updated?.hasReportedLocation &&
+            updated?.location?.coordinates &&
+            (updated.location.coordinates[0] !== 0 || updated.location.coordinates[1] !== 0) &&
+            updated.location.timestamp !== initialTimestamp
+
+          if (hasNewCoords) {
+            clearInterval(pollInterval)
+            setPingingPersonId(null)
+            setSelectedPerson(updated)
+            setPingNotification(`✅ ¡${person.name} localizado exitosamente en tiempo real!`)
+            setTimeout(() => setPingNotification(null), 8000)
+            return
+          }
+        } catch (_) {}
+
+        if (attempts >= 6) {
+          clearInterval(pollInterval)
+          setPingingPersonId(null)
+          setPingNotification(`📡 Señal de despertar transmitida a ${person.name}. Esperando reporte satelital del teléfono...`)
+          setTimeout(() => setPingNotification(null), 6000)
+        }
+      }, 2000)
     } catch (err) {
       console.error('Error pinging person:', err)
-    } finally {
       setPingingPersonId(null)
+      setPingNotification(`⚠️ Error al emitir ping a ${person.name}.`)
+      setTimeout(() => setPingNotification(null), 4000)
     }
   }
 
