@@ -35,7 +35,15 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config
+    // Si es un error de red temporal (DNS flicker, ERR_NAME_NOT_RESOLVED, micro-corte), reintentar una vez
+    if (!error.response && config && !config._isRetry) {
+      config._isRetry = true
+      await new Promise((r) => setTimeout(r, 1500))
+      return apiClient(config)
+    }
+
     if (error.response?.status === 401) {
       safeStorage.remove('token')
       safeStorage.remove('refreshToken')
