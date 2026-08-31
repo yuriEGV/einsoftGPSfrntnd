@@ -155,29 +155,29 @@ export default function PeopleTracker() {
     refetchInterval: 4000,
   })
 
-  // Load historical GPS points for all people
+  // Load historical GPS points for all people (last 7 days)
   const { data: historyPoints = [] } = useQuery('peopleHistoryAll', async () => {
     try {
-      const res = await apiClient.get('/people-trackers/history/all')
+      const res = await apiClient.get('/people-trackers/history/all?since=168&limit=5000')
       return res.data || []
     } catch (_) {
       return []
     }
   }, {
-    staleTime: 30000,
+    staleTime: 60000, // 1 min
   })
 
-  // Pre-populate trails ONLY for currently active sessions (within last 4 hours)
+  // Pre-populate trails ONLY for recently active sessions (within last 7 days)
   useEffect(() => {
     if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
       const initialTrails = {}
-      const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
       historyPoints.forEach(pt => {
         const pId = pt.personTracker
         const ptTime = pt.timestamp ? new Date(pt.timestamp) : null
         // Skip stale points older than 4 hours for live map breadcrumbs
-        if (ptTime && ptTime < fourHoursAgo) return
+        if (ptTime && ptTime < sevenDaysAgo) return
 
         const lat = pt.gps?.latitude || pt.location?.coordinates?.[1]
         const lng = pt.gps?.longitude || pt.location?.coordinates?.[0]
@@ -266,12 +266,33 @@ export default function PeopleTracker() {
 
   // Clear movement trails permanently from database and UI
   const handleClearTrails = async () => {
+    if (!window.confirm('¿Eliminar todas las trazas de movimiento de la base de datos?')) return
     try {
-      await apiClient.delete('/people-trackers/history/all')
+      const res = await apiClient.delete('/people-trackers/history/all')
+      alert(`✅ ${res.data?.message || 'Historial eliminado.'}`)
     } catch (_) {}
     setTrails({})
     queryClient.invalidateQueries('peopleHistoryAll')
     queryClient.invalidateQueries('peopleTrackers')
+  }
+
+  // Purgar coordenadas inválidas / oceánicas / fuera de Chile
+  const [cleaningCoords, setCleaningCoords] = useState(false)
+  const handleCleanupCoords = async () => {
+    if (!window.confirm('🧹 Esto eliminará todos los puntos GPS con coordenadas inválidas (fuera de Chile, en el océano, o (0,0)) y reseteará las posiciones incorrectas. ¿Continuar?')) return
+    setCleaningCoords(true)
+    try {
+      const res = await apiClient.post('/people-trackers/cleanup-coords')
+      const d = res.data?.details || {}
+      alert(`✅ Limpieza completada:\n• Coords (0,0) borradas: ${d.zeroCoordsDeleted || 0}\n• Fuera de Chile borradas: ${d.outOfChileDeleted || 0}\n• Personas reseteadas: ${d.trackersReset || 0}`)
+      setTrails({})
+      queryClient.invalidateQueries('peopleHistoryAll')
+      queryClient.invalidateQueries('peopleTrackers')
+    } catch (err) {
+      alert('❌ Error al limpiar: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setCleaningCoords(false)
+    }
   }
 
   // Screenshot map capture
@@ -780,7 +801,15 @@ export default function PeopleTracker() {
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 🗺️ Mapa de Ubicación en Tiempo Real
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleCleanupCoords}
+                  disabled={cleaningCoords}
+                  className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-xl flex items-center gap-1 transition border border-red-200 shadow-sm disabled:opacity-50"
+                  title="Purgar coordenadas GPS inválidas, oceánicas o fuera de Chile de la base de datos"
+                >
+                  {cleaningCoords ? '🔄 Limpiando...' : '🛡️ Limpiar GPS Corrupto'}
+                </button>
                 <button
                   onClick={handleClearTrails}
                   className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1 transition border border-slate-200 shadow-sm"
