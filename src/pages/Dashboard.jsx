@@ -38,21 +38,21 @@ export default function Dashboard() {
     const response = await apiClient.get('/people-trackers')
     return response.data
   }, {
-    refetchInterval: 5000,
+    refetchInterval: 12000,
   })
 
   // 3. Fetch Companies (Admin)
   const { data: companies = [] } = useQuery('companies', async () => {
     const response = await apiClient.get('/companies')
     return response.data
-  }, { enabled: isAdmin })
+  }, { enabled: isAdmin, staleTime: 300000 })
 
   // 4. Fetch Alerts
   const { data: alerts = [] } = useQuery('alerts', async () => {
     const response = await apiClient.get('/alerts', { params: { limit: 30 } })
     return response.data
   }, {
-    refetchInterval: 5000,
+    refetchInterval: 15000,
   })
 
   // Setup WebSocket

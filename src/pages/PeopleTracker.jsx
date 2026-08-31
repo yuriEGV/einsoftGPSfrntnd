@@ -152,7 +152,7 @@ export default function PeopleTracker() {
     const res = await apiClient.get('/people-trackers')
     return res.data
   }, {
-    refetchInterval: 4000,
+    refetchInterval: 8000,
   })
 
   // Load historical GPS points for all people (last 7 days)
@@ -164,7 +164,8 @@ export default function PeopleTracker() {
       return []
     }
   }, {
-    staleTime: 60000, // 1 min
+    staleTime: 120000, // 2 min
+    refetchInterval: 60000, // Cada 1 min en lugar de refresco continuo
   })
 
   // Pre-populate trails ONLY for recently active sessions (within last 7 days)
