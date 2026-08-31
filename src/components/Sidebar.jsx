@@ -72,6 +72,14 @@ const ALL_MENU_ITEMS = [
     allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
     badge: 'Móvil',
   },
+  {
+    label: 'EYE-NODE 360 (App)',
+    icon: '🛰️',
+    path: 'https://einsoft-gp-sbcknd.vercel.app/eyenode',
+    external: true,
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
+    badge: 'PWA',
+  },
 ]
 
 // Etiquetas de rol para mostrar en el sidebar
@@ -151,6 +159,29 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
             const isActive = item.path === '/'
               ? location.pathname === '/'
               : location.pathname.startsWith(item.path)
+
+            if (item.external) {
+              return (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group text-cyan-400 hover:bg-slate-800 hover:text-cyan-300"
+                >
+                  <span className="text-xl transition-transform duration-200 group-hover:scale-110">
+                    {item.icon}
+                  </span>
+                  <span className="text-sm font-bold tracking-tight flex-1">{item.label}</span>
+                  {item.badge && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black bg-cyan-500 text-slate-950 rounded-md tracking-wider uppercase shadow-sm font-mono">
+                      {item.badge}
+                    </span>
+                  )}
+                </a>
+              )
+            }
 
             return (
               <Link

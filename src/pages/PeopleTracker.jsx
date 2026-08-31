@@ -1308,28 +1308,28 @@ export default function PeopleTracker() {
 
             <div className="bg-purple-50 p-4 rounded-2xl border border-purple-200 text-center space-y-3">
               <p className="text-xs font-bold text-purple-900 uppercase tracking-wide">
-                Enlace Directo de Pánico y Rastreo
+                Enlace Táctico EYE-NODE 360 (Directo en Backend)
               </p>
               <input
                 type="text"
                 readOnly
-                value={`${window.location.origin}/person-track/${activeLinkModal.trackerCode}`}
+                value={`https://einsoft-gp-sbcknd.vercel.app/eyenode?id=${encodeURIComponent(activeLinkModal.deviceId || activeLinkModal.trackerCode)}&code=${encodeURIComponent(activeLinkModal.trackerCode)}`}
                 className="w-full text-xs p-3 bg-white rounded-xl border border-purple-300 font-mono text-purple-900 select-all text-center"
               />
 
-              <div className="flex gap-2 justify-center">
+              <div className="flex flex-wrap gap-2 justify-center">
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/person-track/${activeLinkModal.trackerCode}`)
-                    alert('¡Enlace copiado al portapapeles!')
+                    navigator.clipboard.writeText(`https://einsoft-gp-sbcknd.vercel.app/eyenode?id=${encodeURIComponent(activeLinkModal.deviceId || activeLinkModal.trackerCode)}&code=${encodeURIComponent(activeLinkModal.trackerCode)}`)
+                    alert('¡Enlace táctico EYE-NODE copiado al portapapeles!')
                   }}
-                  className="px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 shadow"
+                  className="px-4 py-2 bg-cyan-600 text-white text-xs font-bold rounded-xl hover:bg-cyan-700 shadow"
                 >
-                  📋 Copiar Enlace
+                  📋 Copiar Enlace EYE-NODE
                 </button>
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `Hola ${activeLinkModal.name}, abre este enlace en tu celular para activar tu Rastreador y Botón de Pánico SOS: ${window.location.origin}/person-track/${activeLinkModal.trackerCode}`
+                    `Hola ${activeLinkModal.name}, abre este enlace en tu celular para activar tu Nodo Táctico EYE-NODE 360 con transmisión continua cada 5 min y botón SOS: https://einsoft-gp-sbcknd.vercel.app/eyenode?id=${encodeURIComponent(activeLinkModal.deviceId || activeLinkModal.trackerCode)}&code=${encodeURIComponent(activeLinkModal.trackerCode)}`
                   )}`}
                   target="_blank"
                   rel="noreferrer"
