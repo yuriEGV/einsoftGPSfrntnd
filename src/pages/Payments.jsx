@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient, safeStorage } from '../services/api'
 
@@ -79,8 +79,12 @@ export default function Payments() {
     },
     {
       onSuccess: (data) => {
+        queryClient.invalidateQueries('payment-history')
         if (data.checkoutUrl) {
-          window.location.href = data.checkoutUrl
+          const win = window.open(data.checkoutUrl, '_blank', 'noopener,noreferrer')
+          if (!win || win.closed || typeof win.closed === 'undefined') {
+            window.location.href = data.checkoutUrl
+          }
         }
       },
       onError: (err) => {
@@ -96,8 +100,12 @@ export default function Payments() {
     },
     {
       onSuccess: (data) => {
+        queryClient.invalidateQueries('payment-history')
         if (data.checkoutUrl) {
-          window.location.href = data.checkoutUrl
+          const win = window.open(data.checkoutUrl, '_blank', 'noopener,noreferrer')
+          if (!win || win.closed || typeof win.closed === 'undefined') {
+            window.location.href = data.checkoutUrl
+          }
         }
       },
       onError: (err) => {
