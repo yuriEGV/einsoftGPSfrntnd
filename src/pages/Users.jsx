@@ -62,6 +62,7 @@ export default function Users() {
     name: '',
     email: '',
     role: 'mobile_gps_user',
+    companyId: '',
     status: 'active',
     phone: '',
     imei: '',
@@ -161,6 +162,7 @@ export default function Users() {
       name: u.name,
       email: u.email,
       role: u.role,
+      companyId: (typeof u.company === 'object' ? u.company?._id : u.company) || '',
       status: u.status || 'active',
       phone: u.phone || '',
       imei: u.imei || '',
@@ -174,6 +176,8 @@ export default function Users() {
       name: editForm.name,
       email: editForm.email,
       role: editForm.role,
+      companyId: editForm.companyId || null,
+      company: editForm.companyId || null,
       status: editForm.status,
       phone: editForm.phone,
       imei: editForm.imei,
@@ -230,7 +234,7 @@ export default function Users() {
             {isSuperAdmin ? '⚡ Registrar nuevo usuario en la plataforma' : '⚡ Crear usuario en esta organización'}
           </div>
           <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
-            {isAdmin && (
+            {companies.length > 0 && (
               <div>
                 <label className="block text-gray-700 mb-1 font-semibold text-xs">Organización / Empresa</label>
                 <select
@@ -238,7 +242,7 @@ export default function Users() {
                   onChange={(e) => setForm(prev => ({ ...prev, companyId: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all shadow-sm font-medium"
                 >
-                  <option value="">🏢 Sin Empresa Asignada</option>
+                  <option value="">🏠 Plan Familiar / Personal (Sin Empresa)</option>
                   {companies.map(c => (
                     <option key={c._id} value={c._id}>🏢 {c.name}</option>
                   ))}
@@ -466,6 +470,26 @@ export default function Users() {
                     placeholder="Ej: 866140042278017 o ID celular"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">
+                    🏢 Organización / Empresa
+                  </label>
+                  <select
+                    value={editForm.companyId}
+                    onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
+                    className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 focus:border-blue-500 outline-none text-sm bg-white font-medium transition-all"
+                  >
+                    <option value="">🏠 Plan Familiar / Personal (Sin Empresa)</option>
+                    {companies.map(c => (
+                      <option key={c._id} value={c._id}>🏢 {c.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {editForm.companyId ? '✅ Usuario asociado a flota corporativa.' : 'ℹ️ Modo independiente (Familiar/Personal sin empresa).'}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">Rol</label>
