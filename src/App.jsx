@@ -18,6 +18,10 @@ import PublicTracker from './pages/PublicTracker'
 import PeopleTracker from './pages/PeopleTracker'
 import PublicPersonTracker from './pages/PublicPersonTracker'
 import DownloadApp from './pages/DownloadApp'
+import Payments from './pages/Payments'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentFailed from './pages/PaymentFailed'
+import PaymentPending from './pages/PaymentPending'
 import MainLayout from './layouts/MainLayout'
 import './index.css'
 
@@ -89,7 +93,12 @@ function App() {
           {/* ── Login ── */}
           <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
 
-          {/* ── Rastreador Móvil Directo por Celular ── */}
+          {/* ── Pagos / Mercado Pago feedback pages (sin auth) ── */}
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
+          <Route path="/payment-pending" element={<PaymentPending />} />
+
+          {/* ── Rastreador Movil Directo por Celular ── */}
           <Route path="/track/:id" element={<PublicTracker />} />
           <Route path="/person-track/:code" element={<PublicPersonTracker />} />
 
@@ -211,6 +220,16 @@ function App() {
                     <Route
                       path="/download-app"
                       element={<DownloadApp />}
+                    />
+
+                    {/* Pagos y Suscripcion */}
+                    <Route
+                      path="/payments"
+                      element={
+                        <RoleGuard allowedRoles={['superadmin', 'admin', 'fleet_manager']} fallback="/">
+                          <Payments />
+                        </RoleGuard>
+                      }
                     />
 
                     {/* Fallback */}

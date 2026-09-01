@@ -59,6 +59,13 @@ const ALL_MENU_ITEMS = [
     allowedRoles: ['superadmin', 'admin', 'fleet_manager', 'independent'],
   },
   {
+    label: 'Pagos & Suscripción',
+    icon: '💳',
+    path: '/payments',
+    allowedRoles: ['superadmin', 'admin', 'fleet_manager'],
+    badge: 'NUEVO',
+  },
+  {
     label: 'EYE-NODE 360 (App)',
     icon: '🛰️',
     path: 'https://einsoft-gp-sbcknd.vercel.app/eyenode',
