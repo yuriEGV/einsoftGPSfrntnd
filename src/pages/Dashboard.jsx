@@ -28,7 +28,7 @@ export default function Dashboard() {
   // 1. Fetch Vehicles
   const { data: vehicles = [], isLoading: loadingVehicles } = useQuery('vehicles', async () => {
     const response = await apiClient.get('/vehicles')
-    return response.data
+    return response.data || []
   }, {
     refetchInterval: 5000,
   })
@@ -36,7 +36,7 @@ export default function Dashboard() {
   // 2. Fetch People Trackers
   const { data: people = [], isLoading: loadingPeople } = useQuery('peopleTrackers', async () => {
     const response = await apiClient.get('/people-trackers')
-    return response.data
+    return response.data || []
   }, {
     refetchInterval: 12000,
   })
@@ -53,8 +53,8 @@ export default function Dashboard() {
 
   // 4. Fetch Alerts
   const { data: alerts = [] } = useQuery('alerts', async () => {
-    const response = await apiClient.get('/alerts', { params: { limit: 30 } })
-    return response.data
+    const response = await apiClient.get('/alerts', { params: { limit: 50 } })
+    return response.data || []
   }, {
     refetchInterval: 15000,
   })
@@ -98,18 +98,19 @@ export default function Dashboard() {
     if (assetTypeFilter === 'people') return []
     return vehicles.filter(v => {
       if (selectedCompanyId) {
-        const vComp = v.company?._id || v.company
-        if (vComp !== selectedCompanyId) return false
+        const vCompId = (typeof v.company === 'object' ? v.company?._id : v.company)?.toString()
+        if (vCompId !== selectedCompanyId) return false
       }
       if (statusFilter !== 'all' && v.status !== statusFilter) return false
       if (selectedVehicle && selectedVehicle._id !== v._id) return false
       if (selectedPerson) return false // Hide vehicles if a single person is selected
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
+        const q = searchQuery.toLowerCase().trim()
         const match = v.licensePlate?.toLowerCase().includes(q) ||
                       v.make?.toLowerCase().includes(q) ||
                       v.model?.toLowerCase().includes(q) ||
-                      v.deviceIMEI?.toLowerCase().includes(q)
+                      v.deviceIMEI?.toLowerCase().includes(q) ||
+                      v.assignedPerson?.name?.toLowerCase().includes(q)
         if (!match) return false
       }
       return true
@@ -121,29 +122,48 @@ export default function Dashboard() {
     if (assetTypeFilter === 'vehicles') return []
     return people.filter(p => {
       if (selectedCompanyId) {
-        const pComp = p.company?._id || p.company
-        const vehComp = p.assignedVehicle?.company?._id || p.assignedVehicle?.company
-        if (pComp !== selectedCompanyId && vehComp !== selectedCompanyId) return false
+        const pCompId = (typeof p.company === 'object' ? p.company?._id : p.company)?.toString()
+        const vehCompId = (typeof p.assignedVehicle?.company === 'object' ? p.assignedVehicle?.company?._id : p.assignedVehicle?.company)?.toString()
+        if (pCompId !== selectedCompanyId && vehCompId !== selectedCompanyId) return false
       }
       if (selectedVehicle) return false // Hide people if a single vehicle is selected
       if (selectedPerson && selectedPerson._id !== p._id) return false
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
+        const q = searchQuery.toLowerCase().trim()
         const match = p.name?.toLowerCase().includes(q) ||
                       p.deviceId?.toLowerCase().includes(q) ||
-                      p.trackerCode?.toLowerCase().includes(q)
+                      p.trackerCode?.toLowerCase().includes(q) ||
+                      p.phone?.toLowerCase().includes(q) ||
+                      p.roleDescription?.toLowerCase().includes(q)
         if (!match) return false
       }
       return true
     })
   }, [people, assetTypeFilter, selectedCompanyId, selectedVehicle, selectedPerson, searchQuery])
 
-  // KPI Calculations
-  const activeVehiclesCount = vehicles.filter(v => v.status === 'active').length
-  const activePeopleCount = people.filter(p => p.hasReportedLocation && p.status !== 'offline').length
-  const totalPanicCount = people.filter(p => p.status === 'panic' || p.panicAlert?.active).length +
-                          vehicles.filter(v => v.status === 'alert').length
-  const unacknowledgedAlertsCount = alerts.filter(a => !a.acknowledged).length
+  // Filtered Alerts (Linked to Company & Active Selection)
+  const filteredAlerts = useMemo(() => {
+    return alerts.filter(a => {
+      if (selectedCompanyId) {
+        const aComp = (typeof a.company === 'object' ? a.company?._id : a.company)?.toString()
+        const vComp = (typeof a.vehicle?.company === 'object' ? a.vehicle?.company?._id : a.vehicle?.company)?.toString()
+        const pComp = (typeof a.personTracker?.company === 'object' ? a.personTracker?.company?._id : a.personTracker?.company)?.toString()
+        if (aComp !== selectedCompanyId && vComp !== selectedCompanyId && pComp !== selectedCompanyId) return false
+      }
+      if (selectedVehicle && (a.vehicle?._id !== selectedVehicle._id && a.vehicle !== selectedVehicle._id)) return false
+      if (selectedPerson && (a.personTracker?._id !== selectedPerson._id && a.personTracker !== selectedPerson._id)) return false
+      return true
+    })
+  }, [alerts, selectedCompanyId, selectedVehicle, selectedPerson])
+
+  // KPI Calculations (Computed strictly from the active filtered subset)
+  const activeVehiclesCount = filteredVehicles.filter(v => v.status === 'active').length
+  const activePeopleCount = filteredPeople.filter(p => p.hasReportedLocation && p.status !== 'offline').length
+  const totalPanicCount = filteredPeople.filter(p => p.status === 'panic' || p.panicAlert?.active).length +
+                          filteredVehicles.filter(v => v.status === 'alert').length
+  const unacknowledgedAlertsCount = filteredAlerts.filter(a => !a.acknowledged).length
+
+  const selectedCompanyObj = companies.find(c => String(c._id) === String(selectedCompanyId))
 
   const handleSelectAsset = (type, item) => {
     if (type === 'vehicle') {
@@ -201,7 +221,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Top Unified KPI Stats ── */}
+      {/* ── Top Unified KPI Stats (Reactive to Company Filter) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Vehicles KPI */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
@@ -211,7 +231,7 @@ export default function Dashboard() {
           <div>
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Vehículos Flota</p>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-slate-900">{vehicles.length}</span>
+              <span className="text-2xl font-black text-slate-900">{filteredVehicles.length}</span>
               <span className="text-[11px] text-emerald-600 font-bold">({activeVehiclesCount} en ruta)</span>
             </div>
           </div>
@@ -225,7 +245,7 @@ export default function Dashboard() {
           <div>
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Personal / Móviles</p>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-black text-slate-900">{people.length}</span>
+              <span className="text-2xl font-black text-slate-900">{filteredPeople.length}</span>
               <span className="text-[11px] text-purple-600 font-bold">({activePeopleCount} en línea)</span>
             </div>
           </div>
@@ -242,7 +262,7 @@ export default function Dashboard() {
               <span className="text-2xl font-black text-slate-900">
                 {activeVehiclesCount + activePeopleCount}
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">/ {vehicles.length + people.length} activos</span>
+              <span className="text-[11px] text-slate-400 font-mono">/ {filteredVehicles.length + filteredPeople.length} activos</span>
             </div>
           </div>
         </div>
@@ -272,10 +292,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Interactive Asset Switcher & Filter Bar ── */}
+      {/* ── Interactive Asset Switcher & High-Capacity Filter Bar ── */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 flex-1">
             {/* Asset Type Switcher */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500 uppercase">VER TIPO:</span>
@@ -311,7 +331,7 @@ export default function Dashboard() {
                   }`}
                 >
                   <span>📱</span>
-                  <span>Móviles / Personas ({filteredPeople.length})</span>
+                  <span>Móviles ({filteredPeople.length})</span>
                 </button>
               </div>
             </div>
@@ -338,24 +358,56 @@ export default function Dashboard() {
                 </select>
               </div>
             )}
+
+            {/* Live Search Bar for 50+ Fleets */}
+            <div className="relative flex-1 min-w-[200px] max-w-xs">
+              <input
+                type="text"
+                placeholder="🔍 Buscar patente, nombre, IMEI..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-3 pr-8 py-1.5 rounded-xl border border-slate-300 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-2xs font-medium text-slate-800"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700 font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
           {(selectedVehicle || selectedPerson || searchQuery || selectedCompanyId || assetTypeFilter !== 'all') && (
             <button
               onClick={handleResetFilters}
-              className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-blue-50 transition"
+              className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-blue-50 transition shrink-0"
             >
               ✕ Restablecer Filtros
             </button>
           )}
         </div>
 
-        {/* Individual Asset Pill Buttons (Filtered by active Asset Type) */}
+        {/* Individual Asset Pill Buttons — High-Capacity Scrollable Layout (Filtered by Company & Search) */}
         <div className="space-y-1.5 pt-1">
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-            🎯 FILTRO INDIVIDUAL DE ACTIVOS (HAZ CLIC PARA AISLAR EN EL MAPA):
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                🎯 FILTRO INDIVIDUAL DE ACTIVOS ({filteredVehicles.length + filteredPeople.length}):
+              </p>
+              {selectedCompanyObj && (
+                <span className="text-[10px] px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-md font-bold">
+                  🏢 {selectedCompanyObj.name}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+              Haz clic en un activo para aislarlo en el mapa
+            </span>
+          </div>
+
+          <div className="max-h-28 overflow-y-auto pr-1 flex flex-wrap items-center gap-1.5 content-start">
             <button
               onClick={() => { setSelectedVehicle(null); setSelectedPerson(null); }}
               className={`px-3 py-1 rounded-xl text-xs font-black transition border shadow-xs ${
@@ -367,9 +419,9 @@ export default function Dashboard() {
               🌐 Ver Todos Juntos
             </button>
 
-            {/* Vehicle Pills (Shown only if 'all' or 'vehicles' is active) */}
+            {/* Vehicle Pills (Strictly filtered by selected company and search) */}
             {(assetTypeFilter === 'all' || assetTypeFilter === 'vehicles') &&
-              vehicles.map(v => {
+              filteredVehicles.map(v => {
                 const isSel = selectedVehicle?._id === v._id
                 return (
                   <button
@@ -388,9 +440,9 @@ export default function Dashboard() {
                 )
               })}
 
-            {/* People Pills (Shown only if 'all' or 'people' is active) */}
+            {/* People Pills (Strictly filtered by selected company and search) */}
             {(assetTypeFilter === 'all' || assetTypeFilter === 'people') &&
-              people.map((p, idx) => {
+              filteredPeople.map((p, idx) => {
                 const isSel = selectedPerson?._id === p._id
                 const colorObj = getPersonColor(p.name, idx)
                 return (
@@ -414,6 +466,13 @@ export default function Dashboard() {
                   </button>
                 )
               })}
+
+            {/* Empty state when no assets match */}
+            {filteredVehicles.length === 0 && filteredPeople.length === 0 && (
+              <div className="text-xs text-slate-400 italic py-1 px-2">
+                ℹ️ No hay vehículos ni móviles que coincidan con los filtros seleccionados.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -443,7 +502,7 @@ export default function Dashboard() {
             isLoading={loadingVehicles}
           />
 
-          <AlertsPanel alerts={alerts} />
+          <AlertsPanel alerts={filteredAlerts} />
         </div>
       </div>
     </div>
