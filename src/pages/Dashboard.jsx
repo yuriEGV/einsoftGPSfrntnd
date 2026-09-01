@@ -23,7 +23,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const isAdmin = user.role === 'admin'
+  const canViewCompanies = ['superadmin', 'admin', 'supervisor', 'fleet_manager', 'auditor'].includes(user.role)
 
   // 1. Fetch Vehicles
   const { data: vehicles = [], isLoading: loadingVehicles } = useQuery('vehicles', async () => {
@@ -41,11 +41,15 @@ export default function Dashboard() {
     refetchInterval: 12000,
   })
 
-  // 3. Fetch Companies (Admin)
+  // 3. Fetch Companies (Admin / Superadmin / Supervisor)
   const { data: companies = [] } = useQuery('companies', async () => {
-    const response = await apiClient.get('/companies')
-    return response.data
-  }, { enabled: isAdmin, staleTime: 300000 })
+    try {
+      const response = await apiClient.get('/companies')
+      return response.data || []
+    } catch (_) {
+      return []
+    }
+  }, { enabled: canViewCompanies, staleTime: 300000 })
 
   // 4. Fetch Alerts
   const { data: alerts = [] } = useQuery('alerts', async () => {
@@ -93,7 +97,10 @@ export default function Dashboard() {
   const filteredVehicles = useMemo(() => {
     if (assetTypeFilter === 'people') return []
     return vehicles.filter(v => {
-      if (selectedCompanyId && (v.company?._id !== selectedCompanyId && v.company !== selectedCompanyId)) return false
+      if (selectedCompanyId) {
+        const vComp = v.company?._id || v.company
+        if (vComp !== selectedCompanyId) return false
+      }
       if (statusFilter !== 'all' && v.status !== statusFilter) return false
       if (selectedVehicle && selectedVehicle._id !== v._id) return false
       if (selectedPerson) return false // Hide vehicles if a single person is selected
@@ -113,6 +120,11 @@ export default function Dashboard() {
   const filteredPeople = useMemo(() => {
     if (assetTypeFilter === 'vehicles') return []
     return people.filter(p => {
+      if (selectedCompanyId) {
+        const pComp = p.company?._id || p.company
+        const vehComp = p.assignedVehicle?.company?._id || p.assignedVehicle?.company
+        if (pComp !== selectedCompanyId && vehComp !== selectedCompanyId) return false
+      }
       if (selectedVehicle) return false // Hide people if a single vehicle is selected
       if (selectedPerson && selectedPerson._id !== p._id) return false
       if (searchQuery.trim()) {
@@ -124,7 +136,7 @@ export default function Dashboard() {
       }
       return true
     })
-  }, [people, assetTypeFilter, selectedVehicle, selectedPerson, searchQuery])
+  }, [people, assetTypeFilter, selectedCompanyId, selectedVehicle, selectedPerson, searchQuery])
 
   // KPI Calculations
   const activeVehiclesCount = vehicles.filter(v => v.status === 'active').length
@@ -161,7 +173,7 @@ export default function Dashboard() {
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
               Centro de Mando Unificado
             </h1>
-            <span className="text-[10px] font-mono px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">
+            <span className="text-[10px] font-mono px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">
               FLOTAS & PERSONAL 360
             </span>
           </div>
@@ -177,12 +189,15 @@ export default function Dashboard() {
           >
             <span>📱</span> Gestión de Móviles / SOS
           </button>
-          <button
-            onClick={() => navigate('/download-app')}
-            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-xs"
+          <a
+            href="https://einsoft-gp-sbcknd.vercel.app/eyenode"
+            target="_blank"
+            rel="noreferrer"
+            className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-500 hover:to-blue-600 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-md shadow-cyan-900/20"
+            title="Abrir la aplicación táctica EYE-NODE 360"
           >
-            <span>📥</span> EYE-NODE APK
-          </button>
+            <span>🛰️</span> EYE-NODE 360 (App)
+          </a>
         </div>
       </div>
 
@@ -260,49 +275,75 @@ export default function Dashboard() {
       {/* ── Interactive Asset Switcher & Filter Bar ── */}
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 uppercase">VER TIPO:</span>
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button
-                onClick={() => { setAssetTypeFilter('all'); setSelectedVehicle(null); setSelectedPerson(null); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
-                  assetTypeFilter === 'all' && !selectedVehicle && !selectedPerson
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>🌐</span>
-                <span>Todos ({vehicles.length + people.length})</span>
-              </button>
-              <button
-                onClick={() => { setAssetTypeFilter('vehicles'); setSelectedVehicle(null); setSelectedPerson(null); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
-                  assetTypeFilter === 'vehicles' && !selectedPerson
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>🚗</span>
-                <span>Vehículos ({vehicles.length})</span>
-              </button>
-              <button
-                onClick={() => { setAssetTypeFilter('people'); setSelectedVehicle(null); setSelectedPerson(null); }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
-                  assetTypeFilter === 'people' && !selectedVehicle
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>📱</span>
-                <span>Móviles / Personas ({people.length})</span>
-              </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Asset Type Switcher */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase">VER TIPO:</span>
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => { setAssetTypeFilter('all'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
+                    assetTypeFilter === 'all' && !selectedVehicle && !selectedPerson
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🌐</span>
+                  <span>Todos ({filteredVehicles.length + filteredPeople.length})</span>
+                </button>
+                <button
+                  onClick={() => { setAssetTypeFilter('vehicles'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
+                    assetTypeFilter === 'vehicles' && !selectedPerson
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🚗</span>
+                  <span>Vehículos ({filteredVehicles.length})</span>
+                </button>
+                <button
+                  onClick={() => { setAssetTypeFilter('people'); setSelectedVehicle(null); setSelectedPerson(null); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 ${
+                    assetTypeFilter === 'people' && !selectedVehicle
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>📱</span>
+                  <span>Móviles / Personas ({filteredPeople.length})</span>
+                </button>
+              </div>
             </div>
+
+            {/* Company Filter Dropdown */}
+            {companies && companies.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 uppercase">🏢 EMPRESA:</span>
+                <select
+                  value={selectedCompanyId}
+                  onChange={(e) => {
+                    setSelectedCompanyId(e.target.value);
+                    setSelectedVehicle(null);
+                    setSelectedPerson(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-slate-50 hover:bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none transition shadow-2xs"
+                >
+                  <option value="">🏢 Todas las Empresas ({companies.length})</option>
+                  {companies.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {(selectedVehicle || selectedPerson || searchQuery || selectedCompanyId) && (
+          {(selectedVehicle || selectedPerson || searchQuery || selectedCompanyId || assetTypeFilter !== 'all') && (
             <button
               onClick={handleResetFilters}
-              className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-blue-50 transition"
             >
               ✕ Restablecer Filtros
             </button>

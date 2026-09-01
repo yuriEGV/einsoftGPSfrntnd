@@ -59,20 +59,6 @@ const ALL_MENU_ITEMS = [
     allowedRoles: ['superadmin', 'admin', 'fleet_manager', 'independent'],
   },
   {
-    label: 'Descargar App (APK)',
-    icon: '📥',
-    path: '/download-app',
-    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
-    badge: 'APK',
-  },
-  {
-    label: 'App Celular GPS',
-    icon: '📱',
-    path: '/mobile-gps',
-    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
-    badge: 'Móvil',
-  },
-  {
     label: 'EYE-NODE 360 (App)',
     icon: '🛰️',
     path: 'https://einsoft-gp-sbcknd.vercel.app/eyenode',

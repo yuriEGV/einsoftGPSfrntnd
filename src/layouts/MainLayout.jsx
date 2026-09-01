@@ -14,8 +14,10 @@ export default function MainLayout({ children, onLogout }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Navbar toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <main className="flex-1 overflow-auto p-4 md:p-8 w-full max-w-7xl mx-auto">
-          {children}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 w-full">
+          <div className="max-w-[1720px] mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
 
