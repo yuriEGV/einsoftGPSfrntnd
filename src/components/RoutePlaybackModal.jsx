@@ -394,54 +394,89 @@ export default function RoutePlaybackModal({
           )}
         </div>
 
-        {/* Trip / Tramos Selector Bar (if multiple trips exist) */}
+        {/* Trip / Tramos Selector Bar — scroll horizontal con flechas de navegación */}
         {trips.length > 1 && (
-          <div className="bg-slate-950/70 border-b border-slate-800/80 px-6 py-2 flex items-center gap-2 overflow-x-auto text-xs">
-            <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1 shrink-0">
-              <span>🛣️</span> Tramos Viales:
+          <div className="bg-slate-950/70 border-b border-slate-800/80 py-2 flex items-center gap-0 text-xs select-none" style={{ minHeight: '42px' }}>
+            {/* Etiqueta */}
+            <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1 shrink-0 pl-4 pr-2">
+              <span>🛣️</span> Tramos:
             </span>
-            <button
-              onClick={() => {
-                setSelectedTripId('all')
-                setCurrentIndex(0)
-              }}
-              className={`px-3 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border ${
-                selectedTripId === 'all'
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-md'
-                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
-              }`}
-            >
-              🌐 Todos los Tramos ({trips.length})
-            </button>
-            {trips.map((t) => {
-              const isSel = selectedTripId === String(t.id) || selectedTripId === t.id
-              const timeLabel = t.startTime
-                ? new Date(t.startTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-                : `Tramo ${t.id}`
-              const dateLabel = t.startTime
-                ? new Date(t.startTime).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
-                : ''
-              return (
+
+            {/* Scroll container con flechas */}
+            <div className="flex-1 flex items-center gap-0 min-w-0 relative">
+              {/* Boton scroll izq */}
+              <button
+                onClick={() => {
+                  const el = document.getElementById('tramos-scroll-bar')
+                  if (el) el.scrollBy({ left: -200, behavior: 'smooth' })
+                }}
+                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition z-10 mr-1"
+                title="Scroll izquierda"
+              >
+                ‹
+              </button>
+
+              {/* Bar scrollable */}
+              <div
+                id="tramos-scroll-bar"
+                className="flex items-center gap-1.5 overflow-x-auto flex-1"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
                 <button
-                  key={`trip-sel-${t.id}`}
-                  onClick={() => {
-                    setSelectedTripId(t.id)
-                    setCurrentIndex(0)
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border flex items-center gap-1 ${
-                    isSel
+                  onClick={() => { setSelectedTripId('all'); setCurrentIndex(0) }}
+                  className={`px-3 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border ${
+                    selectedTripId === 'all'
                       ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-md'
                       : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
                   }`}
                 >
-                  <span>📍</span>
-                  <span>Tramo {t.id}</span>
-                  <span className="opacity-75 text-[10px]">
-                    ({dateLabel} {timeLabel} • {t.distanceKm} km)
-                  </span>
+                  🌐 Todos ({trips.length})
                 </button>
-              )
-            })}
+                {trips.map((t) => {
+                  const isSel = selectedTripId === String(t.id) || selectedTripId === t.id
+                  const timeLabel = t.startTime
+                    ? new Date(t.startTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                    : `T${t.id}`
+                  const dateLabel = t.startTime
+                    ? new Date(t.startTime).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
+                    : ''
+                  const hasMovement = parseFloat(t.distanceKm) > 0
+                  return (
+                    <button
+                      key={`trip-sel-${t.id}`}
+                      onClick={() => { setSelectedTripId(t.id); setCurrentIndex(0) }}
+                      title={`${dateLabel} ${timeLabel} • ${t.distanceKm} km • ${t.pointCount} puntos`}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border flex items-center gap-1 ${
+                        isSel
+                          ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-md'
+                          : hasMovement
+                            ? 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                            : 'bg-slate-900/50 text-slate-500 border-slate-800/50 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <span>{hasMovement ? '📍' : '🅿️'}</span>
+                      <span>T{t.id}</span>
+                      <span className="opacity-75 text-[10px]">{dateLabel} {timeLabel}</span>
+                      {hasMovement && (
+                        <span className="text-[9px] opacity-60 font-mono">{t.distanceKm}km</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Boton scroll der */}
+              <button
+                onClick={() => {
+                  const el = document.getElementById('tramos-scroll-bar')
+                  if (el) el.scrollBy({ left: 200, behavior: 'smooth' })
+                }}
+                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition z-10 ml-1"
+                title="Scroll derecha"
+              >
+                ›
+              </button>
+            </div>
           </div>
         )}
 
@@ -468,7 +503,9 @@ export default function RoutePlaybackModal({
               />
               <MapAutoFitter bounds={activeSegments} center={defaultCenter} />
 
-              {/* Full Planned Road Trajectory (Dashed Cyan Backdrop per independent segment) */}
+              {/* Planned Road Trajectory per independent segment — 
+                  NOTA: Solo se muestra si los segmentos viales ya están snapped;
+                  de lo contrario se omite para no dibujar líneas directas por el mar */}
               {activeSegments.map((segment, sIdx) => (
                 <Polyline
                   key={`planned-seg-${sIdx}`}
@@ -476,8 +513,7 @@ export default function RoutePlaybackModal({
                   pathOptions={{
                     color: '#06b6d4',
                     weight: 5,
-                    opacity: 0.35,
-                    dashArray: '6, 8',
+                    opacity: 0.20,
                     lineCap: 'round',
                     lineJoin: 'round',
                   }}

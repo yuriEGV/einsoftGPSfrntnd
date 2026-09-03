@@ -160,49 +160,48 @@ export default function PeopleTracker() {
     refetchInterval: 8000,
   })
 
-  // Load historical GPS points for all people (last 7 days)
-  const { data: historyPoints = [] } = useQuery('peopleHistoryAll', async () => {
-    try {
-      const res = await apiClient.get('/people-trackers/history/all?since=168&limit=5000')
-      return res.data || []
-    } catch (_) {
-      return []
-    }
-  }, {
-    staleTime: 120000, // 2 min
-    refetchInterval: 60000, // Cada 1 min en lugar de refresco continuo
-  })
+  // Referencia para evitar recargar personas ya procesadas
+  const loadedPersonIds = useRef(new Set())
 
-  // Pre-populate trails with automatic trip segmentation and street road-snapping
+  // Cargar historial de cada persona INDIVIDUALMENTE para garantizar aislamiento estricto
+  // (ninguna persona monopoliza el buffer ni comparte datos con otra)
   useEffect(() => {
-    if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
-      const pointsByPerson = {}
+    if (!people || people.length === 0) return
 
-      historyPoints.forEach(pt => {
-        const pId = pt.personTracker
-        if (!pId) return
-        if (!pointsByPerson[pId]) pointsByPerson[pId] = []
-        pointsByPerson[pId].push(pt)
-      })
+    const activepeople = people.filter(p =>
+      p.hasReportedLocation &&
+      p.location?.coordinates &&
+      (p.location.coordinates[0] !== 0 || p.location.coordinates[1] !== 0)
+    )
 
-      // Segment and snap roads for each tracked person
-      Object.entries(pointsByPerson).forEach(async ([pId, rawPts]) => {
-        if (rawPts.length >= 2) {
-          const trips = segmentPointsIntoTrips(rawPts, { maxGapMinutes: 20, maxJumpMeters: 2500 })
+    activepeople.forEach(async (person) => {
+      // Solo cargar una vez por persona al montar (no en cada re-render)
+      if (loadedPersonIds.current.has(person._id)) return
+      loadedPersonIds.current.add(person._id)
+
+      try {
+        const res = await apiClient.get(
+          `/people-trackers/${person._id}/history?since=168&limit=500`
+        )
+        const pts = res.data || []
+        if (pts.length >= 2) {
+          const trips = segmentPointsIntoTrips(pts, { maxGapMinutes: 20, maxJumpMeters: 2500 })
           const snapped = await getMultiSegmentSnappedRoute(trips)
           if (snapped && snapped.length > 0) {
-            setTrails(prev => ({ ...prev, [pId]: snapped }))
+            setTrails(prev => ({ ...prev, [person._id]: snapped }))
           }
-        } else if (rawPts.length === 1) {
-          const lat = rawPts[0].gps?.latitude || rawPts[0].location?.coordinates?.[1]
-          const lng = rawPts[0].gps?.longitude || rawPts[0].location?.coordinates?.[0]
+        } else if (pts.length === 1) {
+          const lat = pts[0].gps?.latitude || pts[0].location?.coordinates?.[1]
+          const lng = pts[0].gps?.longitude || pts[0].location?.coordinates?.[0]
           if (lat && lng) {
-            setTrails(prev => ({ ...prev, [pId]: [[[lat, lng]]] }))
+            setTrails(prev => ({ ...prev, [person._id]: [[[lat, lng]]] }))
           }
         }
-      })
-    }
-  }, [historyPoints, people])
+      } catch (_) {
+        // Silencioso — el mapa sigue funcionando sin historial de esta persona
+      }
+    })
+  }, [people])
 
   // Dedicated Route Loader when a single person is selected (guarantees full route without global limit truncation)
   useEffect(() => {
