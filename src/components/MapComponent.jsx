@@ -7,6 +7,7 @@ import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 import { getPersonColor } from '../pages/PeopleTracker'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
+import { generateDirectionChevrons, getDistanceMeters } from '../services/routingService'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -169,41 +170,54 @@ export default function MapComponent({
     return null
   }
 
-  // Update trails for vehicles
+  // Update trails for vehicles with jump segmentation
   useEffect(() => {
     vehicles.forEach((v) => {
       const pos = getEffectiveVehiclePosition(v)
       if (pos) {
         setTrails((prev) => {
-          const current = prev[v._id] || []
-          const lastPoint = current[current.length - 1]
-          if (!lastPoint || lastPoint[0] !== pos[0] || lastPoint[1] !== pos[1]) {
-            return {
-              ...prev,
-              [v._id]: [...current, pos].slice(-200),
-            }
+          const raw = prev[v._id] || []
+          const segments = Array.isArray(raw[0]?.[0]) ? raw : (raw.length > 0 ? [raw] : [])
+          if (segments.length === 0) return { ...prev, [v._id]: [[pos]] }
+
+          const lastSeg = segments[segments.length - 1]
+          const lastPoint = lastSeg[lastSeg.length - 1]
+          if (lastPoint[0] === pos[0] && lastPoint[1] === pos[1]) return prev
+
+          const dist = getDistanceMeters(lastPoint, pos)
+          // Si hay salto > 3km, iniciar nuevo tramo para no trazar líneas por el mar
+          if (dist > 3000) {
+            return { ...prev, [v._id]: [...segments, [pos]] }
           }
-          return prev
+
+          const updatedLast = [...lastSeg, pos].slice(-250)
+          return { ...prev, [v._id]: [...segments.slice(0, -1), updatedLast] }
         })
       }
     })
   }, [vehicles, realTimeData])
 
-  // Update trails for people
+  // Update trails for people with jump segmentation
   useEffect(() => {
     people.forEach((p) => {
       const pos = getEffectivePersonPosition(p)
       if (pos) {
         setTrails((prev) => {
-          const current = prev[p._id] || []
-          const lastPoint = current[current.length - 1]
-          if (!lastPoint || lastPoint[0] !== pos[0] || lastPoint[1] !== pos[1]) {
-            return {
-              ...prev,
-              [p._id]: [...current, pos].slice(-200),
-            }
+          const raw = prev[p._id] || []
+          const segments = Array.isArray(raw[0]?.[0]) ? raw : (raw.length > 0 ? [raw] : [])
+          if (segments.length === 0) return { ...prev, [p._id]: [[pos]] }
+
+          const lastSeg = segments[segments.length - 1]
+          const lastPoint = lastSeg[lastSeg.length - 1]
+          if (lastPoint[0] === pos[0] && lastPoint[1] === pos[1]) return prev
+
+          const dist = getDistanceMeters(lastPoint, pos)
+          if (dist > 3000) {
+            return { ...prev, [p._id]: [...segments, [pos]] }
           }
-          return prev
+
+          const updatedLast = [...lastSeg, pos].slice(-250)
+          return { ...prev, [p._id]: [...segments.slice(0, -1), updatedLast] }
         })
       }
     })
@@ -340,9 +354,9 @@ export default function MapComponent({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Render Trajectory Polyline Trails */}
-          {Object.entries(trails).map(([assetId, points]) => {
-            if (!points || points.length < 2) return null
+          {/* Render Trajectory Polyline Trails per Asset */}
+          {Object.entries(trails).map(([assetId, trailData]) => {
+            if (!trailData || trailData.length === 0) return null
             if (selectedVehicle && selectedVehicle._id !== assetId) return null
             if (selectedPerson && selectedPerson._id !== assetId) return null
 
@@ -351,18 +365,49 @@ export default function MapComponent({
             if (!isVehicle && !isPerson) return null
 
             const strokeColor = isVehicle ? '#2563eb' : '#7c3aed'
+            const segments = Array.isArray(trailData[0]?.[0]) ? trailData : [trailData]
 
             return (
-              <Polyline
-                key={`trail-${assetId}`}
-                positions={points}
-                pathOptions={{
-                  color: strokeColor,
-                  weight: (selectedVehicle || selectedPerson) ? 6 : 4,
-                  opacity: 0.85,
-                  dashArray: '4, 8',
-                }}
-              />
+              <React.Fragment key={`trail-frag-${assetId}`}>
+                {segments.map((segment, sIdx) => {
+                  if (!segment || segment.length < 2) return null
+                  const chevrons = generateDirectionChevrons(segment, 350)
+                  return (
+                    <React.Fragment key={`seg-frag-${assetId}-${sIdx}`}>
+                      <Polyline
+                        key={`trail-${assetId}-${sIdx}`}
+                        positions={segment}
+                        pathOptions={{
+                          color: strokeColor,
+                          weight: (selectedVehicle || selectedPerson) ? 6 : 4,
+                          opacity: 0.85,
+                          lineCap: 'round',
+                          lineJoin: 'round',
+                        }}
+                      />
+                      {chevrons.map((ch, cIdx) => (
+                        <Marker
+                          key={`map-chev-${assetId}-${sIdx}-${cIdx}`}
+                          position={ch.position}
+                          icon={L.divIcon({
+                            html: `
+                              <div style="transform: rotate(${ch.bearing}deg);" class="w-3 h-3 flex items-center justify-center drop-shadow select-none pointer-events-none opacity-85 text-white">
+                                <svg viewBox="0 0 24 24" fill="currentColor" class="w-2.5 h-2.5">
+                                  <path d="M12 2L2 22l10-4 10 4L12 2z"/>
+                                </svg>
+                              </div>
+                            `,
+                            className: '',
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6],
+                          })}
+                          interactive={false}
+                        />
+                      ))}
+                    </React.Fragment>
+                  )
+                })}
+              </React.Fragment>
             )
           })}
 

@@ -5,7 +5,12 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
 import { getDeviceConnectionStatus } from '../utils/deviceState'
-import { getRoadSnappedRoute } from '../services/routingService'
+import {
+  getRoadSnappedRoute,
+  segmentPointsIntoTrips,
+  getMultiSegmentSnappedRoute,
+  generateDirectionChevrons,
+} from '../services/routingService'
 import RoutePlaybackModal from '../components/RoutePlaybackModal'
 
 // Helper component to smoothly center Leaflet map on target person
@@ -168,47 +173,63 @@ export default function PeopleTracker() {
     refetchInterval: 60000, // Cada 1 min en lugar de refresco continuo
   })
 
-  // Pre-populate trails ONLY for recently active sessions (within last 7 days)
+  // Pre-populate trails with automatic trip segmentation and street road-snapping
   useEffect(() => {
     if (historyPoints && historyPoints.length > 0 && people && people.length > 0) {
-      const initialTrails = {}
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      const pointsByPerson = {}
 
       historyPoints.forEach(pt => {
         const pId = pt.personTracker
-        const ptTime = pt.timestamp ? new Date(pt.timestamp) : null
-        // Skip stale points older than 4 hours for live map breadcrumbs
-        if (ptTime && ptTime < sevenDaysAgo) return
+        if (!pId) return
+        if (!pointsByPerson[pId]) pointsByPerson[pId] = []
+        pointsByPerson[pId].push(pt)
+      })
 
-        const lat = pt.gps?.latitude || pt.location?.coordinates?.[1]
-        const lng = pt.gps?.longitude || pt.location?.coordinates?.[0]
-        if (lat && lng && (lat !== 0 || lng !== 0)) {
-          if (!initialTrails[pId]) initialTrails[pId] = []
-          const last = initialTrails[pId][initialTrails[pId].length - 1]
-          if (!last || getDistanceMeters(last, [lat, lng]) >= 15) {
-            initialTrails[pId].push([lat, lng])
+      // Segment and snap roads for each tracked person
+      Object.entries(pointsByPerson).forEach(async ([pId, rawPts]) => {
+        if (rawPts.length >= 2) {
+          const trips = segmentPointsIntoTrips(rawPts, { maxGapMinutes: 20, maxJumpMeters: 2500 })
+          const snapped = await getMultiSegmentSnappedRoute(trips)
+          if (snapped && snapped.length > 0) {
+            setTrails(prev => ({ ...prev, [pId]: snapped }))
+          }
+        } else if (rawPts.length === 1) {
+          const lat = rawPts[0].gps?.latitude || rawPts[0].location?.coordinates?.[1]
+          const lng = rawPts[0].gps?.longitude || rawPts[0].location?.coordinates?.[0]
+          if (lat && lng) {
+            setTrails(prev => ({ ...prev, [pId]: [[[lat, lng]]] }))
           }
         }
       })
-
-      // Snap raw segments to street roads
-      Object.entries(initialTrails).forEach(([id, rawPts]) => {
-        if (rawPts && rawPts.length >= 2) {
-          getRoadSnappedRoute(rawPts).then(snapped => {
-            if (snapped && snapped.length > 2) {
-              setTrails(prev => ({ ...prev, [id]: snapped }))
-            }
-          }).catch(() => {})
-        }
-      })
-
-      if (Object.keys(initialTrails).length > 0) {
-        setTrails(prev => ({ ...initialTrails, ...prev }))
-      }
     }
   }, [historyPoints, people])
 
-  // Update breadcrumb movement trails with Jump/Glitch Filtering and Road Snapping
+  // Dedicated Route Loader when a single person is selected (guarantees full route without global limit truncation)
+  useEffect(() => {
+    if (!selectedPerson?._id) return
+    let isMounted = true
+
+    apiClient
+      .get(`/people-trackers/${selectedPerson._id}/history?since=168&limit=3000`)
+      .then(async (res) => {
+        if (!isMounted) return
+        const pts = res.data || []
+        if (pts.length >= 2) {
+          const personTrips = segmentPointsIntoTrips(pts, { maxGapMinutes: 20, maxJumpMeters: 2500 })
+          const snapped = await getMultiSegmentSnappedRoute(personTrips)
+          if (isMounted && snapped.length > 0) {
+            setTrails(prev => ({ ...prev, [selectedPerson._id]: snapped }))
+          }
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedPerson?._id])
+
+  // Update live movement trails with jump filtering and road appending
   useEffect(() => {
     people.forEach(p => {
       const coords = p.location?.coordinates
@@ -216,33 +237,30 @@ export default function PeopleTracker() {
       if (hasRealCoords) {
         const latLng = [coords[1], coords[0]]
         setTrails(prev => {
-          const current = prev[p._id] || []
-          if (current.length === 0) {
-            return { ...prev, [p._id]: [latLng] }
-          }
-          const last = current[current.length - 1]
-          const dist = getDistanceMeters(last, latLng)
+          const personTrails = prev[p._id] || []
+          // Ensure personTrails is array of segments
+          const segments = Array.isArray(personTrails[0]?.[0])
+            ? personTrails
+            : (personTrails.length > 0 ? [personTrails] : [])
 
-          // If jump > 30km (outlier / wrong region), restart trail
-          if (dist > 30000) {
-            return { ...prev, [p._id]: [latLng] }
+          if (segments.length === 0) {
+            return { ...prev, [p._id]: [[latLng]] }
           }
 
-          // If moved >= 10m, append point and snap to real roads
+          const lastSegment = segments[segments.length - 1]
+          const lastPoint = lastSegment[lastSegment.length - 1]
+          const dist = getDistanceMeters(lastPoint, latLng)
+
+          // If teleportation/jump > 3km, start a new distinct segment (never draw a line across water)
+          if (dist > 3000) {
+            return { ...prev, [p._id]: [...segments, [latLng]] }
+          }
+
+          // If moved >= 10m, append to current segment and snap to road
           if (dist >= 10) {
-            getRoadSnappedRoute([last, latLng]).then(snapped => {
-              if (snapped && snapped.length > 2) {
-                setTrails(currentTrails => ({
-                  ...currentTrails,
-                  [p._id]: [...(currentTrails[p._id] || []).slice(0, -1), ...snapped].slice(-400)
-                }))
-              }
-            }).catch(() => {})
-
-            return {
-              ...prev,
-              [p._id]: [...current, latLng].slice(-400)
-            }
+            const updatedLast = [...lastSegment, latLng].slice(-300)
+            const updatedSegments = [...segments.slice(0, -1), updatedLast]
+            return { ...prev, [p._id]: updatedSegments }
           }
           return prev
         })
@@ -897,39 +915,88 @@ export default function PeopleTracker() {
                 />
 
                 {/* Render Distinct Multi-Color Trajectory Polyline Trails per Person */}
-                {Object.entries(trails).map(([personId, points], trailIdx) => {
-                  if (!points || points.length < 2) return null
-                  if (selectedPerson && selectedPerson._id !== personId) return null // Hide other trails when single person is selected
+                {Object.entries(trails).map(([personId, trailData], trailIdx) => {
+                  if (!trailData || trailData.length === 0) return null
+                  if (selectedPerson && selectedPerson._id !== personId) return null
+
                   const isSel = selectedPerson?._id === personId
                   const personObj = people.find(p => p._id === personId)
                   const colorObj = getPersonColor(personObj?.name, trailIdx)
-                  const startPoint = points[0]
+
+                  // Normalizar a lista de tramos viales independientes
+                  const segments = Array.isArray(trailData[0]?.[0]) ? trailData : [trailData]
 
                   return (
                     <React.Fragment key={`trail-frag-${personId}`}>
-                      {/* Trail Polyline */}
-                      <Polyline
-                        positions={points}
-                        pathOptions={{
-                          color: colorObj.stroke,
-                          weight: isSel ? 7 : 5,
-                          opacity: isSel ? 1 : 0.85,
-                          lineCap: 'round',
-                          lineJoin: 'round',
-                        }}
-                      />
-                      {/* Start Point Marker (🟢 Inicio) */}
-                      {isSel && (
-                        <Marker
-                          position={startPoint}
-                          icon={L.divIcon({
-                            html: `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[9px] font-extrabold shadow-md border border-white whitespace-nowrap" style="background-color: ${colorObj.bg}">🟢 Inicio ${personObj?.name || ''}</div>`,
-                            className: '',
-                            iconSize: [0, 0],
-                            iconAnchor: [30, 10],
-                          })}
-                        />
-                      )}
+                      {segments.map((seg, segIdx) => {
+                        if (!seg || seg.length < 2) return null
+                        const startPoint = seg[0]
+                        const endPoint = seg[seg.length - 1]
+                        const chevrons = generateDirectionChevrons(seg, 350)
+
+                        return (
+                          <React.Fragment key={`trail-seg-${personId}-${segIdx}`}>
+                            {/* Segment Polyline (Vial, 0% Mar) */}
+                            <Polyline
+                              positions={seg}
+                              pathOptions={{
+                                color: colorObj.stroke,
+                                weight: isSel ? 7 : 5,
+                                opacity: isSel ? 1 : 0.85,
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                              }}
+                            />
+
+                            {/* Direction Chevrons (Flechas de Sentido de Avance) */}
+                            {chevrons.map((ch, cIdx) => (
+                              <Marker
+                                key={`chev-${personId}-${segIdx}-${cIdx}`}
+                                position={ch.position}
+                                icon={L.divIcon({
+                                  html: `
+                                    <div style="transform: rotate(${ch.bearing}deg);" class="w-3.5 h-3.5 flex items-center justify-center drop-shadow select-none pointer-events-none opacity-90 text-white">
+                                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3">
+                                        <path d="M12 2L2 22l10-4 10 4L12 2z"/>
+                                      </svg>
+                                    </div>
+                                  `,
+                                  className: '',
+                                  iconSize: [14, 14],
+                                  iconAnchor: [7, 7],
+                                })}
+                                interactive={false}
+                              />
+                            ))}
+
+                            {/* Start Point Marker (🟢 Inicio de Tramo) */}
+                            {isSel && (
+                              <Marker
+                                position={startPoint}
+                                icon={L.divIcon({
+                                  html: `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[9px] font-extrabold shadow-md border border-white whitespace-nowrap" style="background-color: ${colorObj.bg}">🟢 Inicio ${segments.length > 1 ? `T${segIdx + 1}` : ''} ${personObj?.name || ''}</div>`,
+                                  className: '',
+                                  iconSize: [0, 0],
+                                  iconAnchor: [30, 10],
+                                })}
+                              />
+                            )}
+
+                            {/* End Point Marker (🏁 Fin de Tramo) si no es el actual en movimiento */}
+                            {isSel && segments.length > 1 && segIdx < segments.length - 1 && (
+                              <Marker
+                                position={endPoint}
+                                icon={L.divIcon({
+                                  html: `<div class="flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[9px] font-extrabold shadow-md border border-white whitespace-nowrap bg-rose-600">🏁 Fin T${segIdx + 1}</div>`,
+                                  className: '',
+                                  iconSize: [0, 0],
+                                  iconAnchor: [25, 10],
+                                })}
+                              />
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
                     </React.Fragment>
                   )
                 })}

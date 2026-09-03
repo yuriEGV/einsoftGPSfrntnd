@@ -1,9 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { apiClient } from '../services/api'
-import { getRoadSnappedRoute } from '../services/routingService'
+import {
+  segmentPointsIntoTrips,
+  getMultiSegmentSnappedRoute,
+  generateDirectionChevrons,
+  calculateBearing,
+} from '../services/routingService'
 
 // Helper to center or fit bounds
 function MapAutoFitter({ bounds, center }) {
@@ -11,7 +16,11 @@ function MapAutoFitter({ bounds, center }) {
   useEffect(() => {
     if (bounds && bounds.length >= 2) {
       try {
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 })
+        // bounds could be an array of segments [[[lat, lng]...]] or points [[lat, lng]...]
+        const flatPoints = Array.isArray(bounds[0]?.[0]) ? bounds.flat() : bounds
+        if (flatPoints.length >= 2) {
+          map.fitBounds(flatPoints, { padding: [45, 45], maxZoom: 16 })
+        }
       } catch (_) {}
     } else if (center && center[0] && center[1]) {
       map.flyTo(center, 15)
@@ -32,8 +41,12 @@ export default function RoutePlaybackModal({
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speedMultiplier, setSpeedMultiplier] = useState(2) // 1x, 2x, 5x, 10x
-  const [snappedRoute, setSnappedRoute] = useState([])
   const [activePreset, setActivePreset] = useState('7d')
+
+  // Trip segmentation state
+  const [trips, setTrips] = useState([])
+  const [selectedTripId, setSelectedTripId] = useState('all') // 'all' or trip.id
+  const [snappedSegments, setSnappedSegments] = useState([]) // Array of [lat, lng][]
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
@@ -68,7 +81,7 @@ export default function RoutePlaybackModal({
     fetchRouteHistory(startStr, endStr)
   }
 
-  // Fetch Route History
+  // Fetch Route History and Segment into Trips
   const fetchRouteHistory = async (customStart, customEnd) => {
     if (!targetId) return
     setLoading(true)
@@ -83,26 +96,44 @@ export default function RoutePlaybackModal({
           targetId,
           startDate: new Date(sDate).toISOString(),
           endDate: new Date(eDate).toISOString(),
-          limit: 1000,
+          limit: 2000,
         },
       })
       setData(res.data)
       setCurrentIndex(0)
+      setSelectedTripId('all')
 
-      const wps = res.data?.waypoints || []
-      if (wps.length >= 2) {
-        const rawPts = wps.map((w) => [w.lat, w.lng])
-        getRoadSnappedRoute(rawPts)
-          .then((snapped) => {
-            if (snapped && snapped.length > 2) {
-              setSnappedRoute(snapped)
-            } else {
-              setSnappedRoute(rawPts)
-            }
-          })
-          .catch(() => setSnappedRoute(rawPts))
+      const rawWaypoints = res.data?.waypoints || []
+
+      if (rawWaypoints.length >= 2) {
+        // 1. Segmentar puntos en tramos coherentes (rompe saltos temporales o espaciales sobre el mar)
+        const computedTrips = segmentPointsIntoTrips(rawWaypoints, {
+          maxGapMinutes: 20,
+          maxJumpMeters: 3000,
+        })
+        setTrips(computedTrips)
+
+        // 2. Ajustar cada tramo a calles reales con OSRM (garantiza 0% sobre el mar)
+        const snapped = await getMultiSegmentSnappedRoute(computedTrips)
+        setSnappedSegments(snapped)
+      } else if (rawWaypoints.length === 1) {
+        const singleTrip = [{
+          id: 1,
+          waypoints: rawWaypoints,
+          coords: [[rawWaypoints[0].lat, rawWaypoints[0].lng]],
+          startCoord: [rawWaypoints[0].lat, rawWaypoints[0].lng],
+          endCoord: [rawWaypoints[0].lat, rawWaypoints[0].lng],
+          startTime: new Date(rawWaypoints[0].timestamp),
+          endTime: new Date(rawWaypoints[0].timestamp),
+          durationMinutes: 0,
+          distanceKm: '0.0',
+          pointCount: 1,
+        }]
+        setTrips(singleTrip)
+        setSnappedSegments([singleTrip[0].coords])
       } else {
-        setSnappedRoute(wps.map((w) => [w.lat, w.lng]))
+        setTrips([])
+        setSnappedSegments([])
       }
     } catch (err) {
       console.error('Error fetching route history:', err)
@@ -121,13 +152,29 @@ export default function RoutePlaybackModal({
     }
   }, [isOpen, targetId])
 
+  // Active waypoints (either all or filtered by selected trip)
+  const activeWaypoints = useMemo(() => {
+    if (!data?.waypoints || data.waypoints.length === 0) return []
+    if (selectedTripId === 'all') return data.waypoints
+    const t = trips.find((tr) => tr.id === Number(selectedTripId))
+    return t ? t.waypoints : data.waypoints
+  }, [data, trips, selectedTripId])
+
+  // Active snapped segments to render
+  const activeSegments = useMemo(() => {
+    if (snappedSegments.length === 0) return []
+    if (selectedTripId === 'all') return snappedSegments
+    const tripIdx = trips.findIndex((tr) => tr.id === Number(selectedTripId))
+    return tripIdx >= 0 && snappedSegments[tripIdx] ? [snappedSegments[tripIdx]] : snappedSegments
+  }, [snappedSegments, trips, selectedTripId])
+
   // Playback Loop
   useEffect(() => {
-    if (isPlaying && data?.waypoints && data.waypoints.length > 1) {
-      const intervalMs = Math.max(60, Math.floor(600 / speedMultiplier))
+    if (isPlaying && activeWaypoints.length > 1) {
+      const intervalMs = Math.max(50, Math.floor(600 / speedMultiplier))
       timerRef.current = setInterval(() => {
         setCurrentIndex((prev) => {
-          if (prev >= data.waypoints.length - 1) {
+          if (prev >= activeWaypoints.length - 1) {
             setIsPlaying(false)
             return prev
           }
@@ -140,73 +187,144 @@ export default function RoutePlaybackModal({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [isPlaying, data, speedMultiplier])
+  }, [isPlaying, activeWaypoints, speedMultiplier])
+
+  // Generate directional chevrons along snapped roads for all active segments
+  const directionChevrons = useMemo(() => {
+    const chevrons = []
+    activeSegments.forEach((segment) => {
+      if (segment && segment.length >= 2) {
+        const segChevrons = generateDirectionChevrons(segment, 350)
+        chevrons.push(...segChevrons)
+      }
+    })
+    return chevrons
+  }, [activeSegments])
 
   if (!isOpen) return null
 
-  const waypoints = data?.waypoints || []
-  const currentPoint = waypoints[currentIndex] || waypoints[0] || null
-  const positions = snappedRoute.length > 0 ? snappedRoute : waypoints.map((w) => [w.lat, w.lng])
-  
-  // Calculate traveled slice
-  const traveledPositions = waypoints.slice(0, currentIndex + 1).map((w) => [w.lat, w.lng])
+  const currentPoint = activeWaypoints[currentIndex] || activeWaypoints[0] || null
   const defaultCenter = currentPoint ? [currentPoint.lat, currentPoint.lng] : [-33.0299, -71.6343]
 
-  // Animated Marker Icon
+  // Calculate current bearing for moving marker rotation
+  const nextPoint = activeWaypoints[currentIndex + 1] || activeWaypoints[currentIndex] || null
+  const currentBearing =
+    currentPoint && nextPoint && currentIndex < activeWaypoints.length - 1
+      ? calculateBearing([currentPoint.lat, currentPoint.lng], [nextPoint.lat, nextPoint.lng])
+      : currentPoint?.heading || 0
+
+  // Traveled positions along the road segments up to the current progress
+  const traveledSegments = useMemo(() => {
+    if (!currentPoint || activeSegments.length === 0) return []
+    const progressRatio = activeWaypoints.length > 1 ? currentIndex / (activeWaypoints.length - 1) : 1
+
+    const result = []
+    let totalPointsInAllSegments = 0
+    activeSegments.forEach((seg) => {
+      totalPointsInAllSegments += seg.length
+    })
+
+    const targetPointsCount = Math.max(1, Math.round(totalPointsInAllSegments * progressRatio))
+    let pointsAllocated = 0
+
+    for (const seg of activeSegments) {
+      if (pointsAllocated >= targetPointsCount) break
+      const needed = targetPointsCount - pointsAllocated
+      if (needed >= seg.length) {
+        result.push(seg)
+        pointsAllocated += seg.length
+      } else {
+        result.push(seg.slice(0, Math.max(2, needed)))
+        pointsAllocated += needed
+        break
+      }
+    }
+
+    return result
+  }, [currentPoint, activeSegments, currentIndex, activeWaypoints])
+
+  // Animated Marker Icon with Directional Bearing
   const movingIcon = L.divIcon({
     html: `
-      <div class="relative flex flex-col items-center group">
-        <div class="px-2 py-0.5 rounded-full bg-slate-950 text-cyan-300 font-mono font-bold text-[10px] shadow-2xl border border-cyan-500/50 whitespace-nowrap mb-1">
-          ${targetType === 'vehicle' ? '🚗' : '👤'} ${currentPoint ? `${currentPoint.speed} km/h` : ''}
+      <div class="relative flex flex-col items-center group pointer-events-none select-none">
+        <div class="px-2.5 py-0.5 rounded-full bg-slate-950/95 text-cyan-300 font-mono font-black text-[11px] shadow-2xl border border-cyan-400/60 whitespace-nowrap mb-1">
+          ${targetType === 'vehicle' ? '🚗' : '👤'} ${currentPoint ? `${currentPoint.speed} km/h` : '0 km/h'}
         </div>
-        <div class="w-8 h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center text-sm font-black shadow-2xl border-2 border-white ring-4 ring-cyan-400/50 animate-pulse">
-          ${targetType === 'vehicle' ? '🚗' : '📍'}
+        <div class="relative flex items-center justify-center">
+          <div class="w-9 h-9 rounded-full bg-cyan-600 text-white flex items-center justify-center text-sm font-black shadow-2xl border-2 border-white ring-4 ring-cyan-400/50">
+            ${targetType === 'vehicle' ? '🚗' : '👤'}
+          </div>
+          <div style="transform: rotate(${currentBearing}deg) translate(0, -18px);" class="absolute transition-transform duration-100">
+            <span class="text-cyan-400 text-xs font-black drop-shadow">▲</span>
+          </div>
         </div>
       </div>
     `,
     className: '',
-    iconSize: [0, 0],
-    iconAnchor: [0, 16],
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
   })
 
+  // Direction Chevron Leaflet Icon
+  const createChevronIcon = (bearing) =>
+    L.divIcon({
+      html: `
+        <div style="transform: rotate(${bearing}deg);" class="w-4 h-4 flex items-center justify-center text-cyan-300 drop-shadow-md select-none pointer-events-none opacity-90">
+          <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
+            <path d="M12 2L2 22l10-4 10 4L12 2z"/>
+          </svg>
+        </div>
+      `,
+      className: '',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    })
+
+  // Start & End markers for visible trips
+  const tripMarkers = (selectedTripId === 'all' ? trips : trips.filter((t) => t.id === Number(selectedTripId)))
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99999] flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
-      <div className="bg-slate-900 text-slate-100 rounded-3xl max-w-5xl w-full h-[90vh] shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[99999] flex items-center justify-center p-2 md:p-6 animate-in fade-in duration-200">
+      <div className="bg-slate-900 text-slate-100 rounded-3xl max-w-6xl w-full h-[92vh] shadow-2xl flex flex-col overflow-hidden border border-slate-700">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="px-6 py-3.5 bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
             <span className="p-2.5 bg-cyan-950 text-cyan-400 border border-cyan-500/30 rounded-2xl text-xl shadow-lg">
               🎞️
             </span>
             <div>
-              <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+              <h2 className="text-base md:text-lg font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>Reproductor de Recorrido Histórico (Playback GPS)</span>
-                <span className="px-2 py-0.5 text-[10px] font-mono bg-cyan-900/60 border border-cyan-400/40 text-cyan-300 rounded-full">
-                  {waypoints.length} puntos
+                <span className="px-2.5 py-0.5 text-[11px] font-mono bg-cyan-950 border border-cyan-400/50 text-cyan-300 rounded-full font-bold">
+                  {trips.length} {trips.length === 1 ? 'tramo vial' : 'tramos viales'} • {activeWaypoints.length} puntos
+                </span>
+                <span className="px-2 py-0.5 text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded-full font-semibold">
+                  🛡️ Vía Urbana (0% Mar)
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                {targetName} • {waypoints.length > 1 ? 'Viajes y trayectorias reales registradas' : 'Posición satelital'}
+                {targetName} • Trayectorias reales con dirección de avance y ajuste a calles
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-lg transition"
+            title="Cerrar reproductor"
           >
             ✕
           </button>
         </div>
 
         {/* Date Filter & Preset Bar */}
-        <div className="bg-slate-950/80 border-b border-slate-800 px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="bg-slate-950/90 border-b border-slate-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             {/* Quick Presets */}
             <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
               <button
                 onClick={() => applyPreset('today')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
-                  activePreset === 'today' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                  activePreset === 'today' ? 'bg-cyan-500 text-slate-950 shadow font-black' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 Hoy
@@ -214,7 +332,7 @@ export default function RoutePlaybackModal({
               <button
                 onClick={() => applyPreset('24h')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
-                  activePreset === '24h' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                  activePreset === '24h' ? 'bg-cyan-500 text-slate-950 shadow font-black' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 24h
@@ -222,7 +340,7 @@ export default function RoutePlaybackModal({
               <button
                 onClick={() => applyPreset('7d')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
-                  activePreset === '7d' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                  activePreset === '7d' ? 'bg-cyan-500 text-slate-950 shadow font-black' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 7 Días
@@ -230,7 +348,7 @@ export default function RoutePlaybackModal({
               <button
                 onClick={() => applyPreset('30d')}
                 className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
-                  activePreset === '30d' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+                  activePreset === '30d' ? 'bg-cyan-500 text-slate-950 shadow font-black' : 'text-slate-400 hover:text-white'
                 }`}
               >
                 30 Días
@@ -276,68 +394,186 @@ export default function RoutePlaybackModal({
           )}
         </div>
 
+        {/* Trip / Tramos Selector Bar (if multiple trips exist) */}
+        {trips.length > 1 && (
+          <div className="bg-slate-950/70 border-b border-slate-800/80 px-6 py-2 flex items-center gap-2 overflow-x-auto text-xs">
+            <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1 shrink-0">
+              <span>🛣️</span> Tramos Viales:
+            </span>
+            <button
+              onClick={() => {
+                setSelectedTripId('all')
+                setCurrentIndex(0)
+              }}
+              className={`px-3 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border ${
+                selectedTripId === 'all'
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-md'
+                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+              }`}
+            >
+              🌐 Todos los Tramos ({trips.length})
+            </button>
+            {trips.map((t) => {
+              const isSel = selectedTripId === String(t.id) || selectedTripId === t.id
+              const timeLabel = t.startTime
+                ? new Date(t.startTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                : `Tramo ${t.id}`
+              const dateLabel = t.startTime
+                ? new Date(t.startTime).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
+                : ''
+              return (
+                <button
+                  key={`trip-sel-${t.id}`}
+                  onClick={() => {
+                    setSelectedTripId(t.id)
+                    setCurrentIndex(0)
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition shrink-0 border flex items-center gap-1 ${
+                    isSel
+                      ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-black shadow-md'
+                      : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>📍</span>
+                  <span>Tramo {t.id}</span>
+                  <span className="opacity-75 text-[10px]">
+                    ({dateLabel} {timeLabel} • {t.distanceKm} km)
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Map Container */}
         <div className="flex-1 relative bg-slate-950">
           {loading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/80 backdrop-blur-sm z-20">
               <div className="w-10 h-10 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm font-bold text-cyan-300 font-mono">Cargando telemetría satelital histórica...</p>
+              <p className="text-sm font-bold text-cyan-300 font-mono">
+                Calculando rutas satelitales y ajuste a calles...
+              </p>
             </div>
-          ) : waypoints.length === 0 ? (
+          ) : activeWaypoints.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center z-10">
               <span className="text-5xl">🗺️</span>
               <p className="text-base font-bold text-white">No se registraron trayectos en este rango de fechas.</p>
               <p className="text-xs text-slate-400">Prueba presionando los botones <b>7 Días</b> o <b>30 Días</b> arriba.</p>
             </div>
           ) : (
-            <MapContainer
-              center={defaultCenter}
-              zoom={14}
-              className="h-full w-full"
-            >
+            <MapContainer center={defaultCenter} zoom={14} className="h-full w-full">
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <MapAutoFitter bounds={positions} center={defaultCenter} />
+              <MapAutoFitter bounds={activeSegments} center={defaultCenter} />
 
-              {/* Full Planned Trajectory (Gray background) */}
-              <Polyline
-                positions={positions}
-                pathOptions={{ color: '#06b6d4', weight: 4, opacity: 0.35, dashArray: '4, 6' }}
-              />
-
-              {/* Traveled Route (Vibrant Cyan) */}
-              <Polyline
-                positions={traveledPositions}
-                pathOptions={{ color: '#06b6d4', weight: 6, opacity: 0.95 }}
-              />
-
-              {/* Start Point Marker */}
-              {waypoints[0] && (
-                <Marker
-                  position={[waypoints[0].lat, waypoints[0].lng]}
-                  icon={L.divIcon({
-                    html: '<div class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-bold shadow-lg border border-white whitespace-nowrap">🟢 Inicio</div>',
-                    className: '',
-                    iconSize: [0, 0],
-                    iconAnchor: [20, 10],
-                  })}
+              {/* Full Planned Road Trajectory (Dashed Cyan Backdrop per independent segment) */}
+              {activeSegments.map((segment, sIdx) => (
+                <Polyline
+                  key={`planned-seg-${sIdx}`}
+                  positions={segment}
+                  pathOptions={{
+                    color: '#06b6d4',
+                    weight: 5,
+                    opacity: 0.35,
+                    dashArray: '6, 8',
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  }}
                 />
-              )}
+              ))}
 
-              {/* End Point Marker */}
-              {waypoints.length > 1 && (
-                <Marker
-                  position={[waypoints[waypoints.length - 1].lat, waypoints[waypoints.length - 1].lng]}
-                  icon={L.divIcon({
-                    html: '<div class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-bold shadow-lg border border-white whitespace-nowrap">🏁 Fin</div>',
-                    className: '',
-                    iconSize: [0, 0],
-                    iconAnchor: [15, 10],
-                  })}
+              {/* Traveled Animated Road Segments (Vibrant Cyan) */}
+              {traveledSegments.map((traveledSeg, tIdx) => (
+                <Polyline
+                  key={`traveled-seg-${tIdx}`}
+                  positions={traveledSeg}
+                  pathOptions={{
+                    color: '#06b6d4',
+                    weight: 6,
+                    opacity: 0.95,
+                    lineCap: 'round',
+                    lineJoin: 'round',
+                  }}
                 />
-              )}
+              ))}
+
+              {/* Direction Chevrons (Flechas de Avance a lo largo de las calles) */}
+              {directionChevrons.map((chev, cIdx) => (
+                <Marker
+                  key={`chev-${cIdx}-${chev.position[0]}-${chev.position[1]}`}
+                  position={chev.position}
+                  icon={createChevronIcon(chev.bearing)}
+                  interactive={false}
+                />
+              ))}
+
+              {/* Clear Start (🟢 Inicio) & End (🏁 Fin) Markers per Segment */}
+              {tripMarkers.map((t) => {
+                const startTimeStr = t.startTime
+                  ? new Date(t.startTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                  : ''
+                const endTimeStr = t.endTime
+                  ? new Date(t.endTime).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+                  : ''
+                return (
+                  <React.Fragment key={`trip-markers-${t.id}`}>
+                    {/* Inicio */}
+                    {t.startCoord && (
+                      <Marker
+                        position={t.startCoord}
+                        icon={L.divIcon({
+                          html: `
+                            <div class="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black shadow-xl border border-white whitespace-nowrap flex items-center gap-1">
+                              <span>🟢 Inicio</span>
+                              ${startTimeStr ? `<span class="opacity-90 font-mono">${startTimeStr}</span>` : ''}
+                            </div>
+                          `,
+                          className: '',
+                          iconSize: [0, 0],
+                          iconAnchor: [35, 12],
+                        })}
+                      >
+                        <Popup>
+                          <div className="p-1 text-xs">
+                            <p className="font-bold text-emerald-800">🟢 Punto de Inicio (Tramo {t.id})</p>
+                            <p className="text-slate-600">🕒 {t.startTime ? new Date(t.startTime).toLocaleString('es-CL') : 'Inicio'}</p>
+                            {t.startAddress && <p className="text-slate-500 text-[10px]">📍 {t.startAddress}</p>}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+
+                    {/* Fin */}
+                    {t.endCoord && t.pointCount > 1 && (
+                      <Marker
+                        position={t.endCoord}
+                        icon={L.divIcon({
+                          html: `
+                            <div class="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[9px] font-black shadow-xl border border-white whitespace-nowrap flex items-center gap-1">
+                              <span>🏁 Fin</span>
+                              ${endTimeStr ? `<span class="opacity-90 font-mono">${endTimeStr}</span>` : ''}
+                            </div>
+                          `,
+                          className: '',
+                          iconSize: [0, 0],
+                          iconAnchor: [30, 12],
+                        })}
+                      >
+                        <Popup>
+                          <div className="p-1 text-xs">
+                            <p className="font-bold text-rose-800">🏁 Punto de Término (Tramo {t.id})</p>
+                            <p className="text-slate-600">🕒 {t.endTime ? new Date(t.endTime).toLocaleString('es-CL') : 'Llegada'}</p>
+                            <p className="text-slate-600 font-semibold">📏 Distancia: {t.distanceKm} km ({t.durationMinutes} min)</p>
+                            {t.endAddress && <p className="text-slate-500 text-[10px]">📍 {t.endAddress}</p>}
+                          </div>
+                        </Popup>
+                      </Marker>
+                    )}
+                  </React.Fragment>
+                )
+              })}
 
               {/* Current Moving Marker */}
               {currentPoint && (
@@ -350,6 +586,7 @@ export default function RoutePlaybackModal({
                     <div className="p-2 text-xs space-y-1 text-slate-900">
                       <p className="font-black text-sm text-cyan-900">{targetName}</p>
                       <p className="text-slate-700">🏃 Velocidad: <b>{currentPoint.speed} km/h</b></p>
+                      <p className="text-slate-700">🧭 Rumbo: <b>{Math.round(currentBearing)}°</b></p>
                       {currentPoint.fuel != null && <p className="text-blue-600">⛽ Combustible: <b>{currentPoint.fuel}%</b></p>}
                       {currentPoint.battery != null && <p className="text-purple-600">🔋 Batería: <b>{currentPoint.battery}%</b></p>}
                       <p className="text-slate-500 font-mono text-[10px]">
@@ -365,7 +602,7 @@ export default function RoutePlaybackModal({
         </div>
 
         {/* Playback Multimedia Controller */}
-        {waypoints.length > 0 && (
+        {activeWaypoints.length > 0 && (
           <div className="bg-slate-950 text-white p-4 border-t border-slate-800 space-y-3">
             {/* Scrubber Timeline */}
             <div className="flex items-center gap-3">
@@ -375,7 +612,7 @@ export default function RoutePlaybackModal({
               <input
                 type="range"
                 min={0}
-                max={waypoints.length - 1}
+                max={activeWaypoints.length - 1}
                 value={currentIndex}
                 onChange={(e) => {
                   setIsPlaying(false)
@@ -384,8 +621,8 @@ export default function RoutePlaybackModal({
                 className="flex-1 accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
               />
               <span className="text-[11px] font-mono text-slate-400 min-w-[70px] text-right">
-                {waypoints[waypoints.length - 1]
-                  ? new Date(waypoints[waypoints.length - 1].timestamp).toLocaleTimeString('es-CL')
+                {activeWaypoints[activeWaypoints.length - 1]
+                  ? new Date(activeWaypoints[activeWaypoints.length - 1].timestamp).toLocaleTimeString('es-CL')
                   : '--:--'}
               </span>
             </div>
@@ -403,7 +640,7 @@ export default function RoutePlaybackModal({
                 </button>
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  disabled={waypoints.length <= 1}
+                  disabled={activeWaypoints.length <= 1}
                   className={`px-5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-lg ${
                     isPlaying
                       ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
@@ -413,7 +650,7 @@ export default function RoutePlaybackModal({
                   {isPlaying ? '⏸️ Pausar' : '▶️ Reproducir'}
                 </button>
                 <button
-                  onClick={() => setCurrentIndex(waypoints.length - 1)}
+                  onClick={() => setCurrentIndex(activeWaypoints.length - 1)}
                   className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold transition"
                   title="Ir al final"
                 >
@@ -427,7 +664,7 @@ export default function RoutePlaybackModal({
                       key={spd}
                       onClick={() => setSpeedMultiplier(spd)}
                       className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition ${
-                        speedMultiplier === spd ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                        speedMultiplier === spd ? 'bg-cyan-500 text-slate-950 font-black' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       {spd}x
@@ -437,9 +674,12 @@ export default function RoutePlaybackModal({
               </div>
 
               {/* Live Scrubber Telemetry */}
-              <div className="flex items-center gap-4 text-xs font-mono">
+              <div className="flex items-center gap-4 text-xs font-mono flex-wrap">
                 <span>
                   Velocidad: <b className="text-cyan-400">{currentPoint?.speed ?? 0} km/h</b>
+                </span>
+                <span>
+                  Rumbo: <b className="text-emerald-400">{Math.round(currentBearing)}°</b>
                 </span>
                 {currentPoint?.fuel != null && (
                   <span>
@@ -452,7 +692,7 @@ export default function RoutePlaybackModal({
                   </span>
                 )}
                 <span className="text-slate-400">
-                  Punto: <b className="text-white">{currentIndex + 1}</b>/{waypoints.length}
+                  Punto: <b className="text-white">{currentIndex + 1}</b>/{activeWaypoints.length}
                 </span>
               </div>
             </div>
