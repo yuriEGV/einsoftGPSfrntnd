@@ -2,27 +2,99 @@ import React from 'react'
 
 export default function DownloadApp() {
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
-      {/* Header Táctico EYE-NODE */}
-      <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-2xl relative overflow-hidden border border-cyan-500/20">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300 pb-12">
+      {/* Header Táctico Plataforma Plus & EYE-NODE */}
+      <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-10 text-white shadow-2xl relative overflow-hidden border border-cyan-500/30">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
         <div className="relative z-10 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider">
-            ⚡ EYE-NODE // TRACKER 360 • Nodo de Inteligencia Móvil
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider">
+              ⚡ PLATAFORMA PLUS // APK v2.0.0 (Build 200)
+            </span>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
+              🟢 Verificado & Certificado Ley 21.171
+            </span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
-            EYE-NODE / TRACKER 360 (APK Táctica)
+
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">
+            EINSoft GPS & EYE-NODE v2.0.0
           </h1>
-          <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
-            Más que un simple GPS: un <strong>Nodo de Inteligencia Táctica</strong> que monitorea en 360° la posición multi-constelación (GNSS 4-Band), física de movimiento (IMU 6-Ejes, Fuerza G, Choque/Impacto, Vuelco), comportamiento del conductor con IA, Centinela anti-manipulación y Caja Negra offline.
+
+          <p className="text-sm md:text-base text-slate-300 max-w-3xl leading-relaxed">
+            Aplicación oficial de rastreo y seguridad telemática. Incluye el <strong>Botón SOS 3 segundos</strong> con selección de incidentes (Incendio, Semáforo, Robo, Portonazo, Choque, Delincuencia), <strong>Corte Remoto de Combustible</strong> en 1 clic, historial de rutas con reproductor de velocidad, rutas planificadas de Ida/Regreso y telemetría 360°.
           </p>
+        </div>
+      </div>
+
+      {/* Showcase Visual Gallery */}
+      <div className="space-y-3">
+        <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <span>📸</span> Funcionalidades Clave de la Versión v2.0.0
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+              <img
+                src="/assets/showcase/sos_protocol.png"
+                alt="Botón SOS 24/7"
+                className="h-full object-contain hover:scale-105 transition-transform"
+              />
+            </div>
+            <div className="font-extrabold text-xs text-purple-300">1. Botón SOS 3s & Central 24/7</div>
+            <p className="text-[11px] text-slate-400">
+              Despacho directo con Carabineros 133, PDI y verificación de audio abierta.
+            </p>
+          </div>
+
+          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+              <img
+                src="/assets/showcase/features_trio.png"
+                alt="Inmovilización y Corte de Combustible"
+                className="h-full object-contain hover:scale-105 transition-transform"
+              />
+            </div>
+            <div className="font-extrabold text-xs text-rose-400">2. Corte Remoto de Combustible</div>
+            <p className="text-[11px] text-slate-400">
+              Inmovilización segura con un clic y confirmación ante intento de robo.
+            </p>
+          </div>
+
+          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+              <img
+                src="/assets/showcase/route_playback_mobile.png"
+                alt="Reproductor Histórico Satelital"
+                className="h-full object-contain hover:scale-105 transition-transform"
+              />
+            </div>
+            <div className="font-extrabold text-xs text-amber-400">3. Reproductor Satelital</div>
+            <p className="text-[11px] text-slate-400">
+              Trazabilidad con slider temporal, km/h máx, odómetro y tiempos de conducción.
+            </p>
+          </div>
+
+          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+              <img
+                src="/assets/showcase/planned_routes_mobile.png"
+                alt="Rutas Planificadas Ida y Regreso"
+                className="h-full object-contain hover:scale-105 transition-transform"
+              />
+            </div>
+            <div className="font-extrabold text-xs text-orange-400">4. Rutas de Ida & Regreso</div>
+            <p className="text-[11px] text-slate-400">
+              Circuito Casa → Escuela / Base → Cliente con control de estado y paradas.
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Sensor Architecture Diagram */}
       <div className="bg-slate-950 rounded-3xl p-6 border border-cyan-900/40 text-slate-200 shadow-xl space-y-4">
         <h2 className="text-sm font-black text-cyan-400 uppercase tracking-wider flex items-center gap-2">
-          <span>📐</span> Arquitectura de Sensores Fusión 360°
+          <span>📐</span> Arquitectura de Sensores Fusión 360° & Protocolos de Reacción
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
@@ -46,10 +118,10 @@ export default function DownloadApp() {
 
           <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
             <div className="flex items-center gap-2 text-amber-300 font-extrabold text-sm">
-              <span>🛡️</span> 3. Centinela Anti-Tamper
+              <span>🛡️</span> 3. Centinela Anti-Tamper & GeoParking
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Vigilancia de manipulación en reposo. Alerta inmediata si el activo es movido o tocado sin autorización.
+              Vigilancia de manipulación en reposo. Alerta inmediata si el activo es remolcado o tocado sin autorización.
             </p>
           </div>
         </div>
@@ -57,75 +129,95 @@ export default function DownloadApp() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Descarga de APK */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-cyan-100 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-200 flex items-center justify-center text-2xl">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border-2 border-cyan-500/30 shadow-xl space-y-5 flex flex-col justify-between hover:shadow-2xl transition-all">
+          <div className="space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-3xl">
               📲
             </div>
-            <h2 className="text-xl font-black text-slate-900">1. Descargar APK EYE-NODE 360</h2>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Instalador nativo para Android. Incluye telemetría táctica en segundo plano, soporte de caja negra offline y sincronización automática.
+            <div>
+              <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-1">
+                Versión Oficial 2.0.0
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                Descargar APK Android Oficial
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Instalador compilado para Android con soporte de segundo plano, telemetría táctica, caja negra offline y sincronización automática.
             </p>
             
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2.5">
-              <p className="font-bold text-slate-800">📋 Activación en 1 toque:</p>
-              <ol className="list-decimal list-inside space-y-1.5 text-slate-600 text-[11px]">
-                <li>Descarga e instala el archivo <code>.apk</code> en el teléfono.</li>
-                <li>Abre la app y selecciona el perfil (ej: <strong>Manuel</strong>, <strong>Yuri</strong>, <strong>Gloria</strong>, <strong>Sarem</strong>).</li>
-                <li>Concede los permisos de Ubicación y Sensores.</li>
-                <li>Verás la pantalla táctica en <strong>🟢 EN LÍNEA</strong> transmitiendo telemetría 360.</li>
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5">
+              <p className="font-bold text-slate-800 dark:text-slate-200">📋 Activación en 1 toque:</p>
+              <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400 text-[11px]">
+                <li>Descarga e instala el archivo <code>.apk</code> en tu teléfono Android.</li>
+                <li>Concede los permisos de Ubicación en segundo plano y Sensores de Movimiento.</li>
+                <li>Activa la telemetría táctica y el botón SOS de asistencia 24/7.</li>
+                <li>Verás la unidad transmitiendo en vivo a la consola central.</li>
               </ol>
             </div>
           </div>
 
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2.5 pt-2">
             <a
               href="/eyenode.apk"
               download="eyenode.apk"
-              className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/25 transition-all active:scale-95 text-sm"
+              className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar eyenode.apk Oficial (Nativo Android)
+              📥 Descargar eyenode.apk v2.0.0 (Nativo Android)
             </a>
 
             <a
-              href="/mobile-gps"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-cyan-300 font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-slate-800"
+              href="/einsoft-gps.apk"
+              download="einsoft-gps.apk"
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-slate-700"
             >
-              🚀 O Probar Nodo Web en Navegador Móvil
+              📦 Descarga Alternativa einsoft-gps.apk
             </a>
           </div>
         </div>
 
         {/* Card 2: Monitoreo en Consola Central */}
-        <div className="bg-white rounded-3xl p-6 border-2 border-purple-100 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-2xl">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border-2 border-purple-500/30 shadow-xl space-y-5 flex flex-col justify-between hover:shadow-2xl transition-all">
+          <div className="space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-3xl">
               🗺️
             </div>
-            <h2 className="text-xl font-black text-slate-900">2. Consola de Monitoreo Central</h2>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Visualiza en tiempo real en el mapa la ubicación satelital calzada a calles, trazas históricas multi-color, estado de pánico y eventos telemétricos.
+            <div>
+              <div className="inline-block px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-300 text-[10px] font-black uppercase tracking-wider mb-1">
+                Ecosistema Completo
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                Plataforma Plus & Centro de Comando
+              </h2>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Visualiza en tiempo real en el mapa la ubicación satelital, histórico de viajes con velocidades, calculador de peajes TAG y certificados Ley 21.171.
             </p>
 
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs space-y-2.5">
-              <p className="font-bold text-slate-800">📊 Capacidades del Centro de Comando:</p>
-              <ul className="list-disc list-inside space-y-1.5 text-slate-600 text-[11px]">
-                <li>Rastreo Multi-Color por cada persona/móvil registrado.</li>
-                <li>Enrutamiento OSRM calzado a autopistas y calles reales.</li>
-                <li>Notificaciones SOS inmediatas con botón de silenciado general.</li>
-                <li>Recepción de alertas de choque e impactos detectados por los nodos.</li>
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5">
+              <p className="font-bold text-slate-800 dark:text-slate-200">📊 Capacidades Integradas:</p>
+              <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400 text-[11px]">
+                <li>Matriz de 18 Módulos telemáticos y financieros.</li>
+                <li>Calculador previo de Peajes y TAG de autopistas concesionadas.</li>
+                <li>Generador de Certificados de Servicio Ley 21.171 para aseguradoras.</li>
+                <li>Notificaciones SOS 24/7 coordinadas con Fuerzas de Seguridad.</li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-2">
+          <div className="space-y-2.5 pt-2">
+            <a
+              href="/plataforma-plus"
+              className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-purple-900/30 transition-all active:scale-95 text-sm"
+            >
+              ⚡ Abrir Plataforma Plus (18 Módulos)
+            </a>
+
             <a
               href="/people-tracker"
-              className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-2xl text-center flex items-center justify-center gap-2 shadow-lg shadow-purple-900/25 transition-all active:scale-95 text-sm"
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-slate-700"
             >
-              👥 Abrir Panel de Rastreo en Vivo
+              👥 Consola de Rastreo Personal y Celulares
             </a>
           </div>
         </div>

@@ -19,6 +19,7 @@ import PeopleTracker from './pages/PeopleTracker'
 import PublicPersonTracker from './pages/PublicPersonTracker'
 import DownloadApp from './pages/DownloadApp'
 import Payments from './pages/Payments'
+import PlataformaPlus from './pages/PlataformaPlus'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentFailed from './pages/PaymentFailed'
 import PaymentPending from './pages/PaymentPending'
@@ -230,6 +231,20 @@ function App() {
                           <Payments />
                         </RoleGuard>
                       }
+                    />
+
+                    {/* Plataforma Plus - Ecosistema Telemático 2026 */}
+                    <Route
+                      path="/plataforma-plus"
+                      element={<PlataformaPlus />}
+                    />
+                    <Route
+                      path="/tolls"
+                      element={<PlataformaPlus />}
+                    />
+                    <Route
+                      path="/warranties-certificate"
+                      element={<PlataformaPlus />}
                     />
 
                     {/* Fallback */}

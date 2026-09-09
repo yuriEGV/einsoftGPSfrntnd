@@ -18,7 +18,7 @@ export default function AiCopilotWidget() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: '👋 ¡Hola! Soy **Gemini 3.6 AI**, el copiloto inteligente de **EINSoft GPS**.\n\nPuedo responder preguntas sobre la flota, ubicar vehículos, revisar alertas o generar diagnósticos en tiempo real.\n\n¿En qué te puedo ayudar hoy?',
+      text: '👋 ¡Hola! Soy **NaviGPS AI**, el copiloto telemático inteligente de **EINSoft GPS Plataforma Plus**.\n\nPuedo responder preguntas sobre la flota, calcular costos de **peajes y TAG por pórtico**, verificar **mantenimientos preventivos**, consultar el **ranking de conducción** o descargar reportes en PDF.\n\n¿En qué te puedo ayudar hoy?',
     },
   ])
   const [input, setInput] = useState('')
@@ -61,7 +61,7 @@ export default function AiCopilotWidget() {
         ...prev,
         {
           role: 'assistant',
-          text: '⚠️ Error al conectar con la IA de Gemini: ' + (err.response?.data?.error || err.message),
+          text: '⚠️ Error al conectar con NaviGPS AI: ' + (err.response?.data?.error || err.message),
         },
       ])
     } finally {
@@ -70,10 +70,11 @@ export default function AiCopilotWidget() {
   }
 
   const quickPrompts = [
-    { label: '📊 Diagnóstico de Flota', prompt: 'Dame un resumen general y diagnóstico de la flota ahora mismo.' },
-    { label: '🚗 Vehículos Activos', prompt: '¿Qué vehículos están actualmente activos y en movimiento?' },
-    { label: '🚨 Alertas y Pánicos', prompt: '¿Hay alertas críticas o botones de pánico activos?' },
-    { label: '👥 Estado de Personas', prompt: '¿Cuál es el estado y ubicación del personal rastreado?' },
+    { label: '🛣️ Peajes & TAG', prompt: 'Dame el costo estimado de peajes y consumo TAG de la flota por pórtico.' },
+    { label: '🏆 Ranking Conductores', prompt: '¿Cuál es el ranking de conducción y quién tiene mejor puntaje de seguridad?' },
+    { label: '🔧 Mantención Flota', prompt: '¿Qué vehículos tienen mantención de aceite o frenos próxima a vencer?' },
+    { label: '🚨 Estado de Seguridad', prompt: '¿Hay alertas de corte de combustible, botón SOS o impactos de choque activos?' },
+    { label: '📄 Reporte PDF', prompt: 'Genera un resumen ejecutivo de la flota para exportar a PDF.' },
   ]
 
   return (
@@ -82,16 +83,16 @@ export default function AiCopilotWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold px-4 py-3.5 rounded-full shadow-2xl transition-all transform hover:scale-105 border border-purple-300/30"
+          className="group relative flex items-center gap-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-600 hover:from-purple-700 hover:to-emerald-700 text-white font-bold px-4 py-3.5 rounded-full shadow-2xl transition-all transform hover:scale-105 border border-purple-300/30"
         >
           <span className="relative flex h-3.5 w-3.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
           </span>
-          <span className="text-xl">🧠</span>
+          <span className="text-xl">🤖</span>
           <div className="text-left leading-tight hidden sm:block">
-            <div className="text-xs font-black tracking-wide">Copiloto IA Gemini</div>
-            <div className="text-[10px] text-purple-200 font-medium">Asistente de Flota Online</div>
+            <div className="text-xs font-black tracking-wide">NaviGPS AI</div>
+            <div className="text-[10px] text-purple-200 font-medium">Asistente Plataforma Plus</div>
           </div>
         </button>
       )}
@@ -104,20 +105,21 @@ export default function AiCopilotWidget() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-xl shadow-lg shadow-purple-500/30">
-                  🧠
+                  🤖
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
               </div>
               <div>
-                <h3 className="font-black text-sm text-white flex items-center gap-2">
-                  Copiloto IA Gemini 3.6
-                  <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
-                    PRO
+                <div className="text-sm font-black text-white flex items-center gap-2">
+                  <span>NaviGPS AI</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.2 rounded-full font-bold uppercase">
+                    Plus 2026
                   </span>
-                </h3>
-                <p className="text-[11px] text-purple-300/70">Asistente inteligente de monitoreo de flota</p>
+                </div>
+                <div className="text-[11px] text-purple-200/80">Copiloto Inteligente de Flota</div>
               </div>
             </div>
+
 
             <button
               onClick={() => setIsOpen(false)}

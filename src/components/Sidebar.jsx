@@ -66,6 +66,27 @@ const ALL_MENU_ITEMS = [
     badge: 'NUEVO',
   },
   {
+    label: 'Plataforma Plus',
+    icon: '⚡',
+    path: '/plataforma-plus',
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
+    badge: 'PLUS 2026',
+  },
+  {
+    label: 'Peajes & TAG',
+    icon: '💵',
+    path: '/tolls',
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
+    badge: 'TAG',
+  },
+  {
+    label: 'Garantías & Ley 21.171',
+    icon: '📜',
+    path: '/warranties-certificate',
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent'],
+    badge: 'CERT',
+  },
+  {
     label: 'EYE-NODE 360 (App)',
     icon: '🛰️',
     path: 'https://einsoft-gp-sbcknd.vercel.app/eyenode',
