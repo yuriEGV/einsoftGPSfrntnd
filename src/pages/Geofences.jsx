@@ -48,78 +48,93 @@ export default function Geofences() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.name || !form.latitude || !form.longitude) {
-      alert('Completa el nombre y las coordenadas de la geocerca.')
+      alert('Complete el nombre y las coordenadas de la geocerca.')
       return
     }
     if (isNaN(parseFloat(form.latitude)) || isNaN(parseFloat(form.longitude))) {
-      alert('Ingresa coordenadas numéricas válidas (ej: -33.4489, -70.6693)')
+      alert('Ingrese coordenadas numéricas válidas (ej: -33.4489, -70.6693)')
       return
     }
     createMutation.mutate()
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 text-slate-200">
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Geocercas</h1>
-          <p className="text-sm text-gray-500 mt-1">Total: {geofences.length} zonas configuradas</p>
+          <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase block mb-1">
+            Seguridad Perimetral & Geocercas
+          </span>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+            <span>🗺️</span> Perímetros Virtuales & Control de Zona
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Definición de perímetros satelitales con alertas automáticas de entrada, salida y desvío de trayecto.
+          </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg ${showForm
-            ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-            : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-900/20'
+        <div className="flex items-center gap-3">
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
+            TOTAL: <span className="text-cyan-400 font-bold">{geofences.length}</span> ZONAS
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+              showForm
+                ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-white border-slate-700'
             }`}
-        >
-          {showForm ? '✕ Cancelar' : '➕ Nueva Geocerca'}
-        </button>
+          >
+            {showForm ? '✕ Cancelar' : '+ Nueva Geocerca'}
+          </button>
+        </div>
       </div>
 
-      {/* Help Card */}
-      <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex gap-4 items-start shadow-sm">
-        <div className="bg-emerald-500 text-white rounded-full p-2 text-xl">🛰️</div>
+      {/* Info Card */}
+      <div className="bg-[#0a0f1d] border border-slate-800 rounded-2xl p-4 flex items-start gap-3.5 text-xs">
+        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0 text-sm">
+          📍
+        </div>
         <div className="space-y-1">
-          <h3 className="text-emerald-900 font-bold">¿Cómo funcionan las Geocercas?</h3>
-          <p className="text-emerald-800 text-sm leading-relaxed">
-            Perímetros virtuales que activan alertas cuando un vehículo entra o sale de la zona.
-            Define un nombre, las coordenadas GPS del centro, y un radio en metros.
-            Puedes obtener coordenadas en <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="underline font-bold">Google Maps</a> haciendo clic derecho sobre el punto.
+          <p className="font-bold text-slate-200 text-sm">Operación de Perímetros de Seguridad</p>
+          <p className="text-slate-400 leading-relaxed">
+            Las geocercas supervisan de forma desatendida el ingreso y egreso de unidades móviles o personal en áreas sensibles (bases operativas, depósitos, colegios o domicilios). Cualquier transgresión dispara una notificación prioritaria a la consola SOC y al Bot de Telegram.
           </p>
         </div>
       </div>
 
-      {/* ===== FORMULARIO DE CREACIÓN ===== */}
+      {/* Formulario */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-xl border border-emerald-100 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-emerald-50 px-6 py-3 border-b border-emerald-100">
-            <h2 className="text-emerald-800 font-bold text-sm uppercase tracking-wider">Nueva Geocerca</h2>
-          </div>
-          <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-            <div className="lg:col-span-2">
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Nombre *</label>
+        <div className="card animate-in fade-in duration-200">
+          <h2 className="card-header">
+            <span>Parametrizar Nueva Geocerca</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Radio Circular</span>
+          </h2>
+          <form onSubmit={handleSubmit} className="p-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+            <div className="lg:col-span-2 space-y-1">
+              <label className="block text-slate-400 font-semibold uppercase text-[11px]">Nombre de la Zona *</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Ej: Zona de Depósito, Bodega Norte..."
+                placeholder="Ej: Base Central / Depósito Quilicura"
                 required
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none transition"
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Radio (metros) *</label>
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-semibold uppercase text-[11px]">Radio de Cobertura (Metros) *</label>
               <input
                 type="number"
                 value={form.radius}
                 onChange={(e) => setForm({ ...form, radius: e.target.value })}
                 min="50"
                 max="50000"
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none font-mono"
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Latitud *</label>
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-semibold uppercase text-[11px]">Latitud Centro *</label>
               <input
                 type="number"
                 step="any"
@@ -127,11 +142,11 @@ export default function Geofences() {
                 onChange={(e) => setForm({ ...form, latitude: e.target.value })}
                 placeholder="-33.4489"
                 required
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all font-mono"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none font-mono"
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Longitud *</label>
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-semibold uppercase text-[11px]">Longitud Centro *</label>
               <input
                 type="number"
                 step="any"
@@ -139,100 +154,95 @@ export default function Geofences() {
                 onChange={(e) => setForm({ ...form, longitude: e.target.value })}
                 placeholder="-70.6693"
                 required
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all font-mono"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none font-mono"
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-black text-emerald-700 uppercase mb-1">Descripción</label>
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-semibold uppercase text-[11px]">Descripción / Notas</label>
               <input
                 type="text"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Información adicional..."
-                className="w-full border-2 border-emerald-100 rounded-xl px-4 py-2 focus:border-emerald-500 outline-none transition-all"
+                placeholder="Observaciones de seguridad..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none transition"
               />
             </div>
-            <div className="flex items-end">
+            <div className="col-span-full flex justify-end pt-2">
               <button
                 type="submit"
                 disabled={createMutation.isLoading}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-50"
+                className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-50"
               >
-                {createMutation.isLoading ? 'Creando...' : '✓ Crear Geocerca'}
+                {createMutation.isLoading ? 'Registrando...' : 'Confirmar y Activar Geocerca'}
               </button>
             </div>
-            {createMutation.isError && (
-              <p className="col-span-full text-red-600 text-xs">
-                Error: {createMutation.error?.response?.data?.error || 'No se pudo crear'}
-              </p>
-            )}
           </form>
         </div>
       )}
 
-      {/* ===== LISTA DE GEOCERCAS ===== */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Zonas Configuradas</h2>
-        </div>
+      {/* Lista de Geocercas */}
+      <div className="card">
+        <h2 className="card-header">
+          <span>Perímetros Activos en el Sistema</span>
+          <span className="text-xs font-mono text-slate-500">{geofences.length} Zonas</span>
+        </h2>
         {isLoading ? (
-          <div className="p-6 text-sm text-gray-500">Cargando geocercas...</div>
+          <div className="p-8 text-center text-xs text-slate-500 font-mono">Cargando base perimetral...</div>
         ) : geofences.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-4xl mb-3">🛰️</p>
-            <p className="text-gray-500 text-sm">Aún no hay geocercas. Crea la primera arriba.</p>
-          </div>
+          <div className="p-8 text-center text-xs text-slate-500 font-mono">No hay geocercas configuradas actualmente.</div>
         ) : (
-          <table className="min-w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Nombre</th>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Descripción</th>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Coordenadas</th>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Radio</th>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Vehículos</th>
-                <th className="px-4 py-3 text-left text-gray-600 font-semibold text-xs uppercase">Estado</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {geofences.map((g) => (
-                <tr key={g._id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-bold text-gray-900">{g.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{g.description || '-'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                    {g.geometry?.coordinates
-                      ? `${g.geometry.coordinates[1].toFixed(4)}, ${g.geometry.coordinates[0].toFixed(4)}`
-                      : '-'}
-                  </td>
-                  <td className="px-4 py-3">{g.radius ? `${g.radius} m` : '-'}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                      {g.assignedVehicles?.length || 0}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${g.active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {g.active !== false ? '● Activa' : '○ Inactiva'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar la geocerca "${g.name}"? Esta acción no se puede deshacer.`)) {
-                          deleteMutation.mutate(g._id)
-                        }
-                      }}
-                      disabled={deleteMutation.isLoading}
-                      className="px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold border border-red-200 transition-all disabled:opacity-50"
-                    >
-                      🗑️ Eliminar
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#080c18] text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
+                <tr>
+                  <th className="px-4 py-3">Nombre</th>
+                  <th className="px-4 py-3">Descripción</th>
+                  <th className="px-4 py-3">Coordenadas Centro</th>
+                  <th className="px-4 py-3">Radio</th>
+                  <th className="px-4 py-3">Unidades</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3 text-right">Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {geofences.map((g) => (
+                  <tr key={g._id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="px-4 py-3.5 font-bold text-slate-100">{g.name}</td>
+                    <td className="px-4 py-3.5 text-slate-400">{g.description || '-'}</td>
+                    <td className="px-4 py-3.5 font-mono text-[11px] text-cyan-400/90">
+                      {g.geometry?.coordinates
+                        ? `${g.geometry.coordinates[1].toFixed(4)}, ${g.geometry.coordinates[0].toFixed(4)}`
+                        : '-'}
+                    </td>
+                    <td className="px-4 py-3.5 font-mono text-slate-300">{g.radius ? `${g.radius} m` : '-'}</td>
+                    <td className="px-4 py-3.5">
+                      <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded font-mono text-[10px] font-bold">
+                        {g.assignedVehicles?.length || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${g.active !== false ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50' : 'bg-slate-800 text-slate-500'}`}>
+                        {g.active !== false ? '● Activa' : '○ Inactiva'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar la geocerca "${g.name}"? Esta acción no se puede deshacer.`)) {
+                            deleteMutation.mutate(g._id)
+                          }
+                        }}
+                        disabled={deleteMutation.isLoading}
+                        className="px-2.5 py-1 bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 border border-slate-800 hover:border-red-900/50 rounded-lg text-[11px] transition-all disabled:opacity-50"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

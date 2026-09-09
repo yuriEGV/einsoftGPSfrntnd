@@ -27,65 +27,65 @@ export default function DownloadApp() {
       </div>
 
       {/* Showcase Visual Gallery */}
-      <div className="space-y-3">
-        <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-          <span>📸</span> Funcionalidades Clave de la Versión v2.0.0
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest font-mono flex items-center gap-2">
+          <span>📸</span> Pilares Telemáticos y Funcionalidades v2.0.0
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
-            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+          <div className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-1">
               <img
-                src="/assets/showcase/sos_protocol.png"
-                alt="Botón SOS 24/7"
-                className="h-full object-contain hover:scale-105 transition-transform"
+                src="/assets/showcase/location_safety.jpg"
+                alt="Location Safety"
+                className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-extrabold text-xs text-purple-300">1. Botón SOS 3s & Central 24/7</div>
-            <p className="text-[11px] text-slate-400">
-              Despacho directo con Carabineros 133, PDI y verificación de audio abierta.
+            <div className="font-bold text-xs text-cyan-300 font-mono uppercase">1. Location Safety</div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Visualización de personas en mapa en vivo, monitoreo de trayectos familiares y geocercas seguras.
             </p>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
-            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+          <div className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-1">
               <img
-                src="/assets/showcase/features_trio.png"
-                alt="Inmovilización y Corte de Combustible"
-                className="h-full object-contain hover:scale-105 transition-transform"
+                src="/assets/showcase/driving_safety.jpg"
+                alt="Driving Safety"
+                className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-extrabold text-xs text-rose-400">2. Corte Remoto de Combustible</div>
-            <p className="text-[11px] text-slate-400">
-              Inmovilización segura con un clic y confirmación ante intento de robo.
+            <div className="font-bold text-xs text-amber-300 font-mono uppercase">2. Driving Safety</div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Monitoreo telemático de aceleración/frenado, sensor IMU y detección automática de colisiones en ruta.
             </p>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
-            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+          <div className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-1">
               <img
-                src="/assets/showcase/route_playback_mobile.png"
-                alt="Reproductor Histórico Satelital"
-                className="h-full object-contain hover:scale-105 transition-transform"
+                src="/assets/showcase/tile_tracking.jpg"
+                alt="Tile & Beacons"
+                className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-extrabold text-xs text-amber-400">3. Reproductor Satelital</div>
-            <p className="text-[11px] text-slate-400">
-              Trazabilidad con slider temporal, km/h máx, odómetro y tiempos de conducción.
+            <div className="font-bold text-xs text-emerald-300 font-mono uppercase">3. Tile & Mascotas</div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Enlace de balizas Bluetooth Tile para recuperar llaves, activos de valor o rastreo de mascotas.
             </p>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
-            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-2">
+          <div className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 p-3 space-y-2 text-white shadow-md">
+            <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-1">
               <img
-                src="/assets/showcase/planned_routes_mobile.png"
-                alt="Rutas Planificadas Ida y Regreso"
-                className="h-full object-contain hover:scale-105 transition-transform"
+                src="/assets/showcase/soc_emergency.jpg"
+                alt="Central Receptora 24/7"
+                className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-extrabold text-xs text-orange-400">4. Rutas de Ida & Regreso</div>
-            <p className="text-[11px] text-slate-400">
-              Circuito Casa → Escuela / Base → Cliente con control de estado y paradas.
+            <div className="font-bold text-xs text-red-300 font-mono uppercase">4. Central SOC 24/7</div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Botón SOS de 3s, inmovilizador de combustible y enlace inmediato con Carabineros y PDI.
             </p>
           </div>
         </div>

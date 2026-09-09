@@ -6,17 +6,17 @@ const severities = ['all', 'low', 'medium', 'high', 'critical']
 const statuses = ['all', 'unacknowledged', 'acknowledged']
 
 const severityColors = {
-  critical: 'bg-red-100 text-red-800 border-red-300',
-  high: 'bg-orange-100 text-orange-800 border-orange-300',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  low: 'bg-blue-100 text-blue-800 border-blue-300',
+  critical: 'bg-red-950 text-red-300 border-red-800/60',
+  high: 'bg-amber-950 text-amber-300 border-amber-800/60',
+  medium: 'bg-slate-800 text-slate-200 border-slate-700',
+  low: 'bg-slate-900 text-slate-400 border-slate-800',
 }
 
 const typeIcon = (type) => {
   if (type === 'panic') return '🚨'
-  if (type === 'speeding') return '💨'
+  if (type === 'speeding') return '⚡'
   if (type === 'security') return '🔒'
-  if (type === 'geofence') return '🛰️'
+  if (type === 'geofence') return '🗺️'
   return '⚠️'
 }
 
@@ -25,7 +25,7 @@ export default function Alerts() {
   const [filters, setFilters] = useState({ severity: 'all', status: 'all' })
   const [now, setNow] = useState(Date.now())
 
-  // Refresh time label every minute
+  // Refresh time label every 30 seconds
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000)
     return () => clearInterval(t)
@@ -43,7 +43,7 @@ export default function Alerts() {
       })
       return response.data
     },
-    { refetchInterval: 10000 }, // Poll every 10s to catch real-time panics
+    { refetchInterval: 10000 },
   )
 
   const acknowledgeMutation = useMutation(
@@ -56,7 +56,6 @@ export default function Alerts() {
     },
   )
 
-  // Critical / panic alerts that are not yet acknowledged
   const criticalAlerts = alerts.filter(
     (a) => (a.severity === 'critical' || a.type === 'panic') && !a.acknowledged
   )
@@ -69,53 +68,67 @@ export default function Alerts() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 text-slate-200">
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Alertas</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {alerts.length} alertas en total •{' '}
-            <span className={criticalAlerts.length > 0 ? 'text-red-600 font-bold animate-pulse' : 'text-gray-400'}>
-              {criticalAlerts.length} críticas sin atender
-            </span>
+          <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase block mb-1">
+            Centro de Operaciones de Seguridad (SOC)
+          </span>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
+            <span>⚠️</span> Registro de Incidentes & Alertas Críticas
+          </h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Monitoreo en tiempo real de eventos de pánico SOS, colisiones, excesos de velocidad y perfiles de seguridad.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
+            TOTAL: <span className="text-cyan-400 font-bold">{alerts.length}</span> EVENTOS
+          </div>
+          {criticalAlerts.length > 0 && (
+            <div className="px-3.5 py-1.5 rounded-xl bg-red-950/80 border border-red-800/60 text-xs font-mono text-red-300 font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              <span>{criticalAlerts.length} CRÍTICAS ACTIVAS</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ===== PANEL DE ALERTAS CRÍTICAS ===== */}
+      {/* ===== PANEL DE INCIDENTES CRÍTICOS (SOC LEVEL) ===== */}
       {criticalAlerts.length > 0 && (
-        <div className="rounded-2xl border-2 border-red-400 bg-red-50 overflow-hidden shadow-lg shadow-red-100">
-          <div className="flex items-center gap-3 bg-red-600 px-5 py-3">
-            <span className="text-xl animate-bounce">🚨</span>
-            <span className="text-white font-black text-sm tracking-widest uppercase">
-              {criticalAlerts.length} Alerta{criticalAlerts.length > 1 ? 's' : ''} Crítica{criticalAlerts.length > 1 ? 's' : ''} — Acción Inmediata Requerida
-            </span>
-            <div className="ml-auto w-3 h-3 rounded-full bg-white animate-ping" />
+        <div className="rounded-2xl border border-red-800/70 bg-[#12070a] overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between bg-red-950/80 px-5 py-3 border-b border-red-900/60">
+            <div className="flex items-center gap-2.5">
+              <span className="text-base text-red-400 font-mono font-black">🚨 ACCIÓN PRIORITARIA</span>
+              <span className="text-red-200 font-bold text-xs">
+                ({criticalAlerts.length}) Incidente{criticalAlerts.length > 1 ? 's' : ''} Crítico{criticalAlerts.length > 1 ? 's' : ''} sin atender
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-red-400 uppercase tracking-widest">Protocolo 24/7 Activo</span>
           </div>
-          <div className="divide-y divide-red-200">
+          <div className="divide-y divide-red-950/80">
             {criticalAlerts.map((alert) => (
-              <div key={alert._id} className="flex items-start gap-4 px-5 py-4">
-                <div className="text-2xl mt-0.5">{typeIcon(alert.type)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-red-900 text-sm leading-tight">{alert.message}</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-xs text-red-700 font-mono">
-                      🚗 {alert.vehicle?.licensePlate || 'N/A'}
-                    </span>
-                    {alert.location?.latitude ? (
-                      <span className="text-xs text-red-600">
-                        📍 {alert.location.latitude.toFixed(4)}, {alert.location.longitude.toFixed(4)}
-                      </span>
-                    ) : null}
-                    <span className="text-xs text-red-500 font-mono">{timeAgo(alert.createdAt)}</span>
+              <div key={alert._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-3.5 hover:bg-red-950/20 transition-colors">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="text-xl mt-0.5">{typeIcon(alert.type)}</div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-slate-100 text-xs leading-tight">{alert.message}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-400">
+                      <span className="text-red-400 font-bold">Móvil: {alert.vehicle?.licensePlate || 'N/A'}</span>
+                      {alert.location?.latitude && (
+                        <span>Coords: {alert.location.latitude.toFixed(4)}, {alert.location.longitude.toFixed(4)}</span>
+                      )}
+                      <span className="text-slate-500">{timeAgo(alert.createdAt)}</span>
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={() => acknowledgeMutation.mutate(alert._id)}
                   disabled={acknowledgeMutation.isLoading}
-                  className="shrink-0 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl uppercase tracking-widest transition-all shadow-md disabled:opacity-50"
+                  className="shrink-0 px-4 py-2 bg-red-900 hover:bg-red-800 text-white text-xs font-bold rounded-xl uppercase tracking-wider transition-all border border-red-700/60 disabled:opacity-50"
                 >
-                  Atendido ✓
+                  Confirmar Atendido ✓
                 </button>
               </div>
             ))}
@@ -123,105 +136,110 @@ export default function Alerts() {
         </div>
       )}
 
-      {/* ===== FILTROS ===== */}
+      {/* ===== FILTROS Y REGISTRO GENERAL ===== */}
       <div className="card">
-        <div className="p-4 flex flex-wrap gap-4 text-sm">
-          <div>
-            <label className="block text-gray-700 mb-1 font-medium text-xs uppercase tracking-wider">Severidad</label>
-            <select
-              value={filters.severity}
-              onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-              className="border border-gray-300 rounded-lg px-3 py-2 capitalize"
-            >
-              {severities.map(s => (
-                <option key={s} value={s} className="capitalize">{s}</option>
-              ))}
-            </select>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-4 text-xs">
+          <div className="flex flex-wrap gap-4">
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-mono text-[10px] uppercase tracking-wider">Severidad</label>
+              <select
+                value={filters.severity}
+                onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-200 capitalize focus:border-cyan-500 outline-none"
+              >
+                {severities.map(s => (
+                  <option key={s} value={s} className="capitalize">{s === 'all' ? 'Todas' : s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="block text-slate-400 font-mono text-[10px] uppercase tracking-wider">Estado de Gestión</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-slate-200 focus:border-cyan-500 outline-none"
+              >
+                <option value="all">Todos los Estados</option>
+                <option value="unacknowledged">Sin Atender</option>
+                <option value="acknowledged">Atendidas</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="block text-gray-700 mb-1 font-medium text-xs uppercase tracking-wider">Estado</label>
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="border border-gray-300 rounded-lg px-3 py-2"
-            >
-              {statuses.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
+          <span className="text-[11px] font-mono text-slate-500">Actualización automática cada 10s</span>
         </div>
 
-        {/* ===== TABLA ===== */}
-        <div className="border-t border-gray-200">
+        {/* ===== TABLA DE INCIDENTES ===== */}
+        <div className="pt-2">
           {isLoading ? (
-            <div className="p-6 text-sm text-gray-500">Cargando alertas...</div>
+            <div className="p-8 text-center text-xs text-slate-500 font-mono">Consultando base de eventos...</div>
           ) : alerts.length === 0 ? (
-            <div className="p-6 text-sm text-gray-500">No hay alertas.</div>
+            <div className="p-8 text-center text-xs text-slate-500 font-mono">No se registran eventos con los filtros seleccionados.</div>
           ) : (
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-gray-700 font-medium">Hora</th>
-                  <th className="px-4 py-2 text-left text-gray-700 font-medium">Vehículo</th>
-                  <th className="px-4 py-2 text-left text-gray-700 font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left text-gray-700 font-medium">Severidad</th>
-                  <th className="px-4 py-2 text-left text-gray-700 font-medium">Estado</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {alerts.map((alert) => (
-                  <tr
-                    key={alert._id}
-                    className={`border-t border-gray-100 ${alert.severity === 'critical' && !alert.acknowledged
-                      ? 'bg-red-50'
-                      : ''}`}
-                  >
-                    <td className="px-4 py-2 text-xs text-gray-500 font-mono">
-                      {new Date(alert.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 font-mono font-bold">
-                      {alert.vehicle?.licensePlate || 'N/A'}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className="flex items-center gap-1">
-                        <span>{typeIcon(alert.type)}</span>
-                        <span className={`capitalize font-medium ${alert.type === 'panic' ? 'text-red-700 font-black' : ''}`}>
-                          {alert.type === 'panic' ? 'PÁNICO' : alert.type?.replace(/_/g, ' ')}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold border capitalize ${severityColors[alert.severity] || 'bg-gray-100 text-gray-700'}`}>
-                        {alert.severity}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2">
-                      {alert.acknowledged ? (
-                        <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700 font-medium">
-                          ✓ Atendido
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-700 font-bold animate-pulse">
-                          Activa
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {!alert.acknowledged && (
-                        <button
-                          onClick={() => acknowledgeMutation.mutate(alert._id)}
-                          className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium"
-                        >
-                          Marcar leído
-                        </button>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-[#080c18] text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-slate-800">
+                  <tr>
+                    <th className="px-4 py-3">Fecha / Hora</th>
+                    <th className="px-4 py-3">Unidad</th>
+                    <th className="px-4 py-3">Tipo de Evento</th>
+                    <th className="px-4 py-3">Severidad</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3 text-right">Gestión</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {alerts.map((alert) => (
+                    <tr
+                      key={alert._id}
+                      className={`hover:bg-slate-800/30 transition-colors ${
+                        alert.severity === 'critical' && !alert.acknowledged
+                          ? 'bg-red-950/15'
+                          : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-[11px] text-slate-400 font-mono">
+                        {new Date(alert.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-slate-200">
+                        {alert.vehicle?.licensePlate || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-1.5 font-medium text-slate-300">
+                          <span>{typeIcon(alert.type)}</span>
+                          <span className="capitalize">{alert.type === 'panic' ? 'Botón Pánico SOS' : alert.type?.replace(/_/g, ' ')}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border uppercase tracking-wider ${severityColors[alert.severity] || 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                          {alert.severity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {alert.acknowledged ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700 uppercase">
+                            ✓ Atendido
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-red-950 text-red-300 border border-red-800/60 uppercase">
+                            Pendiente
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {!alert.acknowledged && (
+                          <button
+                            onClick={() => acknowledgeMutation.mutate(alert._id)}
+                            className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-lg text-[11px] font-semibold transition"
+                          >
+                            Marcar Leído
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

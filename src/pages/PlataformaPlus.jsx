@@ -345,117 +345,216 @@ export default function PlataformaPlus() {
         </div>
       </div>
 
-      {/* Sección Destacada: Showcase Visual de Plataformas y App Móvil */}
-      <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-800 text-white space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+      {/* ─── Sección Destacada: Showcase Visual y Pilares de Seguridad ─── */}
+      <div className="bg-slate-900/90 rounded-3xl p-6 sm:p-8 border border-slate-800 text-white space-y-8 shadow-2xl">
+        <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-800 pb-5">
           <div>
-            <h2 className="text-xl font-black text-white flex items-center gap-2">
-              <span>📱</span> Experiencia Móvil & Web de Próxima Generación
+            <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 uppercase block mb-1">
+              Plataforma Táctica & Aplicaciones Móviles
+            </span>
+            <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+              <span>🛡️</span> Ecosistema Telemático de Seguridad & Telemetría
             </h2>
-            <p className="text-xs text-slate-400">
-              Integración total con la aplicación táctica para conductores y gestores de flota
+            <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+              Integración total entre la central web de operaciones (SOC), sensores vehiculares y la app táctica de respuesta.
             </p>
           </div>
           <a
             href="/download-app"
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-2 shadow-md transition-all"
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-700 transition-all shadow-md"
           >
-            📥 Descargar APK v2.0.0 Oficial
+            <span>📥</span> Descargar APK v2.0.0 Oficial
           </a>
         </div>
 
-        {/* 4 Cards con las imágenes proporcionadas por el usuario */}
+        {/* 4 Cards con las imágenes genéricas sobrias */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* Card 1: Botón SOS (Imagen 1) */}
+          {/* Card 1: Coordinación y Ubicación Familiar (Location Safety) */}
+          <div
+            onClick={() => setActiveModal('locationSafety')}
+            className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div className="h-44 bg-slate-950 overflow-hidden relative flex items-center justify-center p-1">
+              <img
+                src="/assets/showcase/location_safety.jpg"
+                alt="Coordinación y Ubicación Familiar"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+              />
+              <div className="absolute top-2.5 right-2.5 bg-slate-900/90 text-cyan-300 border border-cyan-500/40 text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                Location Safety
+              </div>
+            </div>
+            <div className="p-4 space-y-1.5 bg-slate-900/60">
+              <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <span>📍</span> Ubicación Familiar
+              </h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Localización exacta de personas y trayectos en mapa para organización cotidiana y monitoreo seguro.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Seguridad en la Conducción (Driving Safety) */}
+          <div
+            onClick={() => setActiveModal('drivingSafety')}
+            className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div className="h-44 bg-slate-950 overflow-hidden relative flex items-center justify-center p-1">
+              <img
+                src="/assets/showcase/driving_safety.jpg"
+                alt="Seguridad en la Conducción"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+              />
+              <div className="absolute top-2.5 right-2.5 bg-slate-900/90 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                Driving Safety
+              </div>
+            </div>
+            <div className="p-4 space-y-1.5 bg-slate-900/60">
+              <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <span>🚗</span> Seguridad al Volante
+              </h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Monitoreo constante de hábitos de conducción, frenadas bruscas e identificación automática de colisiones.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 3: Localización de Objetos y Mascotas (Tile & Beacons) */}
+          <div
+            onClick={() => setActiveModal('tileTracking')}
+            className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div className="h-44 bg-slate-950 overflow-hidden relative flex items-center justify-center p-1">
+              <img
+                src="/assets/showcase/tile_tracking.jpg"
+                alt="Localización de Objetos y Mascotas"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+              />
+              <div className="absolute top-2.5 right-2.5 bg-slate-900/90 text-emerald-300 border border-emerald-500/40 text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                Tile & Beacons
+              </div>
+            </div>
+            <div className="p-4 space-y-1.5 bg-slate-900/60">
+              <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <span>🏷️</span> Objetos y Mascotas
+              </h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Enlace directo con balizas Tile en el mapa para recuperar llaves, activos críticos o rastrear mascotas.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Central Receptora 24/7 y Protocolos SOS */}
           <div
             onClick={() => setActiveModal('sos')}
-            className="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 hover:border-purple-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+            className="bg-[#0b0f19] rounded-2xl overflow-hidden border border-slate-800 hover:border-red-500/50 transition-all cursor-pointer group flex flex-col justify-between"
           >
-            <div className="h-44 bg-slate-900 overflow-hidden relative flex items-center justify-center p-2">
+            <div className="h-44 bg-slate-950 overflow-hidden relative flex items-center justify-center p-1">
               <img
-                src="/assets/showcase/sos_protocol.png"
-                alt="Botón SOS Asistencia 24/7"
-                className="h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                src="/assets/showcase/soc_emergency.jpg"
+                alt="Central Receptora 24/7"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
               />
-              <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                SOS 3 Seg
+              <div className="absolute top-2.5 right-2.5 bg-slate-900/90 text-red-300 border border-red-500/40 text-[9px] font-black px-2 py-0.5 rounded uppercase font-mono tracking-wider">
+                SOC 24/7
               </div>
             </div>
-            <div className="p-4 space-y-1">
-              <h4 className="font-extrabold text-sm text-white">Botón SOS & Protocolo</h4>
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                Asistencia inmediata 24/7 con selección de eventos y verificación de audio directa.
+            <div className="p-4 space-y-1.5 bg-slate-900/60">
+              <h4 className="font-extrabold text-sm text-white flex items-center gap-1.5">
+                <span>🚨</span> Respuesta y Pánico SOS
+              </h4>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                Asistencia inmediata 24/7 con botón SOS de 3 segundos, corte de combustible y despacho a Carabineros y PDI.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Usos y Operaciones Principales & Casos de Uso Destacados ─── */}
+        <div className="pt-6 border-t border-slate-800 space-y-6">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-base font-black text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                <span>🏛️</span> Usos y Operaciones Principales de la Plataforma
+              </h3>
+              <p className="text-xs text-slate-400">
+                Soluciones telemáticas diseñadas para el resguardo corporativo y la protección preventiva familiar
               </p>
             </div>
           </div>
 
-          {/* Card 2: Trío de Funciones (Imagen 2) */}
-          <div
-            onClick={() => setActiveModal('fuelCut')}
-            className="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 hover:border-purple-500/50 transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div className="h-44 bg-slate-900 overflow-hidden relative flex items-center justify-center p-2">
-              <img
-                src="/assets/showcase/features_trio.png"
-                alt="Historial, Rastreo y Corte de Combustible"
-                className="h-full object-contain group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-2 right-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                Inmovilizador
+          {/* 3 Pilares Operativos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs">
+                <span>🧭</span>
+                <span className="uppercase font-mono">Location Safety</span>
               </div>
+              <h4 className="text-sm font-extrabold text-slate-100">Coordinación y Ubicación Familiar</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Permite visualizar la localización exacta de personas en el mapa para facilitar la organización cotidiana y monitorear trayectos habituales o excepcionales sin invadir la privacidad.
+              </p>
             </div>
-            <div className="p-4 space-y-1">
-              <h4 className="font-extrabold text-sm text-white">Corte de Combustible</h4>
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                Detiene el auto en un clic, cortando el combustible en caso de robo o uso ajeno.
+
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                <span>🛡️</span>
+                <span className="uppercase font-mono">Driving Safety</span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-100">Seguridad en la Conducción</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ofrece soporte constante con monitoreo de conducción, telemetría inercial, identificación de desaceleraciones extremas y colisiones en ruta para auxilio oportuno.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+                <span>🏷️</span>
+                <span className="uppercase font-mono">Asset & Pet Tracking</span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-100">Localización de Objetos y Mascotas</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Permite enlazar y visualizar dispositivos de rastreo Tile y balizas Bluetooth directamente en el mapa unificado de la app para recuperar objetos de valor (como llaves o bolsos) o rastrear mascotas.
               </p>
             </div>
           </div>
 
-          {/* Card 3: Reproductor Satelital de Ruta (Imagen 4) */}
-          <div
-            onClick={() => setActiveModal('routes')}
-            className="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 hover:border-purple-500/50 transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div className="h-44 bg-slate-900 overflow-hidden relative flex items-center justify-center p-2">
-              <img
-                src="/assets/showcase/route_playback_mobile.png"
-                alt="Reproductor Histórico Satelital"
-                className="h-full object-contain group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-2 right-2 bg-amber-500 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                Playback
+          {/* Casos de Uso Destacados */}
+          <div className="p-5 rounded-2xl bg-[#080c16] border border-slate-800/90 space-y-3">
+            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest font-mono flex items-center gap-2">
+              <span>🎯</span> Casos de Uso Destacados
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
+              <div className="flex items-start gap-2.5">
+                <span className="text-cyan-400 font-black text-sm">01</span>
+                <div>
+                  <strong className="text-slate-100 block mb-0.5">Padres con hijos adolescentes</strong>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Aporta tranquilidad supervisando la velocidad al volante, salidas de geocercas escolares y la llegada segura en desplazamientos nocturnos.
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="p-4 space-y-1">
-              <h4 className="font-extrabold text-sm text-white">Historial de Viajes</h4>
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                Reproducción de rutas satelitales con velocidad máxima, paradas P y odómetro.
-              </p>
-            </div>
-          </div>
 
-          {/* Card 4: Rutas de Ida y Regreso (Imagen 5) */}
-          <div
-            onClick={() => setActiveModal('routes')}
-            className="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 hover:border-purple-500/50 transition-all cursor-pointer group flex flex-col justify-between"
-          >
-            <div className="h-44 bg-slate-900 overflow-hidden relative flex items-center justify-center p-2">
-              <img
-                src="/assets/showcase/planned_routes_mobile.png"
-                alt="Rutas Planificadas de Ida y Regreso"
-                className="h-full object-contain group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute top-2 right-2 bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">
-                Planificador
+              <div className="flex items-start gap-2.5">
+                <span className="text-amber-400 font-black text-sm">02</span>
+                <div>
+                  <strong className="text-slate-100 block mb-0.5">Autonomía para adultos mayores</strong>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Otorga autonomía con supervisión preventiva a adultos mayores que aún conducen, con alertas ante desorientación y asistencia médica inmediata.
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="p-4 space-y-1">
-              <h4 className="font-extrabold text-sm text-white">Rutas de Ida & Regreso</h4>
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                Gestión de circuitos (Casa → Escuela, Base → Cliente) con estados en tiempo real.
-              </p>
+
+              <div className="flex items-start gap-2.5">
+                <span className="text-emerald-400 font-black text-sm">03</span>
+                <div>
+                  <strong className="text-slate-100 block mb-0.5">Parejas, familias y amigos</strong>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Facilita la localización en tiempo real entre seres cercanos para coordinar encuentros, asistencia en pana mecánica o resguardo en viajes de carretera.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -608,6 +707,102 @@ export default function PlataformaPlus() {
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Safety Modal */}
+      {activeModal === 'locationSafety' && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span className="text-cyan-400">🧭</span> Coordinación y Ubicación Familiar (Location Safety)
+              </h3>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Permite visualizar la localización exacta de personas en el mapa para facilitar la organización cotidiana y monitorear trayectos sin invadir su privacidad.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-cyan-300 font-mono block text-xs">📡 Trazabilidad de Trayectos</strong>
+                <p className="text-slate-400 text-[11px]">Historial de desplazamientos diarios con tiempos estimados de llegada a casa o trabajo.</p>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-emerald-300 font-mono block text-xs">🛡️ Geocercas Familiares</strong>
+                <p className="text-slate-400 text-[11px]">Alertas automáticas discretas al arribar a colegios, universidades o zonas seguras.</p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Driving Safety Modal */}
+      {activeModal === 'drivingSafety' && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span className="text-amber-400">🚗</span> Seguridad en la Conducción (Driving Safety)
+              </h3>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Ofrece soporte constante con monitoreo telemático de conducción e identificación automática de colisiones y frenadas de pánico en ruta.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-amber-300 font-mono block text-xs">⚡ Sensor IMU & Fuerza G</strong>
+                <p className="text-slate-400 text-[11px]">Detección instantánea de impactos y volcamientos transmitida de inmediato a la central receptora.</p>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-rose-300 font-mono block text-xs">🚨 Despacho de Emergencias</strong>
+                <p className="text-slate-400 text-[11px]">Coordinación directa con ambulancias y Carabineros ante choque no respondido.</p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tile Tracking Modal */}
+      {activeModal === 'tileTracking' && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span className="text-emerald-400">🏷️</span> Localización de Objetos y Mascotas (Tile & Beacons)
+              </h3>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Permite enlazar y visualizar dispositivos de rastreo Tile directamente en el mapa de la app para recuperar objetos perdidos (como llaves) o rastrear mascotas.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-emerald-300 font-mono block text-xs">🐕 Rastreo de Mascotas</strong>
+                <p className="text-slate-400 text-[11px]">Placas y collares con chip telemático para ubicación rápida en caso de escape.</p>
+              </div>
+              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
+                <strong className="text-cyan-300 font-mono block text-xs">🔑 Objetos & Llaves de Vehículo</strong>
+                <p className="text-slate-400 text-[11px]">Timbre sonoro de proximidad y última posición conocida guardada en la nube.</p>
+              </div>
+            </div>
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+                Entendido
               </button>
             </div>
           </div>

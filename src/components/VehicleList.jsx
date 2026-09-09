@@ -26,10 +26,10 @@ export default function VehicleList({
         command: 'LOCATE_NOW',
         targetType: 'vehicle',
       })
-      setPingMessage(`📍 Localizando en mapa a ${vehicle.licensePlate}...`)
+      setPingMessage(`Localizando en mapa: ${vehicle.licensePlate}`)
       setTimeout(() => setPingMessage(''), 4000)
     } catch (err) {
-      setPingMessage(`⚠️ Error: ${err.response?.data?.error || err.message}`)
+      setPingMessage(`Error: ${err.response?.data?.error || err.message}`)
       setTimeout(() => setPingMessage(''), 4000)
     } finally {
       setTimeout(() => setPingingId(null), 1000)
@@ -38,65 +38,78 @@ export default function VehicleList({
 
   if (isLoading) {
     return (
-      <div className="card animate-pulse">
-        <div className="h-96 bg-gray-200 rounded"></div>
+      <div className="animate-pulse p-4">
+        <div className="h-64 bg-slate-900 rounded-xl"></div>
       </div>
     )
   }
 
   return (
-    <div className="card">
-      <div className="card-header flex items-center justify-between">
-        <span>Vehículos ({vehicles.length})</span>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+        <span className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
+          Móviles en Flota ({vehicles.length})
+        </span>
         {pingMessage && (
-          <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
+          <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/50">
             {pingMessage}
           </span>
         )}
       </div>
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+
+      <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
         {vehicles.map(vehicle => {
           const conn = getDeviceConnectionStatus(vehicle.lastUpdate)
           const isAlert = vehicle.status === 'alert'
+          const isSelected = selectedVehicle?._id === vehicle._id
 
           return (
             <div
               key={vehicle._id}
               onClick={() => handleSelect(vehicle)}
-              className={`p-3 rounded-xl cursor-pointer border-2 transition-all group relative ${isAlert
-                ? 'border-red-500 bg-red-50/60 shadow-md shadow-red-900/10'
-                : selectedVehicle?._id === vehicle._id
-                ? 'border-blue-500 bg-blue-50/50 shadow-sm'
-                : 'border-gray-200 hover:border-blue-300 hover:bg-slate-50/50'
+              className={`p-3 rounded-xl cursor-pointer border transition-all group relative ${
+                isAlert
+                  ? 'border-red-500/80 bg-red-950/30 shadow-md shadow-red-950/40'
+                  : isSelected
+                  ? 'border-cyan-500/80 bg-cyan-950/20'
+                  : 'border-slate-800/80 bg-slate-950/60 hover:border-slate-700 hover:bg-slate-900/50'
               }`}
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <h3 className="font-bold text-slate-100 flex items-center gap-2 font-mono text-sm">
                     {vehicle.licensePlate}
-                    {isAlert && <span className="text-xs bg-red-600 text-white font-black px-1.5 py-0.5 rounded animate-pulse">🚨 SOS</span>}
+                    {isAlert && (
+                      <span className="text-[9px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded uppercase animate-pulse">
+                        SOS
+                      </span>
+                    )}
                   </h3>
-                  <p className="text-xs text-gray-500">{vehicle.make} {vehicle.model}</p>
+                  <p className="text-xs text-slate-400">{vehicle.make} {vehicle.model}</p>
                   {vehicle.deviceIMEI && (
-                    <p className="text-[10px] text-blue-600 font-mono mt-0.5">
-                      📟 {vehicle.deviceIMEI} | {vehicle.simCardNumber || 'Sin SIM'}
+                    <p className="text-[10px] text-cyan-400/90 font-mono mt-0.5">
+                      IMEI: {vehicle.deviceIMEI}
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                  {/* Dynamic 3-state connection badge */}
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isAlert ? 'bg-red-600 text-white animate-pulse' : conn.badgeClass} flex items-center gap-1`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isAlert ? 'bg-white' : conn.dotClass}`}></span>
+
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                    isAlert
+                      ? 'bg-red-600 text-white animate-pulse'
+                      : conn.isOnline
+                      ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50'
+                      : 'bg-slate-900 text-slate-400 border border-slate-800'
+                  }`}>
                     {isAlert ? '🚨 EN PÁNICO' : conn.label}
                   </span>
 
-                  <div className="flex items-center gap-1 mt-1">
-                    {/* Ping / Localizar Ahora button */}
+                  <div className="flex items-center gap-1 mt-0.5">
                     <button
                       onClick={(e) => handlePingLocation(e, vehicle)}
                       disabled={pingingId === vehicle._id}
-                      title="Solicitar posición GPS inmediata al dispositivo"
-                      className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-all disabled:opacity-50"
+                      title="Solicitar telemetría GPS inmediata"
+                      className="text-[10px] font-semibold px-2 py-0.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 rounded transition-all disabled:opacity-50"
                     >
                       {pingingId === vehicle._id ? '⏳' : '📍 Ping'}
                     </button>
@@ -105,22 +118,23 @@ export default function VehicleList({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (window.confirm(`¿Eliminar el vehículo "${vehicle.licensePlate}"?`)) {
+                          if (window.confirm(`¿Eliminar la unidad "${vehicle.licensePlate}"?`)) {
                             onDeleteVehicle(vehicle._id)
                           }
                         }}
-                        title="Eliminar vehículo"
-                        className="text-xs p-1 hover:bg-red-100 rounded text-red-600 transition-all opacity-60 hover:opacity-100"
+                        title="Eliminar móvil"
+                        className="text-xs p-1 hover:bg-red-950/40 rounded text-slate-500 hover:text-red-400 transition-all"
                       >
-                        🗑️
+                        ✕
                       </button>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="mt-2 text-xs text-gray-600 flex justify-between">
-                <p>Velocidad: <span className="font-medium">{vehicle.speed || 0} km/h</span></p>
-                <p>Combustible: <span className="font-medium text-orange-600">{vehicle.sensors?.fuel || '0'}%</span></p>
+
+              <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-[11px] font-mono text-slate-400 flex justify-between">
+                <span>Velocidad: <strong className="text-slate-200">{vehicle.speed || 0} km/h</strong></span>
+                <span>Nivel Est.: <strong className="text-slate-200">{vehicle.sensors?.fuel || '100'}%</strong></span>
               </div>
             </div>
           )

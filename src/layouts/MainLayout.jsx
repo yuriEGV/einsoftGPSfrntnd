@@ -7,7 +7,7 @@ export default function MainLayout({ children, onLogout }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen bg-[#070b14] text-slate-100 overflow-hidden">
       {/* Sidebar - Desktop */}
       <Sidebar onLogout={onLogout} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 

@@ -358,59 +358,61 @@ export default function VehicleDetail() {
     : (vehicle.speed || (isAutoTracking && liveLocationStats ? liveLocationStats.speed : 0))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-200">
       <div className="flex items-center gap-3">
         <button
           onClick={() => navigate('/vehicles')}
-          className="text-sm text-gray-500 hover:text-gray-800 transition-colors"
+          className="text-xs font-semibold text-slate-400 hover:text-white transition-colors"
         >
-          ← Vehículos
+          ← Volver a Flota de Vehículos
         </button>
       </div>
 
       {/* ===== 🚨 BANNER DE ALERTA DE EMERGENCIA / PÁNICO ===== */}
       {isAlert && (
-        <div className="bg-gradient-to-r from-red-600 to-rose-700 text-white p-5 rounded-2xl shadow-xl shadow-red-900/30 flex flex-col md:flex-row items-center justify-between gap-4 border-2 border-red-400 animate-pulse">
+        <div className="bg-[#1a070c] border border-red-800/80 text-white p-5 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+            <div className="w-12 h-12 bg-red-950 border border-red-800 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
               🚨
             </div>
             <div>
-              <h2 className="text-lg font-black tracking-wide">¡ALERTA DE PÁNICO SOS ACTIVA EN ESTA UNIDAD!</h2>
-              <p className="text-sm text-red-100 font-medium">
-                El conductor o sensor ha activado una señal de auxilio crítico. La unidad requiere atención inmediata.
+              <h2 className="text-base font-black tracking-wide text-red-200">¡ALERTA DE PÁNICO SOS ACTIVA EN ESTA UNIDAD!</h2>
+              <p className="text-xs text-slate-300">
+                El conductor o sensor telemático ha disparado una señal de emergencia crítica. Requiere atención inmediata.
               </p>
             </div>
           </div>
           <button
             onClick={() => resolveAlertMutation.mutate()}
             disabled={resolveAlertMutation.isLoading}
-            className="px-5 py-2.5 bg-white text-red-700 hover:bg-red-50 font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all flex-shrink-0"
+            className="px-4 py-2 bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-red-600 flex-shrink-0"
           >
-            {resolveAlertMutation.isLoading ? 'Atendiendo...' : '✓ Atender y Resolver Emergencia'}
+            {resolveAlertMutation.isLoading ? 'Atendiendo...' : '✓ Resolver Emergencia'}
           </button>
         </div>
       )}
 
       {/* ===== INFO PRINCIPAL ===== */}
-      <div className={`card overflow-hidden ${isAlert ? 'border-2 border-red-500 shadow-xl shadow-red-900/10' : ''}`}>
+      <div className={`card ${isAlert ? 'border border-red-500/80' : ''}`}>
         <div className="card-header flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🚗</span>
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl">
+              🚗
+            </div>
             <div>
-              <h1 className="text-xl font-bold">{vehicle.licensePlate}</h1>
-              <p className="text-sm text-gray-500 font-normal">{vehicle.make} {vehicle.model} {vehicle.year && `• ${vehicle.year}`}</p>
+              <h1 className="text-lg font-black font-mono text-white">{vehicle.licensePlate}</h1>
+              <p className="text-xs text-slate-400 font-normal">{vehicle.make} {vehicle.model} {vehicle.year && `• ${vehicle.year}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${isEditing
-                ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-900/20'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isEditing
+                ? 'bg-slate-800 text-slate-300 border-slate-700'
+                : 'bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-white border-slate-700'
                 }`}
             >
-              {isEditing ? '✕ Cancelar' : '✏️ Editar Vehículo'}
+              {isEditing ? '✕ Cancelar' : '✏️ Editar Ficha'}
             </button>
             <button
               onClick={() => {
@@ -419,7 +421,7 @@ export default function VehicleDetail() {
                 }
               }}
               disabled={deleteVehicleMutation.isLoading}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+              className="px-3 py-1.5 bg-slate-900 hover:bg-red-950/40 text-slate-400 hover:text-red-300 border border-slate-800 hover:border-red-900/50 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
             >
               {deleteVehicleMutation.isLoading ? 'Eliminando...' : '🗑️ Eliminar'}
             </button>
@@ -436,7 +438,7 @@ export default function VehicleDetail() {
                 year: editForm.year ? Number(editForm.year) : undefined,
               })
             }}
-            className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs"
           >
             {[
               { label: 'Patente', key: 'licensePlate', placeholder: 'ABCD-12', required: true },
@@ -445,15 +447,15 @@ export default function VehicleDetail() {
               { label: 'Año', key: 'year', placeholder: '2024', type: 'number' },
               { label: 'Color', key: 'color', placeholder: 'Ej: Blanco' },
             ].map(({ label, key, placeholder, required, type }) => (
-              <div key={key}>
-                <label className="block text-[10px] font-black text-blue-700 uppercase mb-1">{label}</label>
+              <div key={key} className="space-y-1">
+                <label className="block text-[11px] font-semibold text-slate-400 uppercase">{label}</label>
                 <input
                   type={type || 'text'}
                   value={editForm[key]}
                   onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
                   placeholder={placeholder}
                   required={required}
-                  className="w-full border-2 border-blue-100 rounded-xl px-4 py-2 focus:border-blue-500 outline-none transition-all text-sm"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none transition text-xs"
                 />
               </div>
             ))}
@@ -461,50 +463,53 @@ export default function VehicleDetail() {
               <button
                 type="submit"
                 disabled={editVehicleMutation.isLoading}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg disabled:opacity-50 transition-all"
+                className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-xl font-bold uppercase text-xs tracking-wider transition-all disabled:opacity-50"
               >
-                {editVehicleMutation.isLoading ? 'Guardando...' : '✓ Guardar Cambios'}
+                {editVehicleMutation.isLoading ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </div>
             {editVehicleMutation.isError && (
-              <p className="col-span-full text-red-600 text-xs mt-1">
+              <p className="col-span-full text-red-400 text-xs mt-1">
                 Error: {editVehicleMutation.error?.response?.data?.error || 'No se pudo guardar'}
               </p>
             )}
           </form>
         ) : (
           /* ===== VISTA DE DATOS ===== */
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 text-xs">
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-2">Estado</h2>
-              <p className="text-sm">
-                <span className={`font-bold px-2.5 py-1 rounded-full text-xs uppercase tracking-wide inline-flex items-center gap-1 ${isAlert ? 'bg-red-600 text-white animate-pulse' : vehicle.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'}`}>
-                  {isAlert ? '🚨 ¡EN PÁNICO / EMERGENCIA!' : vehicle.status === 'active' ? '🟢 Activo (En ruta)' : '⚪ Detenido'}
+              <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Estado Operativo</h2>
+              <p>
+                <span className={`font-bold px-2 py-0.5 rounded text-[10px] uppercase font-mono tracking-wider inline-flex items-center gap-1 ${
+                  isAlert
+                    ? 'bg-red-950 text-red-300 border border-red-800/80 animate-pulse'
+                    : vehicle.status === 'active'
+                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}>
+                  {isAlert ? '🚨 ¡EN PÁNICO / EMERGENCIA!' : vehicle.status === 'active' ? '● En Ruta' : '● Detenido'}
                 </span>
               </p>
-              <p className="text-sm text-gray-600 mt-1">Velocidad: <span className="font-medium">{speed} km/h{isSmartTag && speed === 0 ? ' (detenido)' : ''}</span></p>
-              <p className="text-sm text-gray-600 mt-1">Odómetro: <span className="font-medium">{odometer} km</span></p>
+              <p className="text-slate-400 mt-2 font-mono">Velocidad: <span className="text-slate-200 font-bold">{speed} km/h</span></p>
+              <p className="text-slate-400 mt-1 font-mono">Odómetro: <span className="text-slate-200 font-bold">{odometer} km</span></p>
               {!isSmartTag && fuelLevel != null && (
-                <p className="text-sm text-gray-600 mt-1">Combustible: <span className={`font-bold ${fuelLevel <= 15 ? 'text-red-600' : 'text-emerald-600'}`}>{fuelLevel}%</span></p>
-              )}
-              {isSmartTag && (
-                <p className="text-xs text-gray-400 mt-1">🏷️ Smart Tag — sin sensores OBD2</p>
+                <p className="text-slate-400 mt-1 font-mono">Combustible: <span className="text-slate-200 font-bold">{fuelLevel}%</span></p>
               )}
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-2">Conductor</h2>
-              <p className="text-sm text-gray-600">{vehicle.assignedDriver || (vehicle.driver ? vehicle.driver.name : 'Sin asignar')}</p>
+              <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Conductor Asignado</h2>
+              <p className="text-slate-200 font-semibold">{vehicle.assignedDriver || (vehicle.driver ? vehicle.driver.name : 'Sin asignar')}</p>
               {vehicle.driver && (
-                <p className="text-xs text-gray-500 mt-1">{vehicle.driver.email}</p>
+                <p className="text-slate-400 font-mono mt-1">{vehicle.driver.email}</p>
               )}
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-gray-700 mb-2">Ubicación</h2>
-              <p className="text-sm text-gray-600">{vehicle.location?.address || 'Sin dirección'}</p>
-              <p className="text-xs text-gray-500 mt-1">{vehicle.location?.city} {vehicle.location?.country}</p>
+              <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Última Posición</h2>
+              <p className="text-slate-200">{vehicle.location?.address || 'Sin dirección reportada'}</p>
+              <p className="text-slate-400 mt-0.5 font-mono">{vehicle.location?.city} {vehicle.location?.country}</p>
               {uptime !== null && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {uptime < 1 ? '✅ Activo ahora' : uptime < 60 ? `Hace ${uptime} min` : `Hace ${Math.round(uptime/60)}h`}
+                <p className="text-slate-500 font-mono mt-1 text-[11px]">
+                  {uptime < 1 ? '● Conectado ahora' : uptime < 60 ? `Hace ${uptime} min` : `Hace ${Math.round(uptime/60)}h`}
                 </p>
               )}
             </div>
@@ -513,44 +518,40 @@ export default function VehicleDetail() {
       </div>
 
       {/* ===== MÉTRICAS RÁPIDAS ===== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         {[
           {
             icon: '⚡',
             label: 'Velocidad Actual',
             value: isSmartTag && speed === 0 ? '0 km/h' : `${speed} km/h`,
-            sublabel: isSmartTag ? 'Smart Tag — sin acelerómetro' : null,
-            color: speed > 100 ? 'text-red-600' : speed > 60 ? 'text-orange-600' : 'text-emerald-600',
-            bg: 'from-emerald-50 to-teal-50',
+            sublabel: isSmartTag ? 'Smart Tag' : null,
+            color: speed > 100 ? 'text-red-400' : speed > 60 ? 'text-amber-400' : 'text-cyan-400',
           },
           {
             icon: '📍',
-            label: 'Ciudad',
+            label: 'Ubicación / Ciudad',
             value: vehicle.location?.city || 'Desconocida',
-            color: 'text-blue-700',
-            bg: 'from-blue-50 to-indigo-50',
+            color: 'text-slate-200',
           },
           {
             icon: '⛽',
-            label: 'Combustible',
+            label: 'Nivel Combustible',
             value: isSmartTag ? 'N/A' : (fuelLevel != null ? `${fuelLevel}%` : 'N/A'),
-            sublabel: isSmartTag ? 'Smart Tag sin sensor' : null,
-            color: (!isSmartTag && fuelLevel != null && fuelLevel <= 15) ? 'text-red-600' : isSmartTag ? 'text-gray-400' : 'text-purple-700',
-            bg: 'from-purple-50 to-pink-50',
+            sublabel: isSmartTag ? 'Sin sensor OBD' : null,
+            color: (!isSmartTag && fuelLevel != null && fuelLevel <= 15) ? 'text-red-400' : 'text-slate-200',
           },
           {
             icon: '🛣️',
-            label: 'Odómetro',
+            label: 'Odómetro Acumulado',
             value: `${odometer.toLocaleString()} km`,
-            color: 'text-slate-700',
-            bg: 'from-slate-50 to-gray-50',
+            color: 'text-slate-200',
           },
-        ].map(({ icon, label, value, sublabel, color, bg }) => (
-          <div key={label} className={`bg-gradient-to-br ${bg} border border-gray-100 rounded-2xl p-4 shadow-sm`}>
-            <p className="text-2xl mb-1">{icon}</p>
-            <p className="text-xs text-gray-500 font-medium">{label}</p>
-            <p className={`text-lg font-black mt-1 ${color}`}>{value}</p>
-            {sublabel && <p className="text-[9px] text-gray-400 mt-0.5 font-medium">{sublabel}</p>}
+        ].map(({ icon, label, value, sublabel, color }) => (
+          <div key={label} className="bg-[#0a0f1d] border border-slate-800 rounded-2xl p-4 shadow-sm space-y-1">
+            <span className="text-lg block">{icon}</span>
+            <span className="text-[10px] font-mono text-slate-400 uppercase block tracking-wider">{label}</span>
+            <span className={`text-base font-mono font-black ${color} block`}>{value}</span>
+            {sublabel && <span className="text-[9px] text-slate-500 font-mono block">{sublabel}</span>}
           </div>
         ))}
       </div>
