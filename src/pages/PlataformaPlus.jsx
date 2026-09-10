@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../services/api'
 import SosProtocolModal from '../components/SosProtocolModal'
+import SosConfigModal from '../components/SosConfigModal'
 import FuelCutModal from '../components/FuelCutModal'
 import TollCalculatorModal from '../components/TollCalculatorModal'
 import CommunityAlertsModal from '../components/CommunityAlertsModal'
@@ -10,10 +11,12 @@ import PlannedRoutesModal from '../components/PlannedRoutesModal'
 
 export default function PlataformaPlus() {
   const [overview, setOverview] = useState(null)
-  const [activeModal, setActiveModal] = useState(null) // 'sos' | 'fuelCut' | 'tolls' | 'community' | 'certificate' | 'routes' | 'camera' | 'maintenance' | 'ranking'
+  const [activeModal, setActiveModal] = useState(null) // 'sos' | 'sosConfig' | 'fuelCut' | 'tolls' | 'community' | 'certificate' | 'routes' | 'camera' | 'maintenance' | 'ranking'
   const [rankingData, setRankingData] = useState([])
   const [maintenanceData, setMaintenanceData] = useState(null)
   const [cameraActive, setCameraActive] = useState(false)
+  const [fleetVehicles, setFleetVehicles] = useState([])
+  const [sosConfig, setSosConfig] = useState(null)
   const [selectedVehicle, setSelectedVehicle] = useState({ plate: 'ABCD-12', brand: 'Toyota', model: 'Hilux 4x4', speed: 0, motorCutStatus: false })
   const navigate = useNavigate()
 
@@ -76,7 +79,30 @@ export default function PlataformaPlus() {
     loadOverview()
     loadRanking()
     loadMaintenance()
+    loadFleet()
+    loadSosSettings()
   }, [])
+
+  const loadFleet = async () => {
+    try {
+      const res = await apiClient.get('/vehicles')
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setFleetVehicles(res.data)
+        setSelectedVehicle(res.data[0])
+      }
+    } catch (e) {
+      console.warn('Fleet fallback:', e)
+    }
+  }
+
+  const loadSosSettings = async () => {
+    try {
+      const local = localStorage.getItem('einsoft_sos_config')
+      if (local) setSosConfig(JSON.parse(local))
+      const res = await apiClient.get('/plataforma-plus/sos-config')
+      if (res.data?.config) setSosConfig(res.data.config)
+    } catch (_) {}
+  }
 
   const loadOverview = async () => {
     try {
@@ -240,7 +266,7 @@ export default function PlataformaPlus() {
       title: 'Llamadas automáticas',
       icon: '📞',
       description: 'Transforma eventos críticos específicos en llamadas con mensaje grabado: corte de batería y remolque.',
-      action: () => setActiveModal('sos'),
+      action: () => setActiveModal('sosConfig'),
       badge: 'VOZ 24/7',
     },
     {
@@ -306,22 +332,42 @@ export default function PlataformaPlus() {
               </p>
             </div>
 
-            {/* Quick Emergency Triggers */}
-            <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            {/* Comandos Tácticos & Seguridad de Flota */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Botón 1: Corte de Combustible de Flota */}
               <button
+                type="button"
+                onClick={() => setActiveModal('fuelCut')}
+                className="px-4 py-3 bg-slate-900/90 hover:bg-slate-800 border border-rose-500/40 text-rose-300 font-extrabold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 text-xs sm:text-sm group"
+                title="Selecciona y comanda el cortacorriente de cualquier vehículo de la flota"
+              >
+                <span className="text-base group-hover:scale-110 transition-transform">⛔</span>
+                <span>Corte Combustible</span>
+              </button>
+
+              {/* Botón 2: Configuración SOS Previa */}
+              <button
+                type="button"
+                onClick={() => setActiveModal('sosConfig')}
+                className={`px-3.5 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 border ${
+                  sosConfig?.emergencyPhone
+                    ? 'bg-slate-900/80 border-cyan-500/30 text-cyan-300 hover:bg-slate-800'
+                    : 'bg-amber-500/20 border-amber-500/50 text-amber-300 hover:bg-amber-500/30 animate-pulse'
+                }`}
+                title="Configura con antelación el número de teléfono y central de emergencia"
+              >
+                <span>⚙️</span>
+                <span>{sosConfig?.emergencyPhone ? 'Configurar SOS' : '⚠️ Configurar Teléfono SOS'}</span>
+              </button>
+
+              {/* Botón 3: Botón SOS 3s */}
+              <button
+                type="button"
                 onClick={() => setActiveModal('sos')}
-                className="px-5 py-3.5 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black rounded-2xl shadow-xl shadow-red-900/40 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95 text-xs sm:text-sm uppercase tracking-wider"
+                className="px-5 py-3 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black rounded-2xl shadow-xl shadow-red-900/40 flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95 text-xs sm:text-sm uppercase tracking-wider"
               >
                 <span className="text-lg">🚨</span>
                 <span>Botón SOS 3s</span>
-              </button>
-
-              <button
-                onClick={() => setActiveModal('fuelCut')}
-                className="px-4 py-3.5 bg-slate-900/90 hover:bg-slate-800 border border-rose-500/40 text-rose-300 font-extrabold rounded-2xl shadow-lg flex items-center gap-2 transition-all active:scale-95 text-xs sm:text-sm"
-              >
-                <span>⛔</span>
-                <span>Corte Combustible</span>
               </button>
             </div>
           </div>
@@ -1285,17 +1331,34 @@ export default function PlataformaPlus() {
       )}
 
       {/* Modales Interactivos del Ecosistema */}
+      <SosConfigModal
+        isOpen={activeModal === 'sosConfig'}
+        onClose={() => setActiveModal(null)}
+        onSaveConfig={(newCfg) => setSosConfig(newCfg)}
+      />
+
       <SosProtocolModal
         isOpen={activeModal === 'sos'}
         onClose={() => setActiveModal(null)}
         vehicle={selectedVehicle}
+        onOpenConfig={() => setActiveModal('sosConfig')}
       />
 
       <FuelCutModal
         isOpen={activeModal === 'fuelCut'}
         onClose={() => setActiveModal(null)}
         vehicle={selectedVehicle}
-        onStatusChange={(newStatus) => setSelectedVehicle({ ...selectedVehicle, motorCutStatus: newStatus })}
+        vehicles={fleetVehicles}
+        onStatusChange={(updatedVehicle, newStatus) => {
+          setSelectedVehicle(updatedVehicle)
+          setFleetVehicles((prev) =>
+            prev.map((v) =>
+              v._id === updatedVehicle._id || v.plate === updatedVehicle.plate
+                ? { ...v, motorCutStatus: newStatus }
+                : v
+            )
+          )
+        }}
       />
 
       <TollCalculatorModal
