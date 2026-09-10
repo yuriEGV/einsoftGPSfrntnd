@@ -7,6 +7,7 @@ import VehicleList from '../components/VehicleList'
 import AlertsPanel from '../components/AlertsPanel'
 import { setupSocketConnection } from '../services/socket'
 import { getPersonColor } from './PeopleTracker'
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -17,6 +18,21 @@ export default function Dashboard() {
   const [socket, setSocket] = useState(null)
   const [realTimeData, setRealTimeData] = useState({})
 
+  // Subscription Limits & Freemium State
+  const {
+    isPaid,
+    isBlocked,
+    queriesUsed,
+    dailyLimit,
+    remainingQueries,
+    consumeQuery,
+    isConsuming,
+    refetchUsage,
+    planName,
+  } = useSubscriptionLimits()
+  const [queryErrorMsg, setQueryErrorMsg] = useState('')
+  const [querySuccessMsg, setQuerySuccessMsg] = useState('')
+
   // Filter States
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -25,20 +41,22 @@ export default function Dashboard() {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const canViewCompanies = ['superadmin', 'admin', 'supervisor', 'fleet_manager', 'auditor'].includes(user.role)
 
-  // 1. Fetch Vehicles
-  const { data: vehicles = [], isLoading: loadingVehicles } = useQuery('vehicles', async () => {
+  // 1. Fetch Vehicles (en modo gratuito no auto-pollea para no consumir la consulta diaria)
+  const { data: vehicles = [], isLoading: loadingVehicles, refetch: refetchVehicles } = useQuery('vehicles', async () => {
     const response = await apiClient.get('/vehicles')
     return response.data || []
   }, {
-    refetchInterval: 5000,
+    refetchInterval: isPaid ? 5000 : false,
+    enabled: isPaid || !isBlocked,
   })
 
   // 2. Fetch People Trackers
-  const { data: people = [], isLoading: loadingPeople } = useQuery('peopleTrackers', async () => {
+  const { data: people = [], isLoading: loadingPeople, refetch: refetchPeople } = useQuery('peopleTrackers', async () => {
     const response = await apiClient.get('/people-trackers')
     return response.data || []
   }, {
-    refetchInterval: 12000,
+    refetchInterval: isPaid ? 12000 : false,
+    enabled: isPaid || !isBlocked,
   })
 
   // 3. Fetch Companies (Admin / Superadmin / Supervisor)
@@ -184,8 +202,87 @@ export default function Dashboard() {
     setSearchQuery('')
   }
 
+  const handleManualLocationQuery = async () => {
+    setQueryErrorMsg('')
+    setQuerySuccessMsg('')
+    try {
+      await consumeQuery()
+      await Promise.all([refetchVehicles(), refetchPeople()])
+      setQuerySuccessMsg('Ubicación satelital actualizada exitosamente. (1 consulta diaria consumida)')
+      setTimeout(() => setQuerySuccessMsg(''), 6000)
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Límite de 1 consulta diaria alcanzado.'
+      setQueryErrorMsg(msg)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* ── Freemium Demo Banner & Paywall Alert ── */}
+      {!isPaid && (
+        <div className={`rounded-2xl p-4 border transition-all shadow-xl ${
+          isBlocked
+            ? 'bg-gradient-to-r from-red-950/80 via-slate-900 to-slate-950 border-red-500/50 shadow-red-950/40'
+            : 'bg-gradient-to-r from-slate-900 via-indigo-950/50 to-slate-950 border-cyan-500/40 shadow-cyan-950/30'
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start md:items-center gap-3.5">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 border shadow-inner ${
+                isBlocked ? 'bg-red-500/20 border-red-500/40 text-red-400' : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
+              }`}>
+                {isBlocked ? '🚨' : '📡'}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                    Modo Demo / Servicio Gratuito Limitado
+                  </span>
+                  <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border uppercase ${
+                    isBlocked ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  }`}>
+                    {queriesUsed}/1 Consulta Diaria Utilizada
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
+                    Máx. 1 Unidad
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  {isBlocked
+                    ? 'Has utilizado la única consulta diaria permitida en el servicio gratuito. El sistema se encuentra bloqueado hasta activar una membresía.'
+                    : 'Cuentas con 1 consulta satelital diaria para probar el sistema. Para rastreo continuo en tiempo real 24/7 y alertas, activa tu membresía.'}
+                </p>
+                {querySuccessMsg && (
+                  <p className="text-xs font-bold text-emerald-400 animate-in fade-in">{querySuccessMsg}</p>
+                )}
+                {queryErrorMsg && (
+                  <p className="text-xs font-bold text-red-400 animate-in fade-in">{queryErrorMsg}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              {!isBlocked && (
+                <button
+                  onClick={handleManualLocationQuery}
+                  disabled={isConsuming}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-bold rounded-xl flex items-center gap-2 transition shadow-sm disabled:opacity-50"
+                >
+                  <span>{isConsuming ? '⏳' : '📡'}</span>
+                  <span>{isConsuming ? 'Consultando...' : 'Consultar Ubicación (1/1 hoy)'}</span>
+                </button>
+              )}
+              <button
+                onClick={() => navigate('/payments')}
+                className="px-4 py-2.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-black rounded-xl flex items-center gap-2 shadow-lg shadow-cyan-900/40 transition transform active:scale-95"
+              >
+                <span>💎</span>
+                <span>{isBlocked ? 'Ver Planes & Desbloquear' : 'Activar Membresía 24/7'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -502,9 +599,87 @@ export default function Dashboard() {
             isLoading={loadingVehicles}
           />
 
-          <AlertsPanel alerts={filteredAlerts} />
+          {isPaid ? (
+            <AlertsPanel alerts={filteredAlerts} />
+          ) : (
+            <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-5 text-center space-y-3 shadow-lg">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-2xl">
+                🛡️
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white">Centro de Alertas & SOC</h3>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Las alertas automáticas por colisión, botón de pánico SOS 3s y geocercas perimetrales están reservadas para usuarios con membresía.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/payments')}
+                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-xl border border-slate-700 transition"
+              >
+                Activar Monitoreo SOC 24/7
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* ── Modal de Bloqueo Paywall (No descartable tras 1 consulta diaria) ── */}
+      {!isPaid && isBlocked && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#090d16] border border-red-500/40 rounded-3xl max-w-lg w-full p-6 md:p-8 text-center shadow-2xl space-y-6 relative overflow-hidden">
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-4xl shadow-inner animate-pulse">
+              🔒
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-500/20 text-red-300 border border-red-500/40">
+                LÍMITE DIARIO DE CONSULTAS ALCANZADO (1/1)
+              </span>
+              <h2 className="text-2xl font-black text-white tracking-tight">
+                El Monitoreo Gratuito Ha Llegado al Límite
+              </h2>
+              <p className="text-xs md:text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
+                Has utilizado la única consulta diaria permitida en el plan demo para tu vehículo o teléfono.
+                Para acceder a <strong>rastreo satelital continuo 24/7</strong>, historial ilimitado, alertas de seguridad y corte remoto de motor, adquiere una membresía.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 text-left space-y-2.5">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Al adquirir una membresía obtienes:
+              </div>
+              <ul className="text-xs text-slate-300 space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>Rastreo satelital ininterrumpido en tiempo real (cada 4 seg.)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>Consultas y peticiones ilimitadas todos los días del mes</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>Acceso al Centro de Alertas SOS, Geocercas y Reportes</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>Plataforma Plus & Certificación Ley 21.171</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => navigate('/payments')}
+                className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-cyan-900/40 transition transform active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>💎</span>
+                <span>Ver Planes y Activar Membresía GPS</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

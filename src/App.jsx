@@ -24,6 +24,7 @@ import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentFailed from './pages/PaymentFailed'
 import PaymentPending from './pages/PaymentPending'
 import MainLayout from './layouts/MainLayout'
+import { useSubscriptionLimits } from './hooks/useSubscriptionLimits'
 import './index.css'
 
 const queryClient = new QueryClient({
@@ -43,6 +44,16 @@ function getNormalizedRole(user) {
   if (r === 'fleet_manager') return 'admin'
   if (r === 'independent') return 'mobile_gps_user'
   return r
+}
+
+// ─── PaidFeatureGuard: bloquea módulos avanzados si el usuario está en plan gratuito ─
+function PaidFeatureGuard({ children, fallback = '/payments' }) {
+  const { isPaid, isLoading } = useSubscriptionLimits()
+  if (isLoading) return null
+  if (!isPaid) {
+    return <Navigate to={fallback} replace />
+  }
+  return children
 }
 
 // ─── RoleGuard: redirige si el usuario no tiene el rol requerido ──────────────
@@ -129,13 +140,18 @@ function App() {
                     {/* Panel principal */}
                     <Route path="/" element={<Dashboard />} />
 
-                    {/* Empresas/Clientes — Superadmin y Admin */}
+                    {/* Panel principal */}
+                    <Route path="/" element={<Dashboard />} />
+
+                    {/* Empresas/Clientes — Requiere membresía y rol admin/superadmin */}
                     <Route
                       path="/companies"
                       element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin']}>
-                          <Companies />
-                        </RoleGuard>
+                        <PaidFeatureGuard>
+                          <RoleGuard allowedRoles={['superadmin', 'admin']}>
+                            <Companies />
+                          </RoleGuard>
+                        </PaidFeatureGuard>
                       }
                     />
 
@@ -167,43 +183,51 @@ function App() {
                       }
                     />
 
-                    {/* Reportes */}
+                    {/* Reportes — Módulo Exclusivo con Membresía */}
                     <Route
                       path="/reports"
                       element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent']}>
-                          <Reports />
-                        </RoleGuard>
+                        <PaidFeatureGuard>
+                          <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent']}>
+                            <Reports />
+                          </RoleGuard>
+                        </PaidFeatureGuard>
                       }
                     />
 
-                    {/* Alertas */}
+                    {/* Centro de Alertas — Módulo Exclusivo con Membresía */}
                     <Route
                       path="/alerts"
                       element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
-                          <Alerts />
-                        </RoleGuard>
+                        <PaidFeatureGuard>
+                          <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
+                            <Alerts />
+                          </RoleGuard>
+                        </PaidFeatureGuard>
                       }
                     />
 
-                    {/* Geocercas */}
+                    {/* Geocercas de Seguridad — Módulo Exclusivo con Membresía */}
                     <Route
                       path="/geofences"
                       element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
-                          <Geofences />
-                        </RoleGuard>
+                        <PaidFeatureGuard>
+                          <RoleGuard allowedRoles={['superadmin', 'admin', 'operator', 'supervisor', 'auditor', 'fleet_manager', 'independent']}>
+                            <Geofences />
+                          </RoleGuard>
+                        </PaidFeatureGuard>
                       }
                     />
 
-                    {/* Usuarios */}
+                    {/* Control de Usuarios */}
                     <Route
                       path="/users"
                       element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin', 'supervisor', 'auditor', 'fleet_manager']} fallback="/">
-                          <Users />
-                        </RoleGuard>
+                        <PaidFeatureGuard>
+                          <RoleGuard allowedRoles={['superadmin', 'admin', 'supervisor', 'auditor', 'fleet_manager']} fallback="/">
+                            <Users />
+                          </RoleGuard>
+                        </PaidFeatureGuard>
                       }
                     />
 
@@ -223,28 +247,36 @@ function App() {
                       element={<DownloadApp />}
                     />
 
-                    {/* Pagos y Suscripcion */}
+                    {/* Pagos y Suscripción — Abierto a TODOS los usuarios para contratación y desbloqueo */}
                     <Route
                       path="/payments"
-                      element={
-                        <RoleGuard allowedRoles={['superadmin', 'admin', 'fleet_manager']} fallback="/">
-                          <Payments />
-                        </RoleGuard>
-                      }
+                      element={<Payments />}
                     />
 
-                    {/* Plataforma Plus - Ecosistema Telemático 2026 */}
+                    {/* Plataforma Plus — Exclusivo para Clientes con Membresía */}
                     <Route
                       path="/plataforma-plus"
-                      element={<PlataformaPlus />}
+                      element={
+                        <PaidFeatureGuard>
+                          <PlataformaPlus />
+                        </PaidFeatureGuard>
+                      }
                     />
                     <Route
                       path="/tolls"
-                      element={<PlataformaPlus />}
+                      element={
+                        <PaidFeatureGuard>
+                          <PlataformaPlus />
+                        </PaidFeatureGuard>
+                      }
                     />
                     <Route
                       path="/warranties-certificate"
-                      element={<PlataformaPlus />}
+                      element={
+                        <PaidFeatureGuard>
+                          <PlataformaPlus />
+                        </PaidFeatureGuard>
+                      }
                     />
 
                     {/* Fallback */}

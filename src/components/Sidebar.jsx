@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits'
 
 // ─── Menú por rol (Sober Security Enterprise Layout) ─────────────────────────
 const ALL_MENU_ITEMS = [
@@ -69,7 +70,7 @@ const ALL_MENU_ITEMS = [
     label: 'Suscripción & Facturación',
     icon: '💳',
     path: '/payments',
-    allowedRoles: ['superadmin', 'admin', 'fleet_manager'],
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
   },
   {
     label: 'EYE-NODE 360 (App)',
@@ -89,7 +90,7 @@ const ROLE_DISPLAY = {
   supervisor: { label: 'Supervisor Operativo', badge: 'bg-slate-800 text-slate-200 border-slate-700' },
   driver: { label: 'Conductor Asignado', badge: 'bg-slate-800 text-amber-300 border-amber-800/40' },
   mobile_gps_user: { label: 'Nodo Celular GPS', badge: 'bg-slate-800 text-emerald-300 border-emerald-800/40' },
-  client: { label: 'Cliente Corporativo', badge: 'bg-slate-800 text-slate-300 border-slate-700' },
+  client: { label: 'Cliente de Consulta', badge: 'bg-slate-800 text-slate-300 border-slate-700' },
   auditor: { label: 'Auditor de Seguridad', badge: 'bg-slate-800 text-slate-300 border-slate-700' },
   fleet_manager: { label: 'Gestor de Flota', badge: 'bg-slate-800 text-slate-200 border-slate-700' },
   independent: { label: 'Nodo Celular GPS', badge: 'bg-slate-800 text-emerald-300 border-emerald-800/40' },
@@ -98,6 +99,7 @@ const ROLE_DISPLAY = {
 export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isPaid, planName, queriesUsed, dailyLimit, isBlocked } = useSubscriptionLimits()
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   let role = user.role || 'client'
@@ -106,8 +108,23 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
   
   const roleInfo = ROLE_DISPLAY[user.role] || ROLE_DISPLAY[role] || ROLE_DISPLAY.client
 
-  // Filtrar menú estrictamente por rol
-  const menuItems = ALL_MENU_ITEMS.filter(item => item.allowedRoles.includes(user.role) || item.allowedRoles.includes(role))
+  // Módulos que se ocultan en modo gratuito / demo según solicitud
+  const HIDDEN_IN_FREE_MODE = ['/alerts', '/geofences', '/reports', '/plataforma-plus', '/companies', '/users']
+
+  // Filtrar menú estrictamente por rol y suscripción
+  let menuItems = ALL_MENU_ITEMS.filter(item => item.allowedRoles.includes(user.role) || item.allowedRoles.includes(role))
+
+  if (!isPaid) {
+    menuItems = menuItems.filter(item => !HIDDEN_IN_FREE_MODE.includes(item.path)).map(item => {
+      if (item.path === '/payments') {
+        return { ...item, badge: isBlocked ? '🚨 BLOQUEADO' : '💎 PLANES' }
+      }
+      if (item.path === '/settings') {
+        return { ...item, badge: '1 MÓVIL' }
+      }
+      return item
+    })
+  }
 
   const handleLogoutClick = () => {
     if (typeof onLogout === 'function') onLogout()
@@ -160,6 +177,46 @@ export default function Sidebar({ onLogout, isOpen, setIsOpen }) {
                 {roleInfo.label}
               </span>
             </div>
+
+            {/* Subscription & Daily Usage Widget */}
+            {!isPaid ? (
+              <div className="mt-2 pt-2 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-[10px] font-bold">
+                  <span className="text-amber-400 flex items-center gap-1">
+                    <span>⚡</span> Modo Gratuito
+                  </span>
+                  <span className={`font-mono px-1.5 py-0.2 rounded text-[9px] ${
+                    isBlocked ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-slate-800 text-slate-300'
+                  }`}>
+                    {queriesUsed}/1 HOY
+                  </span>
+                </div>
+                <div className="w-full bg-slate-950 rounded-full h-1.5 mt-1.5 overflow-hidden border border-slate-800">
+                  <div
+                    className={`h-full transition-all duration-300 ${isBlocked ? 'bg-red-500' : 'bg-cyan-400'}`}
+                    style={{ width: `${Math.min(100, queriesUsed * 100)}%` }}
+                  />
+                </div>
+                <Link
+                  to="/payments"
+                  onClick={() => setIsOpen(false)}
+                  className="mt-1.5 text-[10px] font-bold text-cyan-400 hover:text-cyan-300 flex items-center justify-between transition-colors pt-0.5"
+                >
+                  <span>{isBlocked ? '🚨 Límite alcanzado' : '💎 Activar Ilimitado'}</span>
+                  <span>→</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-2 pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Membresía 24/7
+                </span>
+                <span className="text-[9px] font-mono text-slate-400 uppercase truncate max-w-[90px]">
+                  {planName || 'ACTIVA'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

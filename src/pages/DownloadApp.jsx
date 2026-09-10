@@ -9,7 +9,7 @@ export default function DownloadApp() {
         <div className="relative z-10 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider">
-              ⚡ PLATAFORMA PLUS // APK v2.0.0 (Build 200)
+              ⚡ PLATAFORMA PLUS // APK v2.1.0 (Build 201)
             </span>
             <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
               🟢 Verificado & Certificado Ley 21.171
@@ -17,7 +17,7 @@ export default function DownloadApp() {
           </div>
 
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">
-            EINSoft GPS & EYE-NODE v2.0.0
+            EINSoft GPS & EYE-NODE v2.1.0
           </h1>
 
           <p className="text-sm md:text-base text-slate-300 max-w-3xl leading-relaxed">
@@ -29,7 +29,7 @@ export default function DownloadApp() {
       {/* Showcase Visual Gallery */}
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest font-mono flex items-center gap-2">
-          <span>📸</span> Pilares Telemáticos y Funcionalidades v2.0.0
+          <span>📸</span> Pilares Telemáticos y Funcionalidades v2.1.0
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -136,7 +136,7 @@ export default function DownloadApp() {
             </div>
             <div>
               <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-1">
-                Versión Oficial 2.0.0
+                Versión Oficial 2.1.0 (Build 201)
               </div>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                 Descargar APK Android Oficial
@@ -163,7 +163,7 @@ export default function DownloadApp() {
               download="eyenode.apk"
               className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar eyenode.apk v2.0.0 (Nativo Android)
+              📥 Descargar eyenode.apk v2.1.0 (Nativo Android)
             </a>
 
             <a

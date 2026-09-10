@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
+import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../services/api'
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits'
 
 export default function Settings() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { isPaid } = useSubscriptionLimits()
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' })
   const [activeTab, setActiveTab] = useState('account') // 'account' | 'telegram' | 'hardware'
@@ -85,6 +89,29 @@ export default function Settings() {
           VERSION: <span className="text-slate-200 font-bold">v2.3.0</span> • SOC ENTERPRISE
         </div>
       </div>
+
+      {/* Freemium Limit Notice */}
+      {!isPaid && (
+        <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">⚡</span>
+            <div>
+              <div className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                Configuración en Modo Gratuito Limitado
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Tu cuenta está limitada a configurar <strong>1 único dispositivo</strong> (vehículo o celular). Para parametrizar flotas completas, múltiples conductores y sensores avanzados, contrata una membresía oficial.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/payments')}
+            className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black rounded-xl shadow-md transition shrink-0"
+          >
+            💎 Ver Membresías
+          </button>
+        </div>
+      )}
 
       {/* Sober Tab Navigation */}
       <div className="flex gap-1.5 bg-[#0a0f1d] border border-slate-800 p-1.5 rounded-2xl w-fit">

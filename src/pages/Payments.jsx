@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient, safeStorage } from '../services/api'
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits'
 
 const STATUS_CONFIG = {
   approved: { label: 'Aprobado', bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: 'bg-emerald-400' },
@@ -35,6 +36,20 @@ export default function Payments() {
   const isAdmin = ['superadmin', 'admin', 'fleet_manager'].includes(user.role)
   const isSuperadmin = user.role === 'superadmin'
 
+  const {
+    isPaid: limitsIsPaid,
+    isBlocked: limitsIsBlocked,
+    queriesUsed: limitsQueriesUsed,
+    dailyLimit: limitsDailyLimit,
+    remainingQueries: limitsRemainingQueries,
+    activatePlan: limitsActivatePlan,
+    isActivating: limitsIsActivating,
+    resetDailyQuery: limitsResetDailyQuery,
+    isResetting: limitsIsResetting,
+    planName: limitsPlanName,
+  } = useSubscriptionLimits()
+
+  const [simMessage, setSimMessage] = useState('')
   const [activeCategory, setActiveCategory] = useState('vehicles')
   const [paymentTarget, setPaymentTarget] = useState('user')
   const [editingPayment, setEditingPayment] = useState(null)
@@ -153,6 +168,28 @@ export default function Payments() {
     createPaymentMutation.mutate({ planCode: plan.code, customerId, customerModel })
   }
 
+  const handleDirectActivate = async (plan) => {
+    try {
+      await limitsActivatePlan(plan.code)
+      setSimMessage(`¡Plan "${plan.name}" activado exitosamente! Toda la plataforma, telemetría continua 24/7 y módulos avanzados han sido desbloqueados.`)
+      setTimeout(() => setSimMessage(''), 8000)
+    } catch (err) {
+      alert('Error al activar plan: ' + (err.response?.data?.error || err.message))
+    }
+  }
+
+  const handleResetToDemo = async () => {
+    if (window.confirm('¿Deseas restablecer la cuenta al Modo Demo Gratuito para comprobar el límite de 1 consulta diaria y el bloqueo?')) {
+      try {
+        await limitsResetDailyQuery()
+        setSimMessage('Cuenta restablecida al Modo Demo Gratuito (1 consulta diaria disponible).')
+        setTimeout(() => setSimMessage(''), 8000)
+      } catch (err) {
+        alert('Error al reiniciar: ' + err.message)
+      }
+    }
+  }
+
   const allPlans = plansData || []
   const filteredPlans = allPlans.filter(p => p.category === activeCategory)
   const history = historyData?.payments || []
@@ -160,6 +197,17 @@ export default function Payments() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 space-y-8">
+      {/* Simulation / Success Toast */}
+      {simMessage && (
+        <div className="bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 px-5 py-3.5 rounded-2xl flex items-center justify-between shadow-xl animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🎉</span>
+            <span className="text-xs md:text-sm font-bold">{simMessage}</span>
+          </div>
+          <button onClick={() => setSimMessage('')} className="text-emerald-400 hover:text-white text-sm">✕</button>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -169,98 +217,136 @@ export default function Payments() {
               Suscripciones & Pagos GPS
             </h1>
             <span className="px-2.5 py-1 text-[11px] font-black uppercase tracking-wider rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-              Mercado Pago
+              Mercado Pago & Desbloqueo Inmediato
             </span>
           </div>
           <p className="text-sm text-slate-400 mt-1">
-            Plataforma centralizada de facturación satelital en tiempo real en pesos chilenos (CLP).
+            Plataforma centralizada de planes satelitales en tiempo real en pesos chilenos (CLP).
           </p>
         </div>
 
-        {hasCompany && (
-          <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-1.5 shadow-xl">
-            <button
-              onClick={() => setPaymentTarget('user')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                paymentTarget === 'user'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>👤</span>
-              <span>Cuenta Personal</span>
-            </button>
-            <button
-              onClick={() => setPaymentTarget('company')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-                paymentTarget === 'company'
-                  ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span>🏢</span>
-              <span>Cuenta Empresa</span>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleResetToDemo}
+            disabled={limitsIsResetting}
+            className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-sm"
+            title="Restablece a modo gratuito para probar el límite de 1 consulta"
+          >
+            <span>🔄</span>
+            <span>{limitsIsResetting ? 'Restableciendo...' : 'Probar Modo Gratuito (1 Consulta)'}</span>
+          </button>
+
+          {hasCompany && (
+            <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-2xl p-1.5 shadow-xl">
+              <button
+                onClick={() => setPaymentTarget('user')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  paymentTarget === 'user'
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>👤</span>
+                <span>Cuenta Personal</span>
+              </button>
+              <button
+                onClick={() => setPaymentTarget('company')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                  paymentTarget === 'company'
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>🏢</span>
+                <span>Cuenta Empresa</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Active Subscription Status Card */}
-      {activeSub && (
-        <div className={`relative overflow-hidden rounded-3xl border-2 p-6 transition-all shadow-2xl ${
-          activeSub.active
-            ? 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border-emerald-500/40 shadow-emerald-950/30'
-            : 'bg-slate-900/60 border-slate-800'
-        }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg border ${
-                activeSub.active
-                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-emerald-500/20'
-                  : 'bg-slate-800 border-slate-700 text-slate-400'
-              }`}>
-                {activeSub.active ? '🛰️' : '⏸️'}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                    Suscripción {paymentTarget === 'company' ? 'Empresarial' : 'Particular'}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${SUB_STATUS_CONFIG[activeSub.status || 'none']?.cls}`}>
-                    {SUB_STATUS_CONFIG[activeSub.status || 'none']?.label}
-                  </span>
-                </div>
-                <h2 className="text-2xl font-black text-white tracking-tight">
-                  {activeSub.hasSubscription ? (activeSub.plan?.name || activeSub.planCode || 'Plan GPS Activo') : 'Sin suscripción contratada'}
-                </h2>
-                {activeSub.hasSubscription && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    Capacidad: <strong className="text-white">{activeSub.maxDevices} dispositivo(s)</strong> •{' '}
-                    {activeSub.active
-                      ? <span>Vigencia hasta el <strong className="text-emerald-400">{fmtDate(activeSub.expiresAt)}</strong></span>
-                      : <span>Venció el <strong className="text-red-400">{fmtDate(activeSub.expiresAt)}</strong></span>}
-                  </p>
-                )}
-              </div>
+      {/* Account Status Card: Freemium Demo vs Active Paid */}
+      <div className={`relative overflow-hidden rounded-3xl border-2 p-6 md:p-8 transition-all shadow-2xl ${
+        limitsIsPaid
+          ? 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-950 border-emerald-500/40 shadow-emerald-950/30'
+          : limitsIsBlocked
+          ? 'bg-gradient-to-r from-red-950/40 via-slate-900 to-slate-950 border-red-500/40 shadow-red-950/30'
+          : 'bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-950 border-amber-500/30 shadow-slate-950/50'
+      }`}>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-start md:items-center gap-5">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg border shrink-0 ${
+              limitsIsPaid
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-emerald-500/20'
+                : limitsIsBlocked
+                ? 'bg-red-500/20 border-red-500/40 text-red-400'
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-400'
+            }`}>
+              {limitsIsPaid ? '🛰️' : limitsIsBlocked ? '🔒' : '⚡'}
             </div>
-
-            <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-3 border-t md:border-t-0 border-slate-800 pt-3 md:pt-0">
-              {activeSub.active ? (
-                <div className="text-right">
-                  <div className="text-2xl font-black text-emerald-400 tracking-tight">
-                    {activeSub.daysLeft} días
-                  </div>
-                  <span className="text-[11px] font-bold text-slate-400">restantes de servicio</span>
-                </div>
-              ) : (
-                <div className="text-xs text-amber-400 font-bold bg-amber-500/10 border border-amber-500/30 px-4 py-2 rounded-xl">
-                  ⚠️ Suscripción inactiva. Selecciona un plan abajo para activar.
-                </div>
-              )}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  Estado del Servicio
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider ${
+                  limitsIsPaid
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                    : limitsIsBlocked
+                    ? 'bg-red-500/20 text-red-300 border-red-500/50'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                }`}>
+                  {limitsIsPaid ? 'MEMBRESÍA ACTIVA 24/7' : limitsIsBlocked ? 'MODO DEMO: LÍMITE ALCANZADO (1/1)' : 'MODO DEMO GRATUITO'}
+                </span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                {limitsIsPaid ? (limitsPlanName || activeSub?.plan?.name || 'Membresía GPS Activa') : 'Servicio Gratuito de Demostración'}
+              </h2>
+              <p className="text-xs md:text-sm text-slate-300 leading-relaxed max-w-2xl">
+                {limitsIsPaid
+                  ? 'Tienes acceso total e ilimitado al monitoreo satelital continuo, corte de combustible, centro de alertas, geocercas tácticas y Plataforma Plus.'
+                  : limitsIsBlocked
+                  ? 'Has utilizado la única consulta diaria permitida en el modo gratuito. El sistema se encuentra bloqueado hasta que contrates una membresía.'
+                  : 'El modo gratuito permite ubicar 1 vehículo o 1 celular con un máximo de 1 consulta diaria. Selecciona un plan a continuación para desbloquear la plataforma completa.'}
+              </p>
             </div>
           </div>
+
+          <div className="flex flex-col items-start lg:items-end justify-between gap-3 border-t lg:border-t-0 border-slate-800 pt-4 lg:pt-0 shrink-0">
+            {limitsIsPaid ? (
+              <div className="text-left lg:text-right space-y-1">
+                <div className="text-2xl font-black text-emerald-400 tracking-tight">
+                  Consultas Ilimitadas
+                </div>
+                <span className="text-xs text-slate-400 block font-medium">Monitoreo activo 24/7 sin restricciones</span>
+                {activeSub?.expiresAt && (
+                  <span className="text-[11px] text-slate-500 block font-mono">
+                    Vigencia hasta: {fmtDate(activeSub.expiresAt)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2 w-full sm:w-auto">
+                <div className="flex items-center justify-between gap-4 text-xs font-bold">
+                  <span className="text-slate-400">Consultas de hoy:</span>
+                  <span className={`font-mono text-sm ${limitsIsBlocked ? 'text-red-400' : 'text-cyan-400'}`}>
+                    {limitsQueriesUsed} de 1 consulta
+                  </span>
+                </div>
+                <div className="w-full sm:w-48 bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                  <div
+                    className={`h-full transition-all duration-300 ${limitsIsBlocked ? 'bg-red-500' : 'bg-cyan-400'}`}
+                    style={{ width: `${Math.min(100, limitsQueriesUsed * 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-slate-400 text-center sm:text-right">
+                  {limitsIsBlocked ? '🚨 Bloqueado hasta mañana o suscripción' : '1 consulta restante hoy'}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Category Tab Switcher (Vehicular vs Personal SOS) */}
       <div className="flex justify-center">
@@ -371,11 +457,11 @@ export default function Payments() {
                     </div>
                   </div>
 
-                  <div className="p-6 pt-4 border-t border-slate-800/60 bg-slate-950/40">
+                  <div className="p-6 pt-4 border-t border-slate-800/60 bg-slate-950/40 space-y-2">
                     <button
                       onClick={() => handleSubscribe(plan)}
                       disabled={createPaymentMutation.isLoading}
-                      className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
+                      className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl ${
                         plan.highlight
                           ? 'bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white shadow-cyan-500/25 active:scale-95'
                           : isCurrent
@@ -386,10 +472,19 @@ export default function Payments() {
                       {createPaymentMutation.isLoading ? (
                         <span>⏳ Conectando con Mercado Pago...</span>
                       ) : isCurrent ? (
-                        <span>🔄 Renovar Plan</span>
+                        <span>🔄 Renovar con Mercado Pago</span>
                       ) : (
-                        <span>💳 Suscribirse</span>
+                        <span>💳 Suscribirse con Mercado Pago</span>
                       )}
+                    </button>
+
+                    <button
+                      onClick={() => handleDirectActivate(plan)}
+                      disabled={limitsIsActivating}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 text-[11px] font-bold rounded-xl border border-cyan-500/30 hover:border-cyan-400 transition flex items-center justify-center gap-1.5"
+                    >
+                      <span>⚡</span>
+                      <span>{limitsIsActivating ? 'Activando...' : 'Activar Inmediato (Desbloquear Todo)'}</span>
                     </button>
                   </div>
                 </div>
