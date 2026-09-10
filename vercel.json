@@ -1,9 +1,9 @@
 {
-    "version": 2,
-    "rewrites": [
-        {
-            "source": "/(.*)",
-            "destination": "/index.html"
-        }
-    ]
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/((?!assets/|.*\\.(?:apk|png|jpg|jpeg|svg|ico|json|js|css|woff2?|ttf|txt|webp)$).*)",
+      "destination": "/index.html"
+    }
+  ]
 }

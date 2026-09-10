@@ -73,6 +73,13 @@ const ALL_MENU_ITEMS = [
     allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
   },
   {
+    label: 'Centro de Descarga APK',
+    icon: '📱',
+    path: '/download-app',
+    allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
+    badge: 'APK v2.1',
+  },
+  {
     label: 'EYE-NODE 360 (App)',
     icon: '🛰️',
     path: 'https://einsoft-gp-sbcknd.vercel.app/eyenode',

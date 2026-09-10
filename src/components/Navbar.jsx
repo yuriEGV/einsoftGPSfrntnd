@@ -24,6 +24,12 @@ export default function Navbar({ toggleSidebar }) {
         </div>
         <div className="flex items-center space-x-3">
           <a
+            href="/download-app"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-all shadow-md active:scale-95"
+          >
+            <span>📱</span> Descargar APK v2.1
+          </a>
+          <a
             href="https://t.me/EinGpsBot"
             target="_blank"
             rel="noopener noreferrer"

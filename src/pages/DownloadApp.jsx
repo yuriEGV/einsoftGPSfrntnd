@@ -159,19 +159,27 @@ export default function DownloadApp() {
 
           <div className="space-y-2.5 pt-2">
             <a
-              href="/eyenode.apk"
-              download="eyenode.apk"
+              href="/einsoft-gps.apk"
+              download="einsoft-gps-v2.1.0.apk"
               className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar eyenode.apk v2.1.0 (Nativo Android)
+              📥 Descargar einsoft-gps.apk v2.1.0 (Servidor Principal)
             </a>
 
             <a
-              href="/einsoft-gps.apk"
-              download="einsoft-gps.apk"
-              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-slate-700"
+              href="https://einsoft-gp-sbcknd.vercel.app/api/download/apk"
+              download="einsoft-gps-v2.1.0.apk"
+              className="w-full py-3 bg-cyan-700 hover:bg-cyan-600 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-cyan-500/40"
             >
-              📦 Descarga Alternativa einsoft-gps.apk
+              ⚡ Descarga Directa API Backend (Espejo de Alta Velocidad)
+            </a>
+
+            <a
+              href="/eyenode.apk"
+              download="eyenode-v2.1.0.apk"
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs border border-slate-700"
+            >
+              📦 Descarga Alternativa eyenode.apk (6.3 MB)
             </a>
           </div>
         </div>

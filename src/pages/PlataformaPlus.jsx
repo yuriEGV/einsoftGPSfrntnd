@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiClient } from '../services/api'
 import SosProtocolModal from '../components/SosProtocolModal'
 import FuelCutModal from '../components/FuelCutModal'
@@ -14,6 +15,62 @@ export default function PlataformaPlus() {
   const [maintenanceData, setMaintenanceData] = useState(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [selectedVehicle, setSelectedVehicle] = useState({ plate: 'ABCD-12', brand: 'Toyota', model: 'Hilux 4x4', speed: 0, motorCutStatus: false })
+  const navigate = useNavigate()
+
+  // ── Sub-estados interactivos para modales telemáticos ──
+  const [locationSafetyTab, setLocationSafetyTab] = useState('tracks') // 'tracks' | 'geofences'
+  const [drivingSafetyTab, setDrivingSafetyTab] = useState('imu') // 'imu' | 'emergency'
+  const [tileTrackingTab, setTileTrackingTab] = useState('pets') // 'pets' | 'keys'
+  const [imuThreshold, setImuThreshold] = useState('3.5G')
+  const [imuTestAlert, setImuTestAlert] = useState(null)
+  const [audioFeedback, setAudioFeedback] = useState('')
+  const [showAddTileModal, setShowAddTileModal] = useState(false)
+  const [newTileName, setNewTileName] = useState('')
+  const [newTileType, setNewTileType] = useState('mascota')
+
+  // Lista viva de Mascotas y Objetos
+  const [petList, setPetList] = useState([
+    { id: 1, name: 'Luna (Golden Retriever)', code: 'TILE-PET-01', battery: 94, status: 'En Casa (Zona Segura)', lat: -33.0294, lng: -71.6344 },
+    { id: 2, name: 'Max (Gato Doméstico)', code: 'CHIP-CAT-04', battery: 89, status: 'Cerca de Casa (Radio 15m)', lat: -33.0310, lng: -71.6320 },
+  ])
+  const [keyList, setKeyList] = useState([
+    { id: 1, name: 'Llavero Toyota CBDX81', code: 'KEY-TAG-01', battery: 92, distance: '3.5 m (En Rango)', lastSeen: 'Hace 2 min' },
+    { id: 2, name: 'Mochila / Laptop Pro', code: 'TILE-OBJ-02', battery: 85, distance: '8.0 m (En Rango)', lastSeen: 'Hace 5 min' },
+  ])
+
+  // Síntesis de sonido Web Audio para Buzzer y Collares
+  const playTileAudio = (type = 'beep') => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      if (!AudioContext) return
+      const ctx = new AudioContext()
+      if (type === 'buzzer') {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sawtooth'
+        osc.frequency.setValueAtTime(2200, ctx.currentTime)
+        osc.frequency.setValueAtTime(1700, ctx.currentTime + 0.15)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.4)
+      } else {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(1046.5, ctx.currentTime)
+        osc.frequency.setValueAtTime(1318.5, ctx.currentTime + 0.12)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start()
+        osc.stop(ctx.currentTime + 0.35)
+      }
+    } catch (_) {}
+  }
 
   useEffect(() => {
     loadOverview()
@@ -713,31 +770,139 @@ export default function PlataformaPlus() {
         </div>
       )}
 
-      {/* Location Safety Modal */}
+      {/* ── Modal 1: Location Safety (Coordinación y Ubicación Familiar) ── */}
       {activeModal === 'locationSafety' && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-base font-black flex items-center gap-2">
                 <span className="text-cyan-400">🧭</span> Coordinación y Ubicación Familiar (Location Safety)
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black text-lg">✕</button>
             </div>
+            
             <p className="text-xs text-slate-300 leading-relaxed">
-              Permite visualizar la localización exacta de personas en el mapa para facilitar la organización cotidiana y monitorear trayectos sin invadir su privacidad.
+              Supervisión en tiempo real de trayectos familiares, seguridad en traslados escolares y geocercas automáticas de arribo.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-cyan-300 font-mono block text-xs">📡 Trazabilidad de Trayectos</strong>
-                <p className="text-slate-400 text-[11px]">Historial de desplazamientos diarios con tiempos estimados de llegada a casa o trabajo.</p>
-              </div>
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-emerald-300 font-mono block text-xs">🛡️ Geocercas Familiares</strong>
-                <p className="text-slate-400 text-[11px]">Alertas automáticas discretas al arribar a colegios, universidades o zonas seguras.</p>
-              </div>
+
+            {/* Pestañas de Función */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setLocationSafetyTab('tracks')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  locationSafetyTab === 'tracks'
+                    ? 'bg-cyan-950/70 border-cyan-500 shadow-md shadow-cyan-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-cyan-300">
+                  <span>📡</span> Trazabilidad de Trayectos
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Historial y tiempos estimados de llegada</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLocationSafetyTab('geofences')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  locationSafetyTab === 'geofences'
+                    ? 'bg-emerald-950/70 border-emerald-500 shadow-md shadow-emerald-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-emerald-300">
+                  <span>🛡️</span> Geocercas Familiares
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Alertas automáticas al llegar o salir</div>
+              </button>
             </div>
+
+            {/* Contenido según pestaña */}
+            {locationSafetyTab === 'tracks' ? (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Familiares Monitoreados (3 Activos)</span>
+                  <span className="text-emerald-400 font-mono text-[10px]">🟢 Red Celular 4G Activa</span>
+                </div>
+                
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-cyan-300">Yuri (PER-139F17)</div>
+                      <div className="text-[10px] text-slate-400">📍 Playa Ancha, Valparaíso • Batería 95%</div>
+                    </div>
+                    <button
+                      onClick={() => { setActiveModal(null); navigate('/people-tracker') }}
+                      className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-lg text-[11px] shadow transition"
+                    >
+                      🗺️ Ver Trayecto
+                    </button>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-cyan-300">Gloria (PER-FC9B50)</div>
+                      <div className="text-[10px] text-slate-400">📍 Cerro Placeres, Valparaíso • Batería 88%</div>
+                    </div>
+                    <button
+                      onClick={() => { setActiveModal(null); navigate('/people-tracker') }}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded-lg text-[11px] transition"
+                    >
+                      🗺️ Ver Trayecto
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => { setActiveModal(null); navigate('/people-tracker') }}
+                    className="w-full py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl text-xs shadow-lg transition"
+                  >
+                    🚀 Abrir Consola Central de Personas y Trayectos
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Zonas Seguras Familiares</span>
+                  <span className="text-cyan-400 text-[10px]">Autonotificación Activa</span>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-emerald-300">🏡 Hogar (Valparaíso)</div>
+                      <div className="text-[10px] text-slate-400">Radio 150m • Notifica al llegar y salir</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
+                      ACTIVA
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-emerald-300">🏫 Colegio / Universidad</div>
+                      <div className="text-[10px] text-slate-400">Radio 250m • Aviso de arribo seguro a padres</div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
+                      ACTIVA
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => { setActiveModal(null); navigate('/geofences') }}
+                  className="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl text-xs shadow-lg transition"
+                >
+                  ⚙️ Gestionar y Dibujar Geocercas en el Mapa
+                </button>
+              </div>
+            )}
+
             <div className="flex justify-end pt-2">
-              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs text-slate-300">
                 Entendido
               </button>
             </div>
@@ -745,31 +910,174 @@ export default function PlataformaPlus() {
         </div>
       )}
 
-      {/* Driving Safety Modal */}
+      {/* ── Modal 2: Driving Safety (Seguridad en la Conducción) ── */}
       {activeModal === 'drivingSafety' && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-base font-black flex items-center gap-2">
                 <span className="text-amber-400">🚗</span> Seguridad en la Conducción (Driving Safety)
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+              <button onClick={() => { setActiveModal(null); setImuTestAlert(null) }} className="text-slate-400 hover:text-white font-black text-lg">✕</button>
             </div>
+            
             <p className="text-xs text-slate-300 leading-relaxed">
-              Ofrece soporte constante con monitoreo telemático de conducción e identificación automática de colisiones y frenadas de pánico en ruta.
+              Detección telemática continua de colisiones, frenadas de pánico y coordinación automática con servicios de urgencia 133 / 131.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-amber-300 font-mono block text-xs">⚡ Sensor IMU & Fuerza G</strong>
-                <p className="text-slate-400 text-[11px]">Detección instantánea de impactos y volcamientos transmitida de inmediato a la central receptora.</p>
-              </div>
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-rose-300 font-mono block text-xs">🚨 Despacho de Emergencias</strong>
-                <p className="text-slate-400 text-[11px]">Coordinación directa con ambulancias y Carabineros ante choque no respondido.</p>
-              </div>
+
+            {/* Pestañas */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setDrivingSafetyTab('imu')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  drivingSafetyTab === 'imu'
+                    ? 'bg-amber-950/70 border-amber-500 shadow-md shadow-amber-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-amber-300">
+                  <span>⚡</span> Sensor IMU & Fuerza G
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Acelerómetro triaxial y umbrales de impacto</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDrivingSafetyTab('emergency')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  drivingSafetyTab === 'emergency'
+                    ? 'bg-rose-950/70 border-rose-500 shadow-md shadow-rose-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-rose-300">
+                  <span>🚨</span> Despacho de Emergencias
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Protocolo 133 y contactos de rescate</div>
+              </button>
             </div>
+
+            {/* Alerta de prueba si fue disparada */}
+            {imuTestAlert && (
+              <div className="p-3 bg-red-950/80 border border-red-500 rounded-2xl text-xs space-y-1 animate-in zoom-in-95">
+                <div className="font-black text-red-300 flex items-center gap-2">
+                  <span>💥</span> {imuTestAlert.title}
+                </div>
+                <div className="text-[11px] text-slate-200">{imuTestAlert.message}</div>
+                <div className="text-[10px] text-red-400 font-mono">Prioridad: ROJA • Folio Central: SOS-IMU-{Date.now().toString().slice(-4)}</div>
+              </div>
+            )}
+
+            {/* Contenido según pestaña */}
+            {drivingSafetyTab === 'imu' ? (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Lectura de Telemetría IMU en Vivo</span>
+                  <span className="text-emerald-400 font-mono text-[10px]">🟢 Calibrado (1.00G)</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Fuerza G Instantánea</div>
+                    <div className="text-sm font-black text-amber-400 font-mono">1.02 G</div>
+                  </div>
+                  <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Eje Triaxial (X/Y/Z)</div>
+                    <div className="text-xs font-bold text-cyan-300 font-mono">+0.05 / -0.08 / +1.01</div>
+                  </div>
+                  <div className="p-2 bg-slate-900 rounded-xl border border-slate-800">
+                    <div className="text-[10px] text-slate-400">Inclinación Roll/Pitch</div>
+                    <div className="text-xs font-bold text-slate-200 font-mono">2.1° / 0.8°</div>
+                  </div>
+                </div>
+
+                <div className="pt-1">
+                  <label className="block text-[11px] text-slate-400 font-bold mb-1.5">
+                    Umbral de Detección de Choque Automático:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['2.8G (Sensible)', '3.5G (Estándar)', '4.2G (Impacto Severo)'].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setImuThreshold(opt.split(' ')[0])}
+                        className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition ${
+                          imuThreshold === opt.split(' ')[0]
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                            : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playTileAudio('buzzer')
+                    setImuTestAlert({
+                      title: '¡PRUEBA EXITOSA: IMPACTO 3.8G REGISTRADO!',
+                      message: 'Acelerómetro disparó la alerta telemática. Central 24/7 recibió la coordenada y telemetría de frenada.',
+                    })
+                  }}
+                  className="w-full py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black rounded-xl text-xs shadow-lg transition"
+                >
+                  ⚡ Simular Prueba de Impacto IMU (Disparar Test)
+                </button>
+              </div>
+            ) : (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Directorio de Rescate Inmediato</span>
+                  <span className="text-rose-400 font-mono text-[10px]">🚨 Prioridad Roja</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-rose-400">🚓 Carabineros de Chile</div>
+                      <div className="text-[10px] text-slate-400">Emergencia Policial</div>
+                    </div>
+                    <span className="px-2 py-1 bg-rose-950 text-rose-300 font-black rounded-lg text-xs font-mono">133</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-emerald-400">🚑 Ambulancia SAMU</div>
+                      <div className="text-[10px] text-slate-400">Rescate Médico</div>
+                    </div>
+                    <span className="px-2 py-1 bg-emerald-950 text-emerald-300 font-black rounded-lg text-xs font-mono">131</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-amber-400">🚒 Bomberos</div>
+                      <div className="text-[10px] text-slate-400">Rescate Vehicular</div>
+                    </div>
+                    <span className="px-2 py-1 bg-amber-950 text-amber-300 font-black rounded-lg text-xs font-mono">132</span>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-cyan-400">🕵️ PDI</div>
+                      <div className="text-[10px] text-slate-400">Investigación Policial</div>
+                    </div>
+                    <span className="px-2 py-1 bg-cyan-950 text-cyan-300 font-black rounded-lg text-xs font-mono">134</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1">
+                  <div className="font-bold text-slate-200">📞 Contacto Telefónico de Emergencia:</div>
+                  <div className="font-mono text-cyan-400">+56 9 8765 4321 (Guardado)</div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end pt-2">
-              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+              <button onClick={() => { setActiveModal(null); setImuTestAlert(null) }} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs text-slate-300">
                 Entendido
               </button>
             </div>
@@ -777,31 +1085,198 @@ export default function PlataformaPlus() {
         </div>
       )}
 
-      {/* Tile Tracking Modal */}
+      {/* ── Modal 3: Tile & Beacons (Localización de Objetos y Mascotas) ── */}
       {activeModal === 'tileTracking' && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 space-y-4 text-white shadow-2xl">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <h3 className="text-base font-black flex items-center gap-2">
                 <span className="text-emerald-400">🏷️</span> Localización de Objetos y Mascotas (Tile & Beacons)
               </h3>
-              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-white font-black">✕</button>
+              <button onClick={() => { setActiveModal(null); setAudioFeedback('') }} className="text-slate-400 hover:text-white font-black text-lg">✕</button>
             </div>
+            
             <p className="text-xs text-slate-300 leading-relaxed">
-              Permite enlazar y visualizar dispositivos de rastreo Tile directamente en el mapa de la app para recuperar objetos perdidos (como llaves) o rastrear mascotas.
+              Enlaza chips telemáticos para mascotas y dispositivos Tile/Beacon para llaves de vehículos y objetos personales.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-emerald-300 font-mono block text-xs">🐕 Rastreo de Mascotas</strong>
-                <p className="text-slate-400 text-[11px]">Placas y collares con chip telemático para ubicación rápida en caso de escape.</p>
-              </div>
-              <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-1">
-                <strong className="text-cyan-300 font-mono block text-xs">🔑 Objetos & Llaves de Vehículo</strong>
-                <p className="text-slate-400 text-[11px]">Timbre sonoro de proximidad y última posición conocida guardada en la nube.</p>
-              </div>
+
+            {/* Pestañas */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTileTrackingTab('pets')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  tileTrackingTab === 'pets'
+                    ? 'bg-emerald-950/70 border-emerald-500 shadow-md shadow-emerald-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-emerald-300">
+                  <span>🐕</span> Rastreo de Mascotas
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Collares con chip telemático y radio seguro</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTileTrackingTab('keys')}
+                className={`p-3 rounded-2xl border text-left transition ${
+                  tileTrackingTab === 'keys'
+                    ? 'bg-cyan-950/70 border-cyan-500 shadow-md shadow-cyan-950'
+                    : 'bg-slate-950 border-slate-800 hover:border-slate-700 opacity-75'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-cyan-300">
+                  <span>🔑</span> Objetos & Llaves de Vehículo
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Timbre sonoro de proximidad y última posición</div>
+              </button>
             </div>
+
+            {/* Aviso acústico en vivo */}
+            {audioFeedback && (
+              <div className="p-3 bg-emerald-950/90 border border-emerald-500 rounded-2xl text-xs font-bold text-emerald-300 flex items-center justify-between animate-in zoom-in-95">
+                <span className="flex items-center gap-2">
+                  <span className="animate-ping">🔊</span> {audioFeedback}
+                </span>
+                <button onClick={() => setAudioFeedback('')} className="text-slate-400 hover:text-white">✕</button>
+              </div>
+            )}
+
+            {/* Contenido según pestaña */}
+            {tileTrackingTab === 'pets' ? (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Collares GPS & Chips Enlazados ({petList.length})</span>
+                  <button
+                    onClick={() => setShowAddTileModal(true)}
+                    className="text-emerald-400 hover:text-emerald-300 font-bold text-[11px] flex items-center gap-1"
+                  >
+                    <span>➕</span> Enlazar Collar
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  {petList.map((pet) => (
+                    <div key={pet.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                          <span>🐕</span> {pet.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">ID: {pet.code} • Batería: {pet.battery}%</div>
+                        <div className="text-[10px] text-slate-300 mt-0.5">📍 {pet.status}</div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playTileAudio('beep')
+                            setAudioFeedback(`Emitiendo pitido acústico en ${pet.name}...`)
+                          }}
+                          className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-black rounded-xl text-[11px] flex items-center gap-1 transition shadow active:scale-95"
+                        >
+                          <span>🔊</span> Pitido
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setActiveModal(null); navigate('/people-tracker') }}
+                          className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-[11px] transition"
+                        >
+                          📍 Mapa
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                  <span className="font-bold text-slate-300">Dispositivos Tile / Beacon Enlazados ({keyList.length})</span>
+                  <button
+                    onClick={() => setShowAddTileModal(true)}
+                    className="text-cyan-400 hover:text-cyan-300 font-bold text-[11px] flex items-center gap-1"
+                  >
+                    <span>➕</span> Enlazar Objeto
+                  </button>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  {keyList.map((k) => (
+                    <div key={k.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-cyan-300 flex items-center gap-1.5">
+                          <span>🔑</span> {k.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">ID: {k.code} • Batería: {k.battery}%</div>
+                        <div className="text-[10px] text-slate-300 mt-0.5">📡 {k.distance} • {k.lastSeen}</div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playTileAudio('buzzer')
+                            setAudioFeedback(`¡Haciendo sonar buzzer en ${k.name}!`)
+                          }}
+                          className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-xl text-[11px] flex items-center gap-1 transition shadow active:scale-95"
+                        >
+                          <span>🔔</span> Sonar Buzzer
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mini Modal para Enlazar Nuevo Dispositivo */}
+            {showAddTileModal && (
+              <div className="p-3.5 bg-slate-950 border-2 border-emerald-500/50 rounded-2xl text-xs space-y-2.5 animate-in fade-in">
+                <div className="flex items-center justify-between font-bold text-slate-200">
+                  <span>➕ Enlazar Nuevo Dispositivo Tile / Collar</span>
+                  <button onClick={() => setShowAddTileModal(false)} className="text-slate-400 hover:text-white">✕</button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nombre (ej: Firulais, Llaves Moto)"
+                    value={newTileName}
+                    onChange={(e) => setNewTileName(e.target.value)}
+                    className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none text-xs"
+                  />
+                  <select
+                    value={newTileType}
+                    onChange={(e) => setNewTileType(e.target.value)}
+                    className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-white outline-none text-xs"
+                  >
+                    <option value="mascota">🐾 Mascota (Collar GPS)</option>
+                    <option value="objeto">🔑 Objeto / Llave (Beacon Tile)</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!newTileName.trim()) return
+                    if (newTileType === 'mascota') {
+                      setPetList([...petList, { id: Date.now(), name: newTileName, code: `TILE-PET-${Math.floor(10 + Math.random() * 90)}`, battery: 100, status: 'Vinculado y En Línea' }])
+                    } else {
+                      setKeyList([...keyList, { id: Date.now(), name: newTileName, code: `KEY-TAG-${Math.floor(10 + Math.random() * 90)}`, battery: 100, distance: '1.2 m (En Rango)', lastSeen: 'Recién enlazado' }])
+                    }
+                    setNewTileName('')
+                    setShowAddTileModal(false)
+                    setAudioFeedback(`¡Dispositivo ${newTileName} enlazado con éxito!`)
+                  }}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow transition"
+                >
+                  Guardar y Sincronizar con el Mapa
+                </button>
+              </div>
+            )}
+
             <div className="flex justify-end pt-2">
-              <button onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs">
+              <button onClick={() => { setActiveModal(null); setAudioFeedback('') }} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 font-bold rounded-xl text-xs text-slate-300">
                 Entendido
               </button>
             </div>

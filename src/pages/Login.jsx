@@ -146,6 +146,36 @@ export default function Login({ onLogin }) {
     }
   }
 
+  // 1-Click Demo Login Handler for testing each role
+  const handleDemoLogin = async (demoEmail) => {
+    setLoading(true)
+    setError('')
+    try {
+      const response = await apiClient.post('/auth/login', {
+        email: demoEmail,
+        password: 'password123',
+      })
+
+      safeStorage.set('token', response.data.token)
+      safeStorage.set('refreshToken', response.data.refreshToken)
+      safeStorage.set('user', JSON.stringify(response.data.user))
+
+      onLogin()
+      const role = response.data.user.role
+      if (role === 'driver') {
+        navigate('/driver')
+      } else if (role === 'mobile_gps_user' || role === 'independent') {
+        navigate('/mobile-gps')
+      } else {
+        navigate('/')
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al iniciar sesión en modo demo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const currentPlans = activePlanCategory === 'vehicles' ? VEHICLE_PLANS : PERSONAL_PLANS
 
   return (
@@ -169,9 +199,9 @@ export default function Login({ onLogin }) {
         <div className="flex items-center gap-3">
           <a
             href="/download-app"
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition"
+            className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow"
           >
-            <span>📥</span> Descargar APK v2.0.0
+            <span>📱</span> Descargar APK v2.1.0
           </a>
           <a
             href="https://t.me/EinGpsBot"
@@ -337,6 +367,79 @@ export default function Login({ onLogin }) {
                   <span>{loading ? 'Verificando credenciales...' : 'Iniciar Sesión Segura'}</span>
                 </button>
               </form>
+
+              {/* ── 1-Click Demo Escalafones Selector ── */}
+              <div className="pt-3 border-t border-slate-800/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-cyan-300 font-bold uppercase tracking-wider flex items-center gap-1">
+                    <span>⚡</span> Modo Demo / Prueba Rápida
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-mono">1-Clic sin escribir</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => handleDemoLogin('cliente@einsoftgps.com')}
+                    disabled={loading}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-left transition flex items-center gap-2 font-medium"
+                  >
+                    <span>👤</span>
+                    <div>
+                      <div className="font-bold text-white text-[11px]">Demo Cliente</div>
+                      <div className="text-[9px] text-slate-400">Consulta y rastreo</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDemoLogin('admin.flota@einsoftgps.com')}
+                    disabled={loading}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-left transition flex items-center gap-2 font-medium"
+                  >
+                    <span>🏢</span>
+                    <div>
+                      <div className="font-bold text-white text-[11px]">Admin Flota</div>
+                      <div className="text-[9px] text-slate-400">Gestión de vehículos</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDemoLogin('conductor@einsoftgps.com')}
+                    disabled={loading}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-left transition flex items-center gap-2 font-medium"
+                  >
+                    <span>🚗</span>
+                    <div>
+                      <div className="font-bold text-amber-300 text-[11px]">Conductor</div>
+                      <div className="text-[9px] text-slate-400">Panel /driver</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDemoLogin('celular@einsoftgps.com')}
+                    disabled={loading}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-left transition flex items-center gap-2 font-medium"
+                  >
+                    <span>📱</span>
+                    <div>
+                      <div className="font-bold text-emerald-300 text-[11px]">Celular GPS</div>
+                      <div className="text-[9px] text-slate-400">Panel /mobile-gps</div>
+                    </div>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('operador@einsoftgps.com')}
+                  disabled={loading}
+                  className="w-full py-2 rounded-xl bg-slate-950 hover:bg-slate-900 border border-cyan-900/60 hover:border-cyan-700 text-cyan-300 text-xs font-bold transition flex items-center justify-center gap-2"
+                >
+                  <span>📡</span> Ingresar como Operador Monitoreo SOC 24/7
+                </button>
+              </div>
 
               <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-mono">
                 <span className="flex items-center gap-1.5 text-[11px]">

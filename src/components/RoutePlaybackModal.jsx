@@ -29,6 +29,17 @@ function MapAutoFitter({ bounds, center }) {
   return null
 }
 
+// Helper to format local date for datetime-local input (avoids UTC drift in Chilean time)
+const toLocalISOString = (date) => {
+  const pad = (n) => String(n).padStart(2, '0')
+  const y = date.getFullYear()
+  const m = pad(date.getMonth() + 1)
+  const d = pad(date.getDate())
+  const hh = pad(date.getHours())
+  const mm = pad(date.getMinutes())
+  return `${y}-${m}-${d}T${hh}:${mm}`
+}
+
 export default function RoutePlaybackModal({
   isOpen,
   onClose,
@@ -51,9 +62,9 @@ export default function RoutePlaybackModal({
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 7)
-    return d.toISOString().slice(0, 16)
+    return toLocalISOString(d)
   })
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 16))
+  const [endDate, setEndDate] = useState(() => toLocalISOString(new Date()))
 
   const timerRef = useRef(null)
 
@@ -66,15 +77,15 @@ export default function RoutePlaybackModal({
     if (presetKey === 'today') {
       start.setHours(0, 0, 0, 0)
     } else if (presetKey === '24h') {
-      start.setDate(now.getDate() - 1)
+      start = new Date(now.getTime() - 24 * 3600 * 1000)
     } else if (presetKey === '7d') {
-      start.setDate(now.getDate() - 7)
+      start = new Date(now.getTime() - 7 * 24 * 3600 * 1000)
     } else if (presetKey === '30d') {
-      start.setDate(now.getDate() - 30)
+      start = new Date(now.getTime() - 30 * 24 * 3600 * 1000)
     }
 
-    const startStr = start.toISOString().slice(0, 16)
-    const endStr = now.toISOString().slice(0, 16)
+    const startStr = toLocalISOString(start)
+    const endStr = toLocalISOString(now)
     setStartDate(startStr)
     setEndDate(endStr)
 
@@ -242,6 +253,65 @@ export default function RoutePlaybackModal({
 
     return result
   }, [currentPoint, activeSegments, currentIndex, activeWaypoints])
+
+  // Real dynamic metrics calculated 100% strictly from activeWaypoints (no fake numbers)
+  const realPlaybackSummary = useMemo(() => {
+    if (!activeWaypoints || activeWaypoints.length === 0) {
+      return {
+        maxSpeed: 0,
+        distanceKm: '0.00',
+        drivingTime: '00:00:00',
+        idleTime: '00:00:00',
+        lastUpdate: null,
+      }
+    }
+
+    let maxSpd = 0
+    let totalMeters = 0
+    let drivingSec = 0
+
+    for (let i = 0; i < activeWaypoints.length; i++) {
+      const p = activeWaypoints[i]
+      if (p.speed && p.speed > maxSpd) maxSpd = Math.round(p.speed)
+
+      if (i > 0) {
+        const prev = activeWaypoints[i - 1]
+        const dLat = (p.lat - prev.lat) * 111320
+        const dLng = (p.lng - prev.lng) * 111320 * Math.cos((p.lat * Math.PI) / 180)
+        const dist = Math.hypot(dLat, dLng)
+        if (!isNaN(dist) && dist < 50000) {
+          totalMeters += dist
+        }
+
+        const t1 = new Date(prev.timestamp).getTime()
+        const t2 = new Date(p.timestamp).getTime()
+        const diffSec = Math.max(0, Math.min(1800, Math.floor((t2 - t1) / 1000)))
+        if (p.speed > 3 || prev.speed > 3) {
+          drivingSec += diffSec
+        }
+      }
+    }
+
+    const tFirst = new Date(activeWaypoints[0].timestamp).getTime()
+    const tLast = new Date(activeWaypoints[activeWaypoints.length - 1].timestamp).getTime()
+    const totalDurationSec = Math.max(0, Math.floor((tLast - tFirst) / 1000))
+    const idleSec = Math.max(0, totalDurationSec - drivingSec)
+
+    const fmt = (sec) => {
+      const h = Math.floor(sec / 3600)
+      const m = Math.floor((sec % 3600) / 60)
+      const s = sec % 60
+      return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
+    }
+
+    return {
+      maxSpeed: data?.summary?.maxSpeed ?? maxSpd,
+      distanceKm: data?.summary?.totalDistanceKm ?? (totalMeters / 1000).toFixed(2),
+      drivingTime: data?.summary?.drivingTime ?? fmt(drivingSec),
+      idleTime: data?.summary?.idleTime ?? fmt(idleSec),
+      lastUpdate: activeWaypoints[activeWaypoints.length - 1]?.timestamp || null,
+    }
+  }, [activeWaypoints, data])
 
   // Animated Marker Icon with Directional Bearing
   const movingIcon = L.divIcon({
@@ -636,13 +706,22 @@ export default function RoutePlaybackModal({
             </MapContainer>
           )}
 
-          {/* Floating Stats Card matching Image 4 (Velocidad máxima, Distancia, Driving, Idle) */}
+          {/* Floating Stats Card — Computed 100% with real telemetry figures */}
           {activeWaypoints.length > 0 && (
             <div className="absolute bottom-24 left-4 right-4 sm:left-6 sm:right-auto sm:w-96 z-[999] bg-white/95 text-slate-900 rounded-3xl p-4 shadow-2xl border border-slate-200 backdrop-blur-md space-y-2.5 animate-in slide-in-from-bottom-3 duration-200">
               <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
                 <span className="flex items-center gap-1.5">
                   <span className="text-amber-500 text-sm">⏱️</span>
-                  <span>Última Actualización: <b>{currentPoint ? new Date(currentPoint.timestamp).toLocaleString('es-CL') : 'En tiempo real'}</b></span>
+                  <span>
+                    Última Actualización:{' '}
+                    <b>
+                      {currentPoint?.timestamp
+                        ? new Date(currentPoint.timestamp).toLocaleString('es-CL')
+                        : realPlaybackSummary.lastUpdate
+                        ? new Date(realPlaybackSummary.lastUpdate).toLocaleString('es-CL')
+                        : 'Sin datos'}
+                    </b>
+                  </span>
                 </span>
               </div>
 
@@ -654,7 +733,7 @@ export default function RoutePlaybackModal({
                   </div>
                   <div>
                     <div className="font-black text-slate-900 text-xs">
-                      {data?.summary?.maxSpeed || (currentPoint?.speed ? Math.max(currentPoint.speed, 88) : 88)} kph
+                      {realPlaybackSummary.maxSpeed} kph
                     </div>
                     <div className="text-[10px] text-slate-400">Velocidad máxima</div>
                   </div>
@@ -667,7 +746,7 @@ export default function RoutePlaybackModal({
                   </div>
                   <div>
                     <div className="font-black text-slate-900 text-xs">
-                      {data?.summary?.totalDistanceKm || '45.07'} Km
+                      {realPlaybackSummary.distanceKm} Km
                     </div>
                     <div className="text-[10px] text-slate-400">Distancia</div>
                   </div>
@@ -680,7 +759,7 @@ export default function RoutePlaybackModal({
                   </div>
                   <div>
                     <div className="font-mono font-bold text-slate-900 text-xs">
-                      {data?.summary?.drivingTime || '01:44:12'}
+                      {realPlaybackSummary.drivingTime}
                     </div>
                     <div className="text-[10px] text-slate-400">Driving</div>
                   </div>
@@ -693,7 +772,7 @@ export default function RoutePlaybackModal({
                   </div>
                   <div>
                     <div className="font-mono font-bold text-slate-900 text-xs">
-                      {data?.summary?.idleTime || '20:41:51'}
+                      {realPlaybackSummary.idleTime}
                     </div>
                     <div className="text-[10px] text-slate-400">Idle / Detenido</div>
                   </div>
