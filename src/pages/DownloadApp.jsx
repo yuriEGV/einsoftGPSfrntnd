@@ -1,15 +1,18 @@
 import React from 'react'
 
+const APK_VERSION = '2.3.0'
+const APK_BUILD = '204'
+
 export default function DownloadApp() {
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300 pb-12">
-      {/* Header Táctico Plataforma Plus & EYE-NODE */}
+      {/* Header Táctico EYE-NODE 360 */}
       <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-10 text-white shadow-2xl relative overflow-hidden border border-cyan-500/30">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
         <div className="relative z-10 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 text-xs font-black uppercase tracking-wider">
-              ⚡ PLATAFORMA PLUS // APK v2.1.0 (Build 201)
+              🛰️ EYE-NODE 360 // APK v{APK_VERSION} (Build {APK_BUILD})
             </span>
             <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
               🟢 Verificado & Certificado Ley 21.171
@@ -17,11 +20,11 @@ export default function DownloadApp() {
           </div>
 
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">
-            EINSoft GPS & EYE-NODE v2.1.0
+            EINSoft GPS & EYE-NODE v{APK_VERSION}
           </h1>
 
           <p className="text-sm md:text-base text-slate-300 max-w-3xl leading-relaxed">
-            Aplicación oficial de rastreo y seguridad telemática. Incluye el <strong>Botón SOS 3 segundos</strong> con selección de incidentes (Incendio, Semáforo, Robo, Portonazo, Choque, Delincuencia), <strong>Corte Remoto de Combustible</strong> en 1 clic, historial de rutas con reproductor de velocidad, rutas planificadas de Ida/Regreso y telemetría 360°.
+            Nodo de rastreo táctico personal. Transmisión automática al abrir, <strong>Mapa Táctico 360 en vivo</strong>, emisión de <strong>Ping en tiempo real</strong> visible en la plataforma web, Bitácora IMU, Modo Centinela y Botón SOS de 3 segundos.
           </p>
         </div>
       </div>
@@ -29,7 +32,7 @@ export default function DownloadApp() {
       {/* Showcase Visual Gallery */}
       <div className="space-y-4">
         <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest font-mono flex items-center gap-2">
-          <span>📸</span> Pilares Telemáticos y Funcionalidades v2.1.0
+          <span>📸</span> Pilares Telemáticos y Funcionalidades v{APK_VERSION}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -41,9 +44,9 @@ export default function DownloadApp() {
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-bold text-xs text-cyan-300 font-mono uppercase">1. Location Safety</div>
+            <div className="font-bold text-xs text-cyan-300 font-mono uppercase">1. Mapa Táctico 360</div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Visualización de personas en mapa en vivo, monitoreo de trayectos familiares y geocercas seguras.
+              Radar GPS en vivo con rastro de trayectoria GNSS, marcador táctico pulsante y centrado automático.
             </p>
           </div>
 
@@ -55,9 +58,9 @@ export default function DownloadApp() {
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-bold text-xs text-amber-300 font-mono uppercase">2. Driving Safety</div>
+            <div className="font-bold text-xs text-amber-300 font-mono uppercase">2. Sensores IMU 360°</div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Monitoreo telemático de aceleración/frenado, sensor IMU y detección automática de colisiones en ruta.
+              Monitoreo telemático de aceleración/frenado, sensor IMU 6-Ejes y detección automática de colisiones.
             </p>
           </div>
 
@@ -65,13 +68,13 @@ export default function DownloadApp() {
             <div className="h-44 bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center p-1">
               <img
                 src="/assets/showcase/tile_tracking.jpg"
-                alt="Tile & Beacons"
+                alt="Ping en Tiempo Real"
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-bold text-xs text-emerald-300 font-mono uppercase">3. Tile & Mascotas</div>
+            <div className="font-bold text-xs text-emerald-300 font-mono uppercase">3. Ping en Tiempo Real</div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Enlace de balizas Bluetooth Tile para recuperar llaves, activos de valor o rastreo de mascotas.
+              Emite un pulso GPS instantáneo que aparece en la plataforma web en tiempo real con un solo toque.
             </p>
           </div>
 
@@ -83,9 +86,9 @@ export default function DownloadApp() {
                 className="w-full h-full object-cover hover:scale-105 transition-transform"
               />
             </div>
-            <div className="font-bold text-xs text-red-300 font-mono uppercase">4. Central SOC 24/7</div>
+            <div className="font-bold text-xs text-red-300 font-mono uppercase">4. SOS Central 24/7</div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Botón SOS de 3s, inmovilizador de combustible y enlace inmediato con Carabineros y PDI.
+              Botón SOS de 3s con selección de incidente, enlace inmediato con Carabineros y PDI.
             </p>
           </div>
         </div>
@@ -136,14 +139,14 @@ export default function DownloadApp() {
             </div>
             <div>
               <div className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider mb-1">
-                Versión Oficial 2.1.0 (Build 201)
+                🆕 Versión Oficial {APK_VERSION} (Build {APK_BUILD})
               </div>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                Descargar APK Android Oficial
+                Descargar EYE-NODE 360 APK
               </h2>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Instalador compilado para Android con soporte de segundo plano, telemetría táctica, caja negra offline y sincronización automática.
+              Nodo de rastreo táctico para Android. Transmisión automática al abrir, mapa táctico en vivo, ping en tiempo real, modo centinela y caja negra offline.
             </p>
             
             <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5">
@@ -151,24 +154,36 @@ export default function DownloadApp() {
               <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400 text-[11px]">
                 <li>Descarga e instala el archivo <code>.apk</code> en tu teléfono Android.</li>
                 <li>Concede los permisos de Ubicación en segundo plano y Sensores de Movimiento.</li>
-                <li>Activa la telemetría táctica y el botón SOS de asistencia 24/7.</li>
-                <li>Verás la unidad transmitiendo en vivo a la consola central.</li>
+                <li>La app comienza a transmitir automáticamente al abrirse.</li>
+                <li>Verás la unidad en vivo en la consola central de la plataforma web.</li>
               </ol>
+            </div>
+
+            {/* What's new */}
+            <div className="bg-cyan-950/40 rounded-2xl p-3 border border-cyan-800/40 text-xs space-y-1">
+              <p className="font-bold text-cyan-300 text-[10px] uppercase tracking-wider">✨ Nuevo en v{APK_VERSION}</p>
+              <ul className="text-slate-400 text-[10px] space-y-0.5 list-disc list-inside">
+                <li>Interfaz simplificada: Sensores, Mapa Táctico y Bitácora</li>
+                <li>Transmisión automática al abrir la app</li>
+                <li>Botón CORTE solo aparece si tienes vehículo vinculado</li>
+                <li>Modo Centinela con explicación integrada</li>
+                <li>Ping en tiempo real reflejado en plataforma web</li>
+              </ul>
             </div>
           </div>
 
           <div className="space-y-2.5 pt-2">
             <a
               href="/einsoft-gps.apk"
-              download="einsoft-gps-v2.1.0.apk"
+              download={`einsoft-gps-v${APK_VERSION}.apk`}
               className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-emerald-900/30 transition-all active:scale-95 text-sm"
             >
-              📥 Descargar einsoft-gps.apk v2.1.0 (Servidor Principal)
+              📥 Descargar EYE-NODE 360 v{APK_VERSION} (Servidor Principal)
             </a>
 
             <a
               href="https://einsoft-gp-sbcknd.vercel.app/api/download/apk"
-              download="einsoft-gps-v2.1.0.apk"
+              download={`einsoft-gps-v${APK_VERSION}.apk`}
               className="w-full py-3 bg-cyan-700 hover:bg-cyan-600 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs shadow border border-cyan-500/40"
             >
               ⚡ Descarga Directa API Backend (Espejo de Alta Velocidad)
@@ -176,15 +191,15 @@ export default function DownloadApp() {
 
             <a
               href="/eyenode.apk"
-              download="eyenode-v2.1.0.apk"
+              download={`eyenode-v${APK_VERSION}.apk`}
               className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold rounded-2xl text-center flex items-center justify-center gap-2 transition-all active:scale-95 text-xs border border-slate-700"
             >
-              📦 Descarga Alternativa eyenode.apk (6.3 MB)
+              📦 Descarga Alternativa eyenode.apk
             </a>
           </div>
         </div>
 
-        {/* Card 2: Monitoreo en Consola Central */}
+        {/* Card 2: Plataforma Web */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border-2 border-purple-500/30 shadow-xl space-y-5 flex flex-col justify-between hover:shadow-2xl transition-all">
           <div className="space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-3xl">
@@ -195,19 +210,19 @@ export default function DownloadApp() {
                 Ecosistema Completo
               </div>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                Plataforma Plus & Centro de Comando
+                Plataforma Web & Centro de Comando
               </h2>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Visualiza en tiempo real en el mapa la ubicación satelital, histórico de viajes con velocidades, calculador de peajes TAG y certificados Ley 21.171.
+              Visualiza en tiempo real la ubicación de los nodos EYE-NODE en el mapa, historial de viajes con velocidades, gestión de flotas y empresas.
             </p>
 
             <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2.5">
               <p className="font-bold text-slate-800 dark:text-slate-200">📊 Capacidades Integradas:</p>
               <ul className="list-disc list-inside space-y-1.5 text-slate-600 dark:text-slate-400 text-[11px]">
-                <li>Matriz de 18 Módulos telemáticos y financieros.</li>
-                <li>Calculador previo de Peajes y TAG de autopistas concesionadas.</li>
-                <li>Generador de Certificados de Servicio Ley 21.171 para aseguradoras.</li>
+                <li>Mapa táctico en vivo con todos los nodos activos.</li>
+                <li>Recibe Pings en tiempo real directamente en el mapa.</li>
+                <li>Gestión de flotas de empresas y asignación de vehículos.</li>
                 <li>Notificaciones SOS 24/7 coordinadas con Fuerzas de Seguridad.</li>
               </ul>
             </div>
@@ -215,10 +230,10 @@ export default function DownloadApp() {
 
           <div className="space-y-2.5 pt-2">
             <a
-              href="/plataforma-plus"
+              href="/dashboard"
               className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-black rounded-2xl text-center flex items-center justify-center gap-2 shadow-xl shadow-purple-900/30 transition-all active:scale-95 text-sm"
             >
-              ⚡ Abrir Plataforma Plus (18 Módulos)
+              🖥️ Abrir Panel de Control
             </a>
 
             <a

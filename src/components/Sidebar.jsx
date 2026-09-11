@@ -77,7 +77,7 @@ const ALL_MENU_ITEMS = [
     icon: '📱',
     path: '/download-app',
     allowedRoles: ['superadmin', 'admin', 'operator', 'supervisor', 'client', 'auditor', 'fleet_manager', 'independent', 'driver', 'mobile_gps_user'],
-    badge: 'APK v2.1',
+    badge: 'APK v2.3',
   },
   {
     label: 'EYE-NODE 360 (App)',

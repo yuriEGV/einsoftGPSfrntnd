@@ -201,7 +201,7 @@ export default function Login({ onLogin }) {
             href="/download-app"
             className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 transition shadow"
           >
-            <span>📱</span> Descargar APK v2.1.0
+            <span>📱</span> Descargar APK v2.3.0
           </a>
           <a
             href="https://t.me/EinGpsBot"
