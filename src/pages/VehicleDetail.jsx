@@ -23,6 +23,7 @@ export default function VehicleDetail() {
     model: '',
     year: '',
     color: '',
+    companyId: '',
   })
   const [deviceForm, setDeviceForm] = useState({
     deviceIMEI: '',
@@ -78,6 +79,7 @@ export default function VehicleDetail() {
           model: v.model || '',
           year: v.year || '',
           color: v.color || '',
+          companyId: v.company?._id || (typeof v.company === 'string' ? v.company : ''),
         })
         editFormInitialized.current = true
       }
@@ -96,6 +98,11 @@ export default function VehicleDetail() {
 
   const { data: allUsers = [] } = useQuery('allUsers', async () => {
     const response = await apiClient.get('/users')
+    return response.data || []
+  })
+
+  const { data: allCompanies = [] } = useQuery('allCompanies', async () => {
+    const response = await apiClient.get('/companies')
     return response.data || []
   })
 
@@ -435,6 +442,7 @@ export default function VehicleDetail() {
               e.preventDefault()
               editVehicleMutation.mutate({
                 ...editForm,
+                companyId: editForm.companyId || null,
                 year: editForm.year ? Number(editForm.year) : undefined,
               })
             }}
@@ -459,6 +467,21 @@ export default function VehicleDetail() {
                 />
               </div>
             ))}
+            <div className="space-y-1">
+              <label className="block text-[11px] font-semibold text-slate-400 uppercase">Empresa / Cuenta</label>
+              <select
+                value={editForm.companyId || ''}
+                onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:border-cyan-500 outline-none transition text-xs"
+              >
+                <option value="">-- Sin Empresa Asignada (Flota General) --</option>
+                {allCompanies.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-end">
               <button
                 type="submit"
@@ -476,7 +499,7 @@ export default function VehicleDetail() {
           </form>
         ) : (
           /* ===== VISTA DE DATOS ===== */
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 text-xs">
             <div>
               <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Estado Operativo</h2>
               <p>
@@ -494,6 +517,19 @@ export default function VehicleDetail() {
               <p className="text-slate-400 mt-1 font-mono">Odómetro: <span className="text-slate-200 font-bold">{odometer} km</span></p>
               {!isSmartTag && fuelLevel != null && (
                 <p className="text-slate-400 mt-1 font-mono">Combustible: <span className="text-slate-200 font-bold">{fuelLevel}%</span></p>
+              )}
+            </div>
+            <div>
+              <h2 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 font-mono">Empresa / Cuenta</h2>
+              <p className="text-slate-200 font-semibold flex items-center gap-1.5">
+                <span>🏢</span>
+                <span>{vehicle.company?.name || 'Sin empresa asignada'}</span>
+              </p>
+              {vehicle.company?.email && (
+                <p className="text-slate-400 font-mono mt-0.5 text-[10px]">{vehicle.company.email}</p>
+              )}
+              {vehicle.company?.phone && (
+                <p className="text-slate-500 font-mono text-[10px]">{vehicle.company.phone}</p>
               )}
             </div>
             <div>

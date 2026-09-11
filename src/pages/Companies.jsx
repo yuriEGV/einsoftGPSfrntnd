@@ -1,9 +1,14 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { apiClient } from '../services/api'
+import EditCompanyModal from '../components/EditCompanyModal'
+import CompanyVehiclesModal from '../components/CompanyVehiclesModal'
 
 export default function Companies() {
   const queryClient = useQueryClient()
+  const [editingCompany, setEditingCompany] = useState(null)
+  const [managingVehiclesCompany, setManagingVehiclesCompany] = useState(null)
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -172,7 +177,8 @@ export default function Companies() {
                   <th className="px-4 py-3">Nombre / Razón Social</th>
                   <th className="px-4 py-3">Contacto</th>
                   <th className="px-4 py-3">Ubicación</th>
-                  <th className="px-4 py-3 text-right">Estado Operativo</th>
+                  <th className="px-4 py-3 text-center">Estado Operativo</th>
+                  <th className="px-4 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -180,8 +186,9 @@ export default function Companies() {
                   <tr key={c._id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3.5 font-bold text-slate-100">
                       {c.name}
-                      <div className="text-[10px] text-cyan-400 font-mono mt-0.5">
-                        {c.vehicleCount || 0} unidades asignadas
+                      <div className="text-[10px] text-cyan-400 font-mono mt-0.5 flex items-center gap-1.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                        <span>{c.vehicleCount || 0} unidades asignadas</span>
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-slate-300">
@@ -192,7 +199,7 @@ export default function Companies() {
                       {c.address || 'Sin dirección'}<br />
                       <span className="text-[10px] text-slate-500 font-mono">{c.city || ''} {c.country || ''}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-4 py-3.5 text-center">
                       {c.isActive ? (
                         <span className="px-2 py-0.5 text-[9px] font-bold font-mono rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 uppercase tracking-wider">
                           Activa
@@ -203,6 +210,28 @@ export default function Companies() {
                         </span>
                       )}
                     </td>
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setManagingVehiclesCompany(c)}
+                          className="px-2.5 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 hover:text-white font-semibold text-[11px] flex items-center gap-1.5 transition shadow-sm"
+                          title="Gestionar y asignar vehículos a esta empresa"
+                        >
+                          <span>🚗</span>
+                          <span>Vehículos ({c.vehicleCount || 0})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCompany(c)}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 hover:text-white font-semibold text-[11px] flex items-center gap-1 transition"
+                          title="Modificar datos de la empresa"
+                        >
+                          <span>✏️</span>
+                          <span>Editar</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -210,6 +239,27 @@ export default function Companies() {
           </div>
         )}
       </div>
+
+      {/* Modal para Modificar Empresa */}
+      <EditCompanyModal
+        isOpen={!!editingCompany}
+        company={editingCompany}
+        onClose={() => setEditingCompany(null)}
+        onSuccess={() => {
+          queryClient.invalidateQueries('companies')
+        }}
+      />
+
+      {/* Modal para Gestionar y Asignar Vehículos a la Empresa */}
+      <CompanyVehiclesModal
+        isOpen={!!managingVehiclesCompany}
+        company={managingVehiclesCompany}
+        onClose={() => setManagingVehiclesCompany(null)}
+        onUpdated={() => {
+          queryClient.invalidateQueries('companies')
+          queryClient.invalidateQueries('vehicles')
+        }}
+      />
     </div>
   )
 }
